@@ -1,0 +1,9 @@
+graph TB
+    A --> B
+    subgraph S1
+        B --> C
+        subgraph S2
+            C --> D
+        end
+    end
+    D --> E

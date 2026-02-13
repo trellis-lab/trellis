@@ -1,0 +1,22 @@
+erDiagram
+    USER ||--o{ ORDER : places
+    ORDER ||--|{ LINE-ITEM : contains
+    PRODUCT ||--o{ LINE-ITEM : includes
+    USER {
+        int id
+        string name
+        string email
+    }
+    ORDER {
+        int id
+        date order_date
+    }
+    LINE-ITEM {
+        int id
+        int quantity
+    }
+    PRODUCT {
+        int id
+        string name
+        float price
+    }

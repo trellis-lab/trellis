@@ -1,0 +1,19 @@
+[package]
+name = "trellis-wasm"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+trellis-parser = { path = "../trellis-parser" }
+trellis-core = { path = "../trellis-core" }
+wasm-bindgen = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+
+[dev-dependencies]
