@@ -66,15 +66,15 @@
 > **Cél:** A routing rács felépül, a portok kiosztásra kerülnek.
 > **Smoke test:** `--metrics` kiírja a grid méretét és port-kiosztást
 
-* [ ] Cellaméret számítás (`grid/params.rs` – `calculateCellSize`, sűrűség-alapú)
-* [ ] Rács kiterjedés számítás (`calculateGridExtent` – biztonsági szorzó)
-* [ ] Grid felépítés (`grid/builder.rs` – `buildGrid`, csomópontok alatti cellák blokkolása)
-* [ ] Szög→oldal konverzió (`ports/assignment.rs` – `angleToSide`, 4 szektor)
-* [ ] Élek oldalankénti csoportosítása (szomszédok irányából)
-* [ ] Túlcsordulás kezelés (`ports/overflow.rs` – szomszédos oldalra áthelyezés)
-* [ ] Oldalon belüli rendezés (`sortEdgesOnSide` – merőleges tengely szerinti sorrend)
-* [ ] Port pozíciók kiszámítása (`ports/positions.rs` – egyenletes elosztás az oldalon)
-* [ ] Unit tesztek: grid méret B01-B05 fixture-ökre, port szimmetria ellenőrzés
+* [x] Cellaméret számítás (`grid/params.rs` – `calculateCellSize`, sűrűség-alapú)
+* [x] Rács kiterjedés számítás (`calculateGridExtent` – biztonsági szorzó)
+* [x] Grid felépítés (`grid/builder.rs` – `buildGrid`, csomópontok alatti cellák blokkolása)
+* [x] Szög→oldal konverzió (`ports/assignment.rs` – `angleToSide`, 4 szektor)
+* [x] Élek oldalankénti csoportosítása (szomszédok irányából)
+* [x] Túlcsordulás kezelés (`ports/overflow.rs` – szomszédos oldalra áthelyezés)
+* [x] Oldalon belüli rendezés (`sortEdgesOnSide` – merőleges tengely szerinti sorrend)
+* [x] Port pozíciók kiszámítása (`ports/positions.rs` – egyenletes elosztás az oldalon)
+* [x] Unit tesztek: grid méret B01-B05 fixture-ökre, port szimmetria ellenőrzés
 
 ---
 

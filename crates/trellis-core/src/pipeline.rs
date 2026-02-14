@@ -1,12 +1,17 @@
-use crate::{config::TrellisConfig, placement, types::*};
+use crate::{
+    config::TrellisConfig,
+    grid::{build_grid, calculate_cell_size, calculate_grid_extent},
+    placement,
+    ports::assign_ports,
+    types::*,
+};
 use trellis_parser::Graph;
 use std::time::Instant;
 
 /// Main rendering pipeline
 ///
-/// Runs the full pipeline: placement → (grid → ports → routing → SVG in future milestones).
-/// For M3, placement is performed and metrics are populated.
-/// SVG rendering is still a placeholder until M6.
+/// Runs the full pipeline: placement → grid → ports → (routing → SVG in future milestones).
+/// For M4, placement, grid construction, and port assignment are performed.
 pub fn render(graph: &Graph, config: &TrellisConfig, format: OutputFormat) -> Result<RenderResult, RenderError> {
     let start = Instant::now();
 
@@ -15,6 +20,14 @@ pub fn render(graph: &Graph, config: &TrellisConfig, format: OutputFormat) -> Re
 
     // Phase 2: Node placement (Sugiyama for flowcharts)
     placement::place_nodes(&mut graph);
+
+    // Phase 3: Grid construction
+    let cell_size = calculate_cell_size(&graph);
+    let extent = calculate_grid_extent(&graph);
+    let grid = build_grid(&graph, cell_size, &extent);
+
+    // Phase 4: Port assignment
+    let port_assignments = assign_ports(&graph, cell_size);
 
     let elapsed = start.elapsed();
 
@@ -26,7 +39,11 @@ pub fn render(graph: &Graph, config: &TrellisConfig, format: OutputFormat) -> Re
         crossings: 0, // Will be computed in M5
         bends: 0,     // Will be computed in M5
         render_ms: elapsed.as_millis() as u64,
-        grid_utilization: 0.0, // Will be computed in M4
+        grid_utilization: grid.utilization(),
+        grid_rows: grid.rows,
+        grid_cols: grid.cols,
+        cell_size,
+        port_count: port_assignments.len() * 2, // source + target for each edge
     };
 
     let data = match format {
