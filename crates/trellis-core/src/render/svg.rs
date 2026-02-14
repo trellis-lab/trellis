@@ -1,9 +1,10 @@
-use crate::grid::Grid;
-use crate::routing::RoutingResult;
 use crate::config::TrellisConfig;
+use crate::grid::Grid;
 use crate::render::crossing::render_crossings;
 use crate::render::edges::{arrow_marker_defs, render_edge, render_fallback_edge};
+use crate::render::grid::render_grid_dot;
 use crate::render::nodes::render_nodes;
+use crate::routing::RoutingResult;
 use trellis_parser::Graph;
 
 /// Build the complete SVG document from graph, grid, and routing data.
@@ -29,17 +30,26 @@ pub fn build_svg(
         "<svg xmlns=\"http://www.w3.org/2000/svg\" \
          width=\"{:.0}\" height=\"{:.0}\" \
          viewBox=\"{:.1} {:.1} {:.1} {:.1}\">\n",
-        vw, vh,
-        vx, vy, vw, vh,
+        vw, vh, vx, vy, vw, vh,
     ));
 
     // Style block
-    svg.push_str("<style>\n\
+    svg.push_str(
+        "<style>\n\
         text { user-select: none; }\n\
-    </style>\n");
+    </style>\n",
+    );
 
     // Background
     svg.push_str("<rect width=\"100%\" height=\"100%\" fill=\"white\"/>\n");
+
+    // Show grid
+    for i in 0..grid.rows {
+        for j in 0..grid.cols {
+            let dot_svg = render_grid_dot(i, j, grid);
+            svg.push_str(&dot_svg);
+        }
+    }
 
     // Marker definitions (arrowheads)
     svg.push_str(arrow_marker_defs());
