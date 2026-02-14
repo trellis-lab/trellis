@@ -3,6 +3,7 @@ pub mod grid;
 pub mod pipeline;
 pub mod placement;
 pub mod ports;
+pub mod render;
 pub mod routing;
 pub mod types;
 

@@ -100,15 +100,15 @@
 > **Cél:** Működő SVG kimenet: csomópontok + élek + nyilak. Az első "vizuálisan értékelhető" eredmény.
 > **Smoke test:** `trellis render b04.mmd -o b04.svg` → böngészőben megnyitva olvasható diagram
 
-* [ ] Csomópont renderelés (`render/nodes.rs` – rect, rounded, diamond + címke SVG)
-* [ ] Útvonal egyszerűsítés (`render/edges.rs` – `simplifyPath`, collinear pontok eltávolítása)
-* [ ] Lekerekített sarkok (`generateRoundedPolyline` – SVG `Q` quadratic Bezier)
-* [ ] Él renderelés (`render/edges.rs` – polyline generálás, stroke stílusok: solid/dotted/thick)
-* [ ] Nyílhegy renderelés (SVG marker def + irány-számítás)
-* [ ] SVG dokumentum összeállítás (`render/svg.rs` – `buildSVG`, viewBox, style blokk)
-* [ ] PNG export (`render/png.rs` – `resvg` SVG→PNG konverzió)
-* [ ] CLI `render` parancs teljes bekötése (parser → placement → grid → ports → routing → SVG → fájl)
-* [ ] CLI `-f png` és `-f svg` kapcsoló működés
+* [x] Csomópont renderelés (`render/nodes.rs` – rect, rounded, diamond + címke SVG)
+* [x] Útvonal egyszerűsítés (`render/edges.rs` – `simplifyPath`, collinear pontok eltávolítása)
+* [x] Lekerekített sarkok (`generateRoundedPolyline` – SVG `Q` quadratic Bezier)
+* [x] Él renderelés (`render/edges.rs` – polyline generálás, stroke stílusok: solid/dotted/thick)
+* [x] Nyílhegy renderelés (SVG marker def + irány-számítás)
+* [x] SVG dokumentum összeállítás (`render/svg.rs` – `buildSVG`, viewBox, style blokk)
+* [x] PNG export (`render/png.rs` – `resvg` SVG→PNG konverzió)
+* [x] CLI `render` parancs teljes bekötése (parser → placement → grid → ports → routing → SVG → fájl)
+* [x] CLI `-f png` és `-f svg` kapcsoló működés
 * [ ] Vizuális ellenőrzés: B01–B07 fixture-ök renderelése és manuális átnézés
 
 ---

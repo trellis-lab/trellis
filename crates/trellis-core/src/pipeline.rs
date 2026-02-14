@@ -11,8 +11,7 @@ use std::time::Instant;
 
 /// Main rendering pipeline
 ///
-/// Runs the full pipeline: placement → grid → ports → routing → SVG.
-/// M5 adds edge routing with A* pathfinding.
+/// Runs the full pipeline: placement → grid → ports → routing → SVG/PNG.
 pub fn render(graph: &Graph, config: &TrellisConfig, format: OutputFormat) -> Result<RenderResult, RenderError> {
     let start = Instant::now();
 
@@ -50,13 +49,15 @@ pub fn render(graph: &Graph, config: &TrellisConfig, format: OutputFormat) -> Re
         port_count: port_assignments.len() * 2, // source + target for each edge
     };
 
+    // Phase 9: SVG rendering
+    let svg_data = crate::render::svg::build_svg(&graph, &grid, &routing_result, config);
+
     let data = match format {
-        OutputFormat::Svg => {
-            generate_debug_svg(&graph, &grid, &routing_result, config)
-        }
+        OutputFormat::Svg => svg_data,
         OutputFormat::Png => {
-            // Placeholder: will be implemented with resvg in M6
-            vec![]
+            crate::render::png::svg_to_png(&svg_data).map_err(|e| RenderError {
+                message: format!("PNG conversion failed: {}", e),
+            })?
         }
     };
 
@@ -87,98 +88,6 @@ fn count_layers(graph: &Graph) -> usize {
     layer_values.sort();
     layer_values.dedup();
     layer_values.len()
-}
-
-/// Generate a debug SVG that shows node positions and routed edges
-fn generate_debug_svg(
-    graph: &Graph,
-    grid: &crate::grid::Grid,
-    routing_result: &routing::RoutingResult,
-    _config: &TrellisConfig,
-) -> Vec<u8> {
-    if graph.nodes.is_empty() {
-        return b"<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"400\" height=\"300\"><rect width=\"400\" height=\"300\" fill=\"white\"/></svg>".to_vec();
-    }
-
-    // Calculate viewBox from node positions
-    let max_x = graph.nodes.iter().map(|n| n.x + n.width / 2.0).fold(f64::NEG_INFINITY, f64::max);
-    let max_y = graph.nodes.iter().map(|n| n.y + n.height / 2.0).fold(f64::NEG_INFINITY, f64::max);
-    let vw = (max_x + 50.0).ceil();
-    let vh = (max_y + 50.0).ceil();
-
-    let mut svg = format!(
-        "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"{}\" height=\"{}\" viewBox=\"0 0 {} {}\">\n",
-        vw, vh, vw, vh,
-    );
-    svg.push_str("  <rect width=\"100%\" height=\"100%\" fill=\"white\"/>\n");
-
-    // Arrow marker definition
-    svg.push_str("  <defs><marker id=\"arrow\" viewBox=\"0 0 10 10\" refX=\"10\" refY=\"5\" markerWidth=\"6\" markerHeight=\"6\" orient=\"auto-start-reverse\"><path d=\"M 0 0 L 10 5 L 0 10 z\" fill=\"#999\"/></marker></defs>\n");
-
-    // Draw routed edges as polylines
-    for (edge_idx, path) in &routing_result.paths {
-        if path.points.len() < 2 {
-            continue;
-        }
-
-        let points_str: Vec<String> = path
-            .points
-            .iter()
-            .map(|p| {
-                let (x, y) = grid.grid_to_world(p.row as usize, p.col as usize);
-                format!("{},{}", x, y)
-            })
-            .collect();
-
-        // Determine stroke style from edge
-        let stroke_style = if *edge_idx < graph.edges.len() {
-            match graph.edges[*edge_idx].style {
-                trellis_parser::EdgeStyle::Dotted => "stroke-dasharray=\"5,5\"",
-                trellis_parser::EdgeStyle::Thick => "stroke-width=\"3\"",
-                _ => "stroke-width=\"1.5\"",
-            }
-        } else {
-            "stroke-width=\"1.5\""
-        };
-
-        svg.push_str(&format!(
-            "  <polyline points=\"{}\" fill=\"none\" stroke=\"#666\" {} marker-end=\"url(#arrow)\"/>\n",
-            points_str.join(" "),
-            stroke_style,
-        ));
-    }
-
-    // Draw edges without routes as straight lines (fallback)
-    for (edge_idx, edge) in graph.edges.iter().enumerate() {
-        if routing_result.paths.contains_key(&edge_idx) {
-            continue; // Already drawn as polyline
-        }
-        let from_node = graph.nodes.iter().find(|n| n.id == edge.from);
-        let to_node = graph.nodes.iter().find(|n| n.id == edge.to);
-        if let (Some(f), Some(t)) = (from_node, to_node) {
-            svg.push_str(&format!(
-                "  <line x1=\"{}\" y1=\"{}\" x2=\"{}\" y2=\"{}\" stroke=\"#ccc\" stroke-width=\"1\" stroke-dasharray=\"3,3\" marker-end=\"url(#arrow)\"/>\n",
-                f.x, f.y, t.x, t.y,
-            ));
-        }
-    }
-
-    // Draw nodes on top of edges
-    for node in &graph.nodes {
-        let rx = node.x - node.width / 2.0;
-        let ry = node.y - node.height / 2.0;
-        svg.push_str(&format!(
-            "  <rect x=\"{}\" y=\"{}\" width=\"{}\" height=\"{}\" rx=\"4\" fill=\"#e8f4fd\" stroke=\"#4a90d9\" stroke-width=\"1.5\"/>\n",
-            rx, ry, node.width, node.height,
-        ));
-        svg.push_str(&format!(
-            "  <text x=\"{}\" y=\"{}\" text-anchor=\"middle\" dominant-baseline=\"central\" font-family=\"Arial\" font-size=\"12\">{}</text>\n",
-            node.x, node.y, node.label,
-        ));
-    }
-
-    svg.push_str("</svg>");
-    svg.into_bytes()
 }
 
 /// Error type for rendering failures
