@@ -39,6 +39,14 @@ enum Commands {
     },
 }
 
+/// Recursively count all subgraphs (including nested ones)
+fn count_subgraphs(subgraphs: &[trellis_parser::Subgraph]) -> usize {
+    subgraphs
+        .iter()
+        .map(|sg| 1 + count_subgraphs(&sg.subgraphs))
+        .sum()
+}
+
 fn main() -> Result<()> {
     let cli = Cli::parse();
 
@@ -89,11 +97,21 @@ fn main() -> Result<()> {
             let graph = trellis_parser::parse(&content)
                 .map_err(|e| anyhow::anyhow!("Parse error: {}", e))?;
 
-            println!(
-                "OK - {} nodes, {} edges",
-                graph.nodes.len(),
-                graph.edges.len()
-            );
+            let subgraph_count = count_subgraphs(&graph.subgraphs);
+            if subgraph_count > 0 {
+                println!(
+                    "OK - {} nodes, {} edges, {} subgraphs",
+                    graph.nodes.len(),
+                    graph.edges.len(),
+                    subgraph_count,
+                );
+            } else {
+                println!(
+                    "OK - {} nodes, {} edges",
+                    graph.nodes.len(),
+                    graph.edges.len(),
+                );
+            }
 
             Ok(())
         }

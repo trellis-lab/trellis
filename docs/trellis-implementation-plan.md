@@ -19,14 +19,14 @@
 > **Cél:** A monorepo felépül, a 4 crate lefordul, a CLI "hello world" szinten fut.
 > **Smoke test:** `cargo run -p trellis-cli -- render test.mmd -o test.svg` → üres/placeholder SVG
 
-* [ ] Cargo workspace inicializálás (`Cargo.toml` a gyökérben, `crates/` alkönyvtárak)
-* [ ] `trellis-parser` crate váz (`lib.rs`, `ast.rs` – üres `Graph`, `Node`, `Edge`, `Subgraph` struktúrák)
-* [ ] `trellis-core` crate váz (`lib.rs`, `types.rs`, `config.rs` – `TrellisConfig` struktúra, `pipeline.rs` – üres `render()` függvény)
-* [ ] `trellis-wasm` crate váz (`lib.rs` – `wasm-bindgen` `render()` stub)
-* [ ] `trellis-cli` crate váz (`main.rs` – `clap` CLI, `render` parancs, placeholder kimenet)
-* [ ] `cargo test --workspace` – minden crate lefordul, üres tesztek zöldek
-* [ ] `cargo run -p trellis-cli -- --version` kiírja a verziószámot
-* [ ] Benchmark fixture fájlok létrehozása (`tests/benchmarks/fixtures/b01..b12.mmd`)
+* [x] Cargo workspace inicializálás (`Cargo.toml` a gyökérben, `crates/` alkönyvtárak)
+* [x] `trellis-parser` crate váz (`lib.rs`, `ast.rs` – üres `Graph`, `Node`, `Edge`, `Subgraph` struktúrák)
+* [x] `trellis-core` crate váz (`lib.rs`, `types.rs`, `config.rs` – `TrellisConfig` struktúra, `pipeline.rs` – üres `render()` függvény)
+* [x] `trellis-wasm` crate váz (`lib.rs` – `wasm-bindgen` `render()` stub)
+* [x] `trellis-cli` crate váz (`main.rs` – `clap` CLI, `render` parancs, placeholder kimenet)
+* [x] `cargo test --workspace` – minden crate lefordul, üres tesztek zöldek
+* [x] `cargo run -p trellis-cli -- --version` kiírja a verziószámot
+* [x] Benchmark fixture fájlok létrehozása (`tests/benchmarks/fixtures/b01..b12.mmd`)
 
 ---
 
@@ -35,14 +35,14 @@
 > **Cél:** A parser flowchart szintaxist feldolgozza és `Graph` AST-t ad vissza.
 > **Smoke test:** `cargo run -p trellis-cli -- validate test.mmd` → "OK, 5 node, 4 edge"
 
-* [ ] Tokenizer (`tokenizer.rs`) – soronkénti feldolgozás, kulcsszavak felismerése
-* [ ] Flowchart parser (`flowchart.rs`) – `graph`/`flowchart` direktíva, `direction` kiolvasás (TB/BT/LR/RL)
-* [ ] Csomópont-definíció parsing (id, label, shape: `[]`, `()`, `{}`, `(())`, stb.)
-* [ ] Él-definíció parsing (`-->`, `---`, `-.->`, `==>`, `--text-->`, stb.)
-* [ ] Subgraph parsing (`subgraph id` ... `end` blokkok, egymásba ágyazás)
-* [ ] Szövegméret becslés (`calculateTextWidth`, `calculateTextHeight` – font metrika nélkül, karakter-alapú heurisztika)
-* [ ] `validate` CLI parancs implementálás (parser hívás + összesítő kiírás)
-* [ ] Unit tesztek: B01 (linear chain), B02 (wide branch), B04 (diamond), B07 (cycle), B08 (nested subgraph)
+* [x] Tokenizer (`tokenizer.rs`) – soronkénti feldolgozás, kulcsszavak felismerése
+* [x] Flowchart parser (`flowchart.rs`) – `graph`/`flowchart` direktíva, `direction` kiolvasás (TB/BT/LR/RL)
+* [x] Csomópont-definíció parsing (id, label, shape: `[]`, `()`, `{}`, `(())`, stb.)
+* [x] Él-definíció parsing (`-->`, `---`, `-.->`, `==>`, `--text-->`, stb.)
+* [x] Subgraph parsing (`subgraph id` ... `end` blokkok, egymásba ágyazás)
+* [x] Szövegméret becslés (`calculateTextWidth`, `calculateTextHeight` – font metrika nélkül, karakter-alapú heurisztika)
+* [x] `validate` CLI parancs implementálás (parser hívás + összesítő kiírás)
+* [x] Unit tesztek: B01 (linear chain), B02 (wide branch), B04 (diamond), B07 (cycle), B08 (nested subgraph)
 
 ---
 

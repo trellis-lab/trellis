@@ -16,6 +16,8 @@ pub struct Node {
     pub id: String,
     pub label: String,
     pub shape: NodeShape,
+    pub width: f64,
+    pub height: f64,
     pub x: f64,
     pub y: f64,
 }
@@ -27,6 +29,7 @@ pub struct Edge {
     pub to: String,
     pub label: Option<String>,
     pub style: EdgeStyle,
+    pub arrow_head: ArrowHead,
 }
 
 /// A subgraph containing nodes and edges
@@ -39,7 +42,7 @@ pub struct Subgraph {
 }
 
 /// Direction of the graph layout
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub enum Direction {
     #[default]
     TB, // Top to Bottom
@@ -49,7 +52,7 @@ pub enum Direction {
 }
 
 /// Type of diagram
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub enum DiagramType {
     #[default]
     Flowchart,
@@ -58,7 +61,7 @@ pub enum DiagramType {
 }
 
 /// Shape of a node
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub enum NodeShape {
     #[default]
     Rectangle,
@@ -69,12 +72,20 @@ pub enum NodeShape {
 }
 
 /// Style of an edge
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub enum EdgeStyle {
     #[default]
     Solid,
     Dotted,
     Thick,
+}
+
+/// Arrow head type
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+pub enum ArrowHead {
+    #[default]
+    Arrow,
+    None,
 }
 
 impl Graph {
