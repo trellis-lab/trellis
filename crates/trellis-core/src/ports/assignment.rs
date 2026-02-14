@@ -199,7 +199,7 @@ fn calculate_angle(from: &Node, to: &Node) -> f64 {
 }
 
 /// Minimum spacing between ports on a side (in pixels)
-const MIN_PORT_SPACING: f64 = 15.0;
+pub const MIN_PORT_SPACING: f64 = 15.0;
 
 /// Handle overflow: if too many edges are assigned to one side, move excess to adjacent sides.
 fn handle_overflow(sides: &mut HashMap<Side, Vec<&NodeEdgeInfo>>, node: &Node) {
