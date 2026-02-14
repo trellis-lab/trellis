@@ -118,14 +118,14 @@
 > **Cél:** Ha egy él nem routeolható, a rendszer automatikusan megoldja.
 > **Smoke test:** B03 (K₃,₃) hiba nélkül renderelődik, esetleg keresztezéssel
 
-* [ ] Rip-up and reroute (`deadlock/rip_up.rs` – blokkoló élek azonosítása, visszavonás, újra-routing)
-* [ ] Blokkoló élek azonosítása (`findBlockingEdges` – módosított A* tracking-gel)
-* [ ] Rács növelés (`deadlock/expand.rs` – `expandGridAndRetry`, 1.5x skálázás, teljes újra-routing)
-* [ ] Keresztezéses fallback (`deadlock/fallback.rs` – OCCUPIED cellák véges költséggel átjárhatók)
-* [ ] Keresztezési pontok megjelölése (`cell.crossing = true`)
-* [ ] Keresztezési híd renderelés (`render/crossing.rs` – fehér háttér kör + ív SVG)
-* [ ] `handleDeadlock` 3-szintű védelem bekötése a routing ciklusba
-* [ ] Unit tesztek: szándékosan zsúfolt gráf ahol rip-up szükséges
+* [x] Rip-up and reroute (`deadlock/rip_up.rs` – blokkoló élek azonosítása, visszavonás, újra-routing)
+* [x] Blokkoló élek azonosítása (`findBlockingEdges` – módosított A* tracking-gel)
+* [x] Rács növelés (`deadlock/expand.rs` – `expandGridAndRetry`, 1.5x skálázás, teljes újra-routing)
+* [x] Keresztezéses fallback (`deadlock/fallback.rs` – OCCUPIED cellák véges költséggel átjárhatók)
+* [x] Keresztezési pontok megjelölése (`cell.crossing = true`)
+* [x] Keresztezési híd renderelés (`render/crossing.rs` – fehér háttér kör + ív SVG)
+* [x] `handleDeadlock` 3-szintű védelem bekötése a routing ciklusba
+* [x] Unit tesztek: szándékosan zsúfolt gráf ahol rip-up szükséges
 
 ---
 

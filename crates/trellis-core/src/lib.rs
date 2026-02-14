@@ -1,4 +1,5 @@
 pub mod config;
+pub mod deadlock;
 pub mod grid;
 pub mod pipeline;
 pub mod placement;

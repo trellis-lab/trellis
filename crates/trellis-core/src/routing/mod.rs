@@ -7,6 +7,7 @@ pub mod priority;
 use std::collections::HashMap;
 
 use crate::config::TrellisConfig;
+use crate::deadlock;
 use crate::grid::Grid;
 use crate::ports::EdgePorts;
 use astar::{route_edge, GridPoint, RoutedPath};
@@ -32,11 +33,33 @@ pub struct RoutingResult {
 ///
 /// Edges are routed in priority order. Multi-edges are detected and
 /// routed with awareness of each other to prevent overlap.
+/// On failure, the 3-level deadlock handler is invoked.
 pub fn route_all_edges(
     graph: &Graph,
     grid: &mut Grid,
     port_assignments: &HashMap<usize, EdgePorts>,
     config: &TrellisConfig,
+) -> RoutingResult {
+    route_all_edges_inner(graph, grid, port_assignments, config, true)
+}
+
+/// Route all edges WITHOUT deadlock handling.
+/// Used internally by grid expansion to avoid infinite recursion.
+pub(crate) fn route_all_edges_no_deadlock(
+    graph: &Graph,
+    grid: &mut Grid,
+    port_assignments: &HashMap<usize, EdgePorts>,
+    config: &TrellisConfig,
+) -> RoutingResult {
+    route_all_edges_inner(graph, grid, port_assignments, config, false)
+}
+
+fn route_all_edges_inner(
+    graph: &Graph,
+    grid: &mut Grid,
+    port_assignments: &HashMap<usize, EdgePorts>,
+    config: &TrellisConfig,
+    deadlock_enabled: bool,
 ) -> RoutingResult {
     let mut result = RoutingResult {
         paths: HashMap::new(),
@@ -79,17 +102,19 @@ pub fn route_all_edges(
                     }
 
                     route_single_edge(
+                        graph,
                         grid,
                         group_edge_idx,
                         port_assignments,
                         config,
                         &mut result,
+                        deadlock_enabled,
                     );
                     routed.insert(group_edge_idx, true);
                 }
             }
         } else {
-            route_single_edge(grid, edge_idx, port_assignments, config, &mut result);
+            route_single_edge(graph, grid, edge_idx, port_assignments, config, &mut result, deadlock_enabled);
             routed.insert(edge_idx, true);
         }
     }
@@ -97,13 +122,16 @@ pub fn route_all_edges(
     result
 }
 
-/// Route a single edge and commit the result to the grid
+/// Route a single edge and commit the result to the grid.
+/// If routing fails and `deadlock_enabled` is true, triggers the 3-level deadlock handler.
 fn route_single_edge(
+    graph: &Graph,
     grid: &mut Grid,
     edge_idx: usize,
     port_assignments: &HashMap<usize, EdgePorts>,
     config: &TrellisConfig,
     result: &mut RoutingResult,
+    deadlock_enabled: bool,
 ) {
     let ports = match port_assignments.get(&edge_idx) {
         Some(p) => p,
@@ -135,7 +163,26 @@ fn route_single_edge(
             result.paths.insert(edge_idx, path);
         }
         None => {
-            result.failed_routes += 1;
+            // Restore cells before deadlock handling (it manages its own cell states)
+            restore_cell(grid, source, source_state);
+            restore_cell(grid, target, target_state);
+
+            if deadlock_enabled {
+                // M7: 3-level deadlock handling
+                match deadlock::handle_deadlock(
+                    graph, grid, edge_idx, port_assignments, config, result,
+                ) {
+                    Some(path) => {
+                        result.paths.insert(edge_idx, path);
+                    }
+                    None => {
+                        result.failed_routes += 1;
+                    }
+                }
+            } else {
+                result.failed_routes += 1;
+            }
+            return;
         }
     }
 

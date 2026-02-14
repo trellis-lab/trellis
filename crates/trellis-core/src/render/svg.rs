@@ -1,6 +1,7 @@
 use crate::grid::Grid;
 use crate::routing::RoutingResult;
 use crate::config::TrellisConfig;
+use crate::render::crossing::render_crossings;
 use crate::render::edges::{arrow_marker_defs, render_edge, render_fallback_edge};
 use crate::render::nodes::render_nodes;
 use trellis_parser::Graph;
@@ -76,6 +77,19 @@ pub fn build_svg(
     }
 
     svg.push_str("</g>\n");
+
+    // --- Crossing indicators (on top of edges, under nodes) ---
+    let crossings_svg = render_crossings(grid);
+    if !crossings_svg.is_empty() {
+        svg.push_str("<!-- Crossings -->\n");
+        svg.push_str("<g class=\"crossings\">\n");
+        for line in crossings_svg.lines() {
+            svg.push_str("  ");
+            svg.push_str(line);
+            svg.push('\n');
+        }
+        svg.push_str("</g>\n");
+    }
 
     // --- Nodes (on top of edges) ---
     svg.push_str("<!-- Nodes -->\n");
