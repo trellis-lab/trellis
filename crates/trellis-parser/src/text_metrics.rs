@@ -3,7 +3,6 @@
 /// These heuristics approximate text dimensions in pixels based on
 /// character count. They will be refined in later milestones when
 /// actual font rendering is available.
-
 const CHAR_WIDTH: f64 = 8.0;
 const LINE_HEIGHT: f64 = 16.0;
 const PADDING_H: f64 = 20.0;
@@ -14,11 +13,7 @@ const PADDING_V: f64 = 12.0;
 /// Uses average character width multiplied by the longest line,
 /// plus horizontal padding on both sides.
 pub fn calculate_text_width(text: &str) -> f64 {
-    let max_line_len = text
-        .lines()
-        .map(|line| line.len())
-        .max()
-        .unwrap_or(0);
+    let max_line_len = text.lines().map(|line| line.len()).max().unwrap_or(0);
     max_line_len as f64 * CHAR_WIDTH + PADDING_H * 2.0
 }
 

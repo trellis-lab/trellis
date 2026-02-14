@@ -49,7 +49,7 @@ pub fn render(graph: &Graph, config: &TrellisConfig, format: OutputFormat) -> Re
     let data = match format {
         OutputFormat::Svg => {
             // Placeholder SVG showing node positions
-            generate_debug_svg(&graph, &config)
+            generate_debug_svg(&graph, config)
         }
         OutputFormat::Png => {
             // Placeholder: will be implemented with resvg in M6

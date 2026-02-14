@@ -41,11 +41,11 @@ struct NodeEdgeInfo {
 /// Uses 4 sectors of 90 degrees each.
 pub fn angle_to_side(angle_deg: f64) -> Side {
     let angle = ((angle_deg % 360.0) + 360.0) % 360.0;
-    if angle >= 315.0 || angle < 45.0 {
+    if !(45.0..315.0).contains(&angle) {
         Side::Right
-    } else if angle >= 45.0 && angle < 135.0 {
+    } else if (45.0..135.0).contains(&angle) {
         Side::Bottom
-    } else if angle >= 135.0 && angle < 225.0 {
+    } else if (135.0..225.0).contains(&angle) {
         Side::Left
     } else {
         Side::Top

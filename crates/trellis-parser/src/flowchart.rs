@@ -91,7 +91,9 @@ fn parse_subgraph_start(line: &str) -> Subgraph {
         ("unnamed".to_string(), None)
     } else if let Some(bracket_start) = rest.find('[') {
         let id = rest[..bracket_start].trim().to_string();
-        let label = rest.find(']').map(|bracket_end| rest[bracket_start + 1..bracket_end].to_string());
+        let label = rest
+            .find(']')
+            .map(|bracket_end| rest[bracket_start + 1..bracket_end].to_string());
         (id, label)
     } else {
         let mut parts = rest.splitn(2, ' ');
@@ -139,34 +141,48 @@ fn parse_node_ref(input: &str) -> Option<(NodeRef, &str)> {
 
     // Try to parse shape/label (longer prefixes first to avoid ambiguity)
 
+    // TODO: Make it more readable with for loop and preconfigured setup. E.g., { "((", "))", NodeShape::Circle }
+
     // ((label)) → Circle
-    if rest.starts_with("((") {
-        if let Some(close) = rest[2..].find("))") {
+    if let Some(line_content) = rest.strip_prefix("((") {
+        if let Some(close) = line_content.find("))") {
             let label = strip_quotes(rest[2..2 + close].trim());
             return Some((
-                NodeRef { id: id.to_string(), label: Some(label), shape: Some(NodeShape::Circle) },
+                NodeRef {
+                    id: id.to_string(),
+                    label: Some(label),
+                    shape: Some(NodeShape::Circle),
+                },
                 &rest[2 + close + 2..],
             ));
         }
     }
 
     // {{label}} → Hexagon
-    if rest.starts_with("{{") {
-        if let Some(close) = rest[2..].find("}}") {
+    if let Some(line_content) = rest.strip_prefix("{{") {
+        if let Some(close) = line_content.find("}}") {
             let label = strip_quotes(rest[2..2 + close].trim());
             return Some((
-                NodeRef { id: id.to_string(), label: Some(label), shape: Some(NodeShape::Hexagon) },
+                NodeRef {
+                    id: id.to_string(),
+                    label: Some(label),
+                    shape: Some(NodeShape::Hexagon),
+                },
                 &rest[2 + close + 2..],
             ));
         }
     }
 
     // [label] → Rectangle
-    if rest.starts_with('[') {
-        if let Some(close) = rest[1..].find(']') {
+    if let Some(line_content) = rest.strip_prefix("[") {
+        if let Some(close) = line_content.find(']') {
             let label = strip_quotes(rest[1..1 + close].trim());
             return Some((
-                NodeRef { id: id.to_string(), label: Some(label), shape: Some(NodeShape::Rectangle) },
+                NodeRef {
+                    id: id.to_string(),
+                    label: Some(label),
+                    shape: Some(NodeShape::Rectangle),
+                },
                 &rest[1 + close + 1..],
             ));
         }
@@ -177,7 +193,11 @@ fn parse_node_ref(input: &str) -> Option<(NodeRef, &str)> {
         if let Some(close) = rest[1..].find(')') {
             let label = strip_quotes(rest[1..1 + close].trim());
             return Some((
-                NodeRef { id: id.to_string(), label: Some(label), shape: Some(NodeShape::RoundedRectangle) },
+                NodeRef {
+                    id: id.to_string(),
+                    label: Some(label),
+                    shape: Some(NodeShape::RoundedRectangle),
+                },
                 &rest[1 + close + 1..],
             ));
         }
@@ -188,14 +208,25 @@ fn parse_node_ref(input: &str) -> Option<(NodeRef, &str)> {
         if let Some(close) = rest[1..].find('}') {
             let label = strip_quotes(rest[1..1 + close].trim());
             return Some((
-                NodeRef { id: id.to_string(), label: Some(label), shape: Some(NodeShape::Diamond) },
+                NodeRef {
+                    id: id.to_string(),
+                    label: Some(label),
+                    shape: Some(NodeShape::Diamond),
+                },
                 &rest[1 + close + 1..],
             ));
         }
     }
 
     // No shape → just the ID
-    Some((NodeRef { id: id.to_string(), label: None, shape: None }, rest))
+    Some((
+        NodeRef {
+            id: id.to_string(),
+            label: None,
+            shape: None,
+        },
+        rest,
+    ))
 }
 
 /// Strip surrounding double quotes from a label
@@ -226,17 +257,30 @@ fn parse_arrow(input: &str) -> Option<(ArrowInfo, &str)> {
     // ── Dotted arrows ──
 
     // -.-> (dotted arrow)
-    if input.starts_with("-.->") {
-        let rest = &input[4..];
+    if let Some(rest) = input.strip_prefix("-.->") {
         let (label, rest) = parse_pipe_label(rest);
-        return Some((ArrowInfo { style: EdgeStyle::Dotted, arrow_head: ArrowHead::Arrow, label }, rest));
+        return Some((
+            ArrowInfo {
+                style: EdgeStyle::Dotted,
+                arrow_head: ArrowHead::Arrow,
+                label,
+            },
+            rest,
+        ));
     }
 
     // -.- (dotted, no arrow) — but not if it continues as -.->
     if input.starts_with("-.-") && !input.starts_with("-.->") {
         let rest = &input[3..];
         let (label, rest) = parse_pipe_label(rest);
-        return Some((ArrowInfo { style: EdgeStyle::Dotted, arrow_head: ArrowHead::None, label }, rest));
+        return Some((
+            ArrowInfo {
+                style: EdgeStyle::Dotted,
+                arrow_head: ArrowHead::None,
+                label,
+            },
+            rest,
+        ));
     }
 
     // -.text.-> (dotted arrow with inline label)
@@ -244,24 +288,44 @@ fn parse_arrow(input: &str) -> Option<(ArrowInfo, &str)> {
         if let Some(pos) = input[2..].find(".->") {
             let label_text = strip_pipes_str(input[2..2 + pos].trim());
             let rest = &input[2 + pos + 3..];
-            return Some((ArrowInfo { style: EdgeStyle::Dotted, arrow_head: ArrowHead::Arrow, label: Some(label_text) }, rest));
+            return Some((
+                ArrowInfo {
+                    style: EdgeStyle::Dotted,
+                    arrow_head: ArrowHead::Arrow,
+                    label: Some(label_text),
+                },
+                rest,
+            ));
         }
     }
 
     // ── Thick arrows ──
 
     // ==> (thick arrow)
-    if input.starts_with("==>") {
-        let rest = &input[3..];
+    if let Some(rest) = input.strip_prefix("==>") {
         let (label, rest) = parse_pipe_label(rest);
-        return Some((ArrowInfo { style: EdgeStyle::Thick, arrow_head: ArrowHead::Arrow, label }, rest));
+        return Some((
+            ArrowInfo {
+                style: EdgeStyle::Thick,
+                arrow_head: ArrowHead::Arrow,
+                label,
+            },
+            rest,
+        ));
     }
 
     // === (thick, no arrow) — but not if it continues as ===>
     if input.starts_with("===") && !input[3..].starts_with('>') {
         let rest = &input[3..];
         let (label, rest) = parse_pipe_label(rest);
-        return Some((ArrowInfo { style: EdgeStyle::Thick, arrow_head: ArrowHead::None, label }, rest));
+        return Some((
+            ArrowInfo {
+                style: EdgeStyle::Thick,
+                arrow_head: ArrowHead::None,
+                label,
+            },
+            rest,
+        ));
     }
 
     // ==text==> (thick arrow with inline label)
@@ -269,27 +333,44 @@ fn parse_arrow(input: &str) -> Option<(ArrowInfo, &str)> {
         if let Some(pos) = input[2..].find("==>") {
             let label_text = strip_pipes_str(input[2..2 + pos].trim());
             let rest = &input[2 + pos + 3..];
-            return Some((ArrowInfo { style: EdgeStyle::Thick, arrow_head: ArrowHead::Arrow, label: Some(label_text) }, rest));
+            return Some((
+                ArrowInfo {
+                    style: EdgeStyle::Thick,
+                    arrow_head: ArrowHead::Arrow,
+                    label: Some(label_text),
+                },
+                rest,
+            ));
         }
     }
 
     // ── Solid arrows ──
 
     // --> (solid arrow)
-    if input.starts_with("-->") {
-        let rest = &input[3..];
+    if let Some(rest) = input.strip_prefix("-->") {
         let (label, rest) = parse_pipe_label(rest);
-        return Some((ArrowInfo { style: EdgeStyle::Solid, arrow_head: ArrowHead::Arrow, label }, rest));
+        return Some((
+            ArrowInfo {
+                style: EdgeStyle::Solid,
+                arrow_head: ArrowHead::Arrow,
+                label,
+            },
+            rest,
+        ));
     }
 
     // --- (solid, no arrow) — but not if followed by - or >
-    if input.starts_with("---")
-        && !input[3..].starts_with('-')
-        && !input[3..].starts_with('>')
-    {
+    if input.starts_with("---") && !input[3..].starts_with('-') && !input[3..].starts_with('>') {
         let rest = &input[3..];
         let (label, rest) = parse_pipe_label(rest);
-        return Some((ArrowInfo { style: EdgeStyle::Solid, arrow_head: ArrowHead::None, label }, rest));
+        return Some((
+            ArrowInfo {
+                style: EdgeStyle::Solid,
+                arrow_head: ArrowHead::None,
+                label,
+            },
+            rest,
+        ));
     }
 
     // --text--> or --|text|--> (solid arrow with label)
@@ -298,13 +379,27 @@ fn parse_arrow(input: &str) -> Option<(ArrowInfo, &str)> {
         if let Some(pos) = input[2..].find("-->") {
             let label_text = strip_pipes_str(input[2..2 + pos].trim());
             let rest = &input[2 + pos + 3..];
-            return Some((ArrowInfo { style: EdgeStyle::Solid, arrow_head: ArrowHead::Arrow, label: Some(label_text) }, rest));
+            return Some((
+                ArrowInfo {
+                    style: EdgeStyle::Solid,
+                    arrow_head: ArrowHead::Arrow,
+                    label: Some(label_text),
+                },
+                rest,
+            ));
         }
         // Look for --- ending
         if let Some(pos) = input[2..].find("---") {
             let label_text = strip_pipes_str(input[2..2 + pos].trim());
             let rest = &input[2 + pos + 3..];
-            return Some((ArrowInfo { style: EdgeStyle::Solid, arrow_head: ArrowHead::None, label: Some(label_text) }, rest));
+            return Some((
+                ArrowInfo {
+                    style: EdgeStyle::Solid,
+                    arrow_head: ArrowHead::None,
+                    label: Some(label_text),
+                },
+                rest,
+            ));
         }
     }
 
@@ -313,8 +408,8 @@ fn parse_arrow(input: &str) -> Option<(ArrowInfo, &str)> {
 
 /// Try to parse `|label|` immediately after an arrow
 fn parse_pipe_label(input: &str) -> (Option<String>, &str) {
-    if input.starts_with('|') {
-        if let Some(close) = input[1..].find('|') {
+    if let Some(input_line) = input.strip_prefix('|') {
+        if let Some(close) = input_line.find('|') {
             let label = input[1..1 + close].to_string();
             return (Some(label), &input[1 + close + 1..]);
         }
@@ -335,7 +430,13 @@ fn strip_pipes_str(s: &str) -> String {
 
 /// Keywords to skip (style/class directives, not node/edge definitions)
 const SKIP_PREFIXES: &[&str] = &[
-    "style ", "classDef ", "classdef ", "class ", "click ", "linkStyle ", "linkstyle ",
+    "style ",
+    "classDef ",
+    "classdef ",
+    "class ",
+    "click ",
+    "linkStyle ",
+    "linkstyle ",
 ];
 
 /// Parse a statement line into nodes and edges.
