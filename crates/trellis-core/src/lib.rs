@@ -1,9 +1,11 @@
 pub mod config;
 pub mod pipeline;
+pub mod placement;
 pub mod types;
 
 pub use config::*;
 pub use pipeline::*;
+pub use placement::place_nodes;
 pub use types::*;
 
 #[cfg(test)]

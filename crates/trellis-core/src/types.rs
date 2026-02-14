@@ -21,6 +21,7 @@ pub struct RenderResult {
 pub struct RenderMetrics {
     pub nodes: usize,
     pub edges: usize,
+    pub layers: usize,
     pub crossings: usize,
     pub bends: usize,
     pub render_ms: u64,

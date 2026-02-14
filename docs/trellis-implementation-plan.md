@@ -51,13 +51,13 @@
 > **Cél:** A flowchart csomópontjai koordinátákat kapnak a Sugiyama algoritmussal.
 > **Smoke test:** `cargo run -p trellis-cli -- render b01.mmd --metrics` → `{"nodes": 5, "layers": 5, ...}` (SVG még placeholder)
 
-* [ ] Ciklustörés (`placement/sugiyama.rs` – DFS-alapú `breakCycles`)
-* [ ] Réteg-hozzárendelés (`assignLayers` – longest path algoritmus)
-* [ ] Rétegsorrend optimalizálás (`orderWithinLayers` – barycenter heurisztika, iteratív)
-* [ ] Koordináta-hozzárendelés (`assignCoordinates` – direction-függő: TB/BT/LR/RL, centrálás)
-* [ ] Grid-re kerekítés (`snap.rs` – `snapToGrid`, spirális keresés ütközésnél)
-* [ ] Pipeline integráció: `pipeline.rs` meghívja a placement-et, koordinátákat debug kiírás (JSON `--metrics`)
-* [ ] Unit tesztek: rétegezés helyessége, barycenter konvergencia, ciklustörés
+* [x] Ciklustörés (`placement/sugiyama.rs` – DFS-alapú `breakCycles`)
+* [x] Réteg-hozzárendelés (`assignLayers` – longest path algoritmus)
+* [x] Rétegsorrend optimalizálás (`orderWithinLayers` – barycenter heurisztika, iteratív)
+* [x] Koordináta-hozzárendelés (`assignCoordinates` – direction-függő: TB/BT/LR/RL, centrálás)
+* [x] Grid-re kerekítés (`snap.rs` – `snapToGrid`, spirális keresés ütközésnél)
+* [x] Pipeline integráció: `pipeline.rs` meghívja a placement-et, koordinátákat debug kiírás (JSON `--metrics`)
+* [x] Unit tesztek: rétegezés helyessége, barycenter konvergencia, ciklustörés
 
 ---
 
