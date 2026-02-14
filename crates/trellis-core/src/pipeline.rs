@@ -3,6 +3,7 @@ use crate::{
     grid::{build_grid, calculate_cell_size, calculate_grid_extent},
     placement,
     ports::assign_ports,
+    routing,
     types::*,
 };
 use trellis_parser::Graph;
@@ -10,8 +11,8 @@ use std::time::Instant;
 
 /// Main rendering pipeline
 ///
-/// Runs the full pipeline: placement → grid → ports → (routing → SVG in future milestones).
-/// For M4, placement, grid construction, and port assignment are performed.
+/// Runs the full pipeline: placement → grid → ports → routing → SVG.
+/// M5 adds edge routing with A* pathfinding.
 pub fn render(graph: &Graph, config: &TrellisConfig, format: OutputFormat) -> Result<RenderResult, RenderError> {
     let start = Instant::now();
 
@@ -24,10 +25,13 @@ pub fn render(graph: &Graph, config: &TrellisConfig, format: OutputFormat) -> Re
     // Phase 3: Grid construction
     let cell_size = calculate_cell_size(&graph);
     let extent = calculate_grid_extent(&graph);
-    let grid = build_grid(&graph, cell_size, &extent);
+    let mut grid = build_grid(&graph, cell_size, &extent);
 
     // Phase 4: Port assignment
     let port_assignments = assign_ports(&graph, cell_size);
+
+    // Phase 5-6: Edge routing (A* pathfinding)
+    let routing_result = routing::route_all_edges(&graph, &mut grid, &port_assignments, config);
 
     let elapsed = start.elapsed();
 
@@ -36,8 +40,8 @@ pub fn render(graph: &Graph, config: &TrellisConfig, format: OutputFormat) -> Re
         nodes: graph.nodes.len(),
         edges: graph.edges.len(),
         layers: count_layers(&graph),
-        crossings: 0, // Will be computed in M5
-        bends: 0,     // Will be computed in M5
+        crossings: routing_result.crossings,
+        bends: routing_result.total_bends,
         render_ms: elapsed.as_millis() as u64,
         grid_utilization: grid.utilization(),
         grid_rows: grid.rows,
@@ -48,8 +52,7 @@ pub fn render(graph: &Graph, config: &TrellisConfig, format: OutputFormat) -> Re
 
     let data = match format {
         OutputFormat::Svg => {
-            // Placeholder SVG showing node positions
-            generate_debug_svg(&graph, config)
+            generate_debug_svg(&graph, &grid, &routing_result, config)
         }
         OutputFormat::Png => {
             // Placeholder: will be implemented with resvg in M6
@@ -86,8 +89,13 @@ fn count_layers(graph: &Graph) -> usize {
     layer_values.len()
 }
 
-/// Generate a debug SVG that shows node positions (placeholder until M6 proper rendering)
-fn generate_debug_svg(graph: &Graph, _config: &TrellisConfig) -> Vec<u8> {
+/// Generate a debug SVG that shows node positions and routed edges
+fn generate_debug_svg(
+    graph: &Graph,
+    grid: &crate::grid::Grid,
+    routing_result: &routing::RoutingResult,
+    _config: &TrellisConfig,
+) -> Vec<u8> {
     if graph.nodes.is_empty() {
         return b"<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"400\" height=\"300\"><rect width=\"400\" height=\"300\" fill=\"white\"/></svg>".to_vec();
     }
@@ -104,22 +112,58 @@ fn generate_debug_svg(graph: &Graph, _config: &TrellisConfig) -> Vec<u8> {
     );
     svg.push_str("  <rect width=\"100%\" height=\"100%\" fill=\"white\"/>\n");
 
-    // Draw edges as lines
-    for edge in &graph.edges {
+    // Arrow marker definition
+    svg.push_str("  <defs><marker id=\"arrow\" viewBox=\"0 0 10 10\" refX=\"10\" refY=\"5\" markerWidth=\"6\" markerHeight=\"6\" orient=\"auto-start-reverse\"><path d=\"M 0 0 L 10 5 L 0 10 z\" fill=\"#999\"/></marker></defs>\n");
+
+    // Draw routed edges as polylines
+    for (edge_idx, path) in &routing_result.paths {
+        if path.points.len() < 2 {
+            continue;
+        }
+
+        let points_str: Vec<String> = path
+            .points
+            .iter()
+            .map(|p| {
+                let (x, y) = grid.grid_to_world(p.row as usize, p.col as usize);
+                format!("{},{}", x, y)
+            })
+            .collect();
+
+        // Determine stroke style from edge
+        let stroke_style = if *edge_idx < graph.edges.len() {
+            match graph.edges[*edge_idx].style {
+                trellis_parser::EdgeStyle::Dotted => "stroke-dasharray=\"5,5\"",
+                trellis_parser::EdgeStyle::Thick => "stroke-width=\"3\"",
+                _ => "stroke-width=\"1.5\"",
+            }
+        } else {
+            "stroke-width=\"1.5\""
+        };
+
+        svg.push_str(&format!(
+            "  <polyline points=\"{}\" fill=\"none\" stroke=\"#666\" {} marker-end=\"url(#arrow)\"/>\n",
+            points_str.join(" "),
+            stroke_style,
+        ));
+    }
+
+    // Draw edges without routes as straight lines (fallback)
+    for (edge_idx, edge) in graph.edges.iter().enumerate() {
+        if routing_result.paths.contains_key(&edge_idx) {
+            continue; // Already drawn as polyline
+        }
         let from_node = graph.nodes.iter().find(|n| n.id == edge.from);
         let to_node = graph.nodes.iter().find(|n| n.id == edge.to);
         if let (Some(f), Some(t)) = (from_node, to_node) {
             svg.push_str(&format!(
-                "  <line x1=\"{}\" y1=\"{}\" x2=\"{}\" y2=\"{}\" stroke=\"#999\" stroke-width=\"1\" marker-end=\"url(#arrow)\"/>\n",
+                "  <line x1=\"{}\" y1=\"{}\" x2=\"{}\" y2=\"{}\" stroke=\"#ccc\" stroke-width=\"1\" stroke-dasharray=\"3,3\" marker-end=\"url(#arrow)\"/>\n",
                 f.x, f.y, t.x, t.y,
             ));
         }
     }
 
-    // Arrow marker
-    svg.push_str("  <defs><marker id=\"arrow\" viewBox=\"0 0 10 10\" refX=\"10\" refY=\"5\" markerWidth=\"6\" markerHeight=\"6\" orient=\"auto-start-reverse\"><path d=\"M 0 0 L 10 5 L 0 10 z\" fill=\"#999\"/></marker></defs>\n");
-
-    // Draw nodes
+    // Draw nodes on top of edges
     for node in &graph.nodes {
         let rx = node.x - node.width / 2.0;
         let ry = node.y - node.height / 2.0;

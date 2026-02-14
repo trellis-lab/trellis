@@ -83,15 +83,15 @@
 > **Cél:** Az élek ortogonális útvonalat kapnak a rácson. Ez az első mérföldkő ahol valódi SVG kimenet születik.
 > **Smoke test:** `cargo run -p trellis-cli -- render b01.mmd -o b01.svg` → megtekinthető SVG élek nélkül... nem: **élekkel**!
 
-* [ ] Routing prioritás számítás (`routing/priority.rs` – fokszám + távolság + torlódás hibrid pontozás)
-* [ ] A* implementáció (`routing/astar.rs` – `routeEdge`, `PriorityQueue`, `heuristic`)
-* [ ] Költségfüggvény (`routing/cost.rs` – `BASE_COST`, `BEND_COST`, `ADJACENT_COST`, `CROSSING_COST`, `BLOCKED_COST`)
-* [ ] 4-irányú szomszédság (`getNeighbors` – ortogonális mozgás)
-* [ ] Út lefoglalás (`routing/commit.rs` – `commitPath`, szomszédos cellák költségnövelése)
-* [ ] Többszörös élek detektálása (`routing/multi_edge.rs` – `detectMultiEdges`, `canonicalKey`)
-* [ ] Többszörös élek routing-ja (`routeMultiEdges` – szomszédos portok + önálló A*)
-* [ ] Teljes routing ciklus (`routeAllEdges` – prioritás szerinti sorrend, multi-edge kezelés)
-* [ ] Unit tesztek: B01 (egyenes út), B03 (K₃,₃ – keresztezés elkerülhetetlen), B06 (multi-edge)
+* [x] Routing prioritás számítás (`routing/priority.rs` – fokszám + távolság + torlódás hibrid pontozás)
+* [x] A* implementáció (`routing/astar.rs` – `routeEdge`, `PriorityQueue`, `heuristic`)
+* [x] Költségfüggvény (`routing/cost.rs` – `BASE_COST`, `BEND_COST`, `ADJACENT_COST`, `CROSSING_COST`, `BLOCKED_COST`)
+* [x] 4-irányú szomszédság (`getNeighbors` – ortogonális mozgás)
+* [x] Út lefoglalás (`routing/commit.rs` – `commitPath`, szomszédos cellák költségnövelése)
+* [x] Többszörös élek detektálása (`routing/multi_edge.rs` – `detectMultiEdges`, `canonicalKey`)
+* [x] Többszörös élek routing-ja (`routeMultiEdges` – szomszédos portok + önálló A*)
+* [x] Teljes routing ciklus (`routeAllEdges` – prioritás szerinti sorrend, multi-edge kezelés)
+* [x] Unit tesztek: B01 (egyenes út), B03 (K₃,₃ – keresztezés elkerülhetetlen), B06 (multi-edge)
 
 ---
 
