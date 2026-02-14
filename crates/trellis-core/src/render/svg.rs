@@ -19,7 +19,7 @@ pub fn build_svg(
     }
 
     // Calculate viewBox from node positions and routed paths
-    let (vw, vh) = calculate_viewbox(graph, grid, routing_result);
+    let (vx, vy, vw, vh) = calculate_viewbox(graph, grid, routing_result);
 
     let mut svg = String::with_capacity(4096);
 
@@ -29,7 +29,7 @@ pub fn build_svg(
          width=\"{:.0}\" height=\"{:.0}\" \
          viewBox=\"{:.1} {:.1} {:.1} {:.1}\">\n",
         vw, vh,
-        0.0, 0.0, vw, vh,
+        vx, vy, vw, vh,
     ));
 
     // Style block
@@ -92,12 +92,12 @@ pub fn build_svg(
     svg.into_bytes()
 }
 
-/// Calculate the viewBox dimensions from nodes and routed paths.
+/// Calculate the viewBox (origin x, origin y, width, height) from nodes and routed paths.
 fn calculate_viewbox(
     graph: &Graph,
     grid: &Grid,
     routing_result: &RoutingResult,
-) -> (f64, f64) {
+) -> (f64, f64, f64, f64) {
     let padding = 40.0;
 
     // Start with node bounds
@@ -129,11 +129,13 @@ fn calculate_viewbox(
         }
     }
 
+    let origin_x = min_x - padding;
+    let origin_y = min_y - padding;
     let width = (max_x - min_x + 2.0 * padding).ceil();
     let height = (max_y - min_y + 2.0 * padding).ceil();
 
     // Ensure minimum dimensions
-    (width.max(200.0), height.max(150.0))
+    (origin_x, origin_y, width.max(200.0), height.max(150.0))
 }
 
 #[cfg(test)]

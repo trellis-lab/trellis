@@ -27,7 +27,7 @@ pub fn render(graph: &Graph, config: &TrellisConfig, format: OutputFormat) -> Re
     let mut grid = build_grid(&graph, cell_size, &extent);
 
     // Phase 4: Port assignment
-    let port_assignments = assign_ports(&graph, cell_size);
+    let port_assignments = assign_ports(&graph, cell_size, extent.offset_x, extent.offset_y);
 
     // Phase 5-6: Edge routing (A* pathfinding)
     let routing_result = routing::route_all_edges(&graph, &mut grid, &port_assignments, config);

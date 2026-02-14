@@ -204,7 +204,7 @@ mod tests {
         let cell_size = calculate_cell_size(&graph);
         let extent = calculate_grid_extent(&graph);
         let mut grid = build_grid(&graph, cell_size, &extent);
-        let port_assignments = assign_ports(&graph, cell_size);
+        let port_assignments = assign_ports(&graph, cell_size, extent.offset_x, extent.offset_y);
         let config = TrellisConfig::default();
 
         let result = route_all_edges(&graph, &mut grid, &port_assignments, &config);

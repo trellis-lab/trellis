@@ -113,7 +113,8 @@ mod tests {
         placement::place_nodes(&mut graph);
 
         let cell_size = grid::calculate_cell_size(&graph);
-        let port_assignments = ports::assign_ports(&graph, cell_size);
+        let extent = grid::calculate_grid_extent(&graph);
+        let port_assignments = ports::assign_ports(&graph, cell_size, extent.offset_x, extent.offset_y);
 
         // All ports should be on the boundary of their respective nodes
         for node in &graph.nodes {
