@@ -12,6 +12,18 @@ pub enum CellState {
     Occupied,
 }
 
+/// Which side of a node boundary a cell belongs to or faces.
+///
+/// Used by the cost function to enforce perpendicular edge approach:
+/// movement parallel to the boundary side is penalized.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum BoundarySide {
+    Top,
+    Bottom,
+    Left,
+    Right,
+}
+
 /// A single cell in the routing grid
 #[derive(Debug, Clone)]
 pub struct Cell {
@@ -19,6 +31,15 @@ pub struct Cell {
     pub cost: f64,
     pub owner: Option<String>,
     pub crossing: bool,
+    /// If set, this cell is on or adjacent to a node boundary on the given side.
+    /// The cost function uses this to penalize movement parallel to this side,
+    /// forcing edges to approach nodes perpendicularly.
+    pub boundary_side: Option<BoundarySide>,
+    /// True if this cell is directly on a node boundary (a connector point).
+    /// False for approach-zone cells (1 cell outside the boundary).
+    /// Connector cells receive a much stronger perpendicularity penalty
+    /// to ensure the very first/last segment of an edge is perpendicular.
+    pub is_boundary_connector: bool,
 }
 
 impl Default for Cell {
@@ -28,6 +49,8 @@ impl Default for Cell {
             cost: 1.0,
             owner: None,
             crossing: false,
+            boundary_side: None,
+            is_boundary_connector: false,
         }
     }
 }
@@ -135,6 +158,11 @@ pub fn build_grid(graph: &Graph, cell_size: i32, extent: &GridExtent) -> Grid {
     let oy = extent.offset_y as f64;
 
     // Block cells underneath each node with boundary/interior distinction
+    // and record boundary side for connector cells.
+    //
+    // Also collect connector positions so we can mark approach zones afterwards.
+    let mut connectors: Vec<(i64, i64, BoundarySide)> = Vec::new();
+
     for node in &graph.nodes {
         // Node grid coordinates (top-left is on a grid point)
         let gc = ((node.x - ox) / cs).round() as i64;
@@ -164,9 +192,41 @@ pub fn build_grid(graph: &Graph, cell_size: i32, extent: &GridExtent) -> Grid {
                         // Interior or corner → blocked
                         cell.state = CellState::Blocked;
                         cell.cost = f64::INFINITY;
+                    } else {
+                        // Boundary non-corner → Free connector point
+                        // Determine which side this connector is on
+                        let side = if on_top {
+                            BoundarySide::Top
+                        } else if on_bottom {
+                            BoundarySide::Bottom
+                        } else if on_left {
+                            BoundarySide::Left
+                        } else {
+                            BoundarySide::Right
+                        };
+                        cell.boundary_side = Some(side);
+                        cell.is_boundary_connector = true;
+                        connectors.push((row, col, side));
                     }
-                    // Boundary non-corner → leave as Free (connector point)
                     cell.owner = Some(node.id.clone());
+                }
+            }
+        }
+    }
+
+    // Mark approach zone cells (1 cell outside each boundary connector).
+    // This extends the perpendicularity enforcement beyond the connector itself.
+    for (row, col, side) in &connectors {
+        let (ar, ac) = match side {
+            BoundarySide::Top => (row - 1, *col),
+            BoundarySide::Bottom => (row + 1, *col),
+            BoundarySide::Left => (*row, col - 1),
+            BoundarySide::Right => (*row, col + 1),
+        };
+        if grid.in_bounds(ar, ac) {
+            if let Some(cell) = grid.get_mut(ar as usize, ac as usize) {
+                if cell.state == CellState::Free && cell.boundary_side.is_none() {
+                    cell.boundary_side = Some(*side);
                 }
             }
         }
@@ -264,5 +324,76 @@ mod tests {
         assert!(grid.in_bounds(4, 4));
         assert!(!grid.in_bounds(5, 0));
         assert!(!grid.in_bounds(-1, 0));
+    }
+
+    #[test]
+    fn test_boundary_side_on_connector_cells() {
+        // Node at (30, 40), size 40x20, cell_size=10
+        // gc=3, gr=4, w_points=5, h_points=3
+        // Node spans rows 4..6, cols 3..7
+        let mut graph = Graph::new();
+        graph.nodes = vec![make_node("A", 40.0, 20.0, 30.0, 40.0)];
+
+        let extent = GridExtent {
+            width: 200.0,
+            height: 200.0,
+            offset_x: 0,
+            offset_y: 0,
+        };
+        let grid = build_grid(&graph, 10, &extent);
+
+        // Top boundary connector (row 4, col 5) → BoundarySide::Top
+        assert_eq!(grid.get(4, 5).unwrap().boundary_side, Some(BoundarySide::Top));
+
+        // Bottom boundary connector (row 6, col 5) → BoundarySide::Bottom
+        assert_eq!(grid.get(6, 5).unwrap().boundary_side, Some(BoundarySide::Bottom));
+
+        // Left boundary connector (row 5, col 3) → BoundarySide::Left
+        assert_eq!(grid.get(5, 3).unwrap().boundary_side, Some(BoundarySide::Left));
+
+        // Right boundary connector (row 5, col 7) → BoundarySide::Right
+        assert_eq!(grid.get(5, 7).unwrap().boundary_side, Some(BoundarySide::Right));
+
+        // Interior cell → no boundary_side
+        assert_eq!(grid.get(5, 5).unwrap().boundary_side, None);
+
+        // Corner cell → no boundary_side (blocked)
+        assert_eq!(grid.get(4, 3).unwrap().boundary_side, None);
+
+        // Cell far away from node → no boundary_side
+        assert_eq!(grid.get(0, 0).unwrap().boundary_side, None);
+    }
+
+    #[test]
+    fn test_approach_zone_cells_marked() {
+        // Node at (30, 40), size 40x20, cell_size=10
+        // gc=3, gr=4, w_points=5, h_points=3
+        // Node spans rows 4..6, cols 3..7
+        let mut graph = Graph::new();
+        graph.nodes = vec![make_node("A", 40.0, 20.0, 30.0, 40.0)];
+
+        let extent = GridExtent {
+            width: 200.0,
+            height: 200.0,
+            offset_x: 0,
+            offset_y: 0,
+        };
+        let grid = build_grid(&graph, 10, &extent);
+
+        // One cell above a top connector (row 3, col 5) → approach zone for Top
+        assert_eq!(grid.get(3, 5).unwrap().boundary_side, Some(BoundarySide::Top));
+        assert_eq!(grid.get(3, 5).unwrap().state, CellState::Free);
+
+        // One cell below a bottom connector (row 7, col 5) → approach zone for Bottom
+        assert_eq!(grid.get(7, 5).unwrap().boundary_side, Some(BoundarySide::Bottom));
+
+        // One cell left of a left connector (row 5, col 2) → approach zone for Left
+        assert_eq!(grid.get(5, 2).unwrap().boundary_side, Some(BoundarySide::Left));
+
+        // One cell right of a right connector (row 5, col 8) → approach zone for Right
+        assert_eq!(grid.get(5, 8).unwrap().boundary_side, Some(BoundarySide::Right));
+
+        // Two cells away → no boundary_side
+        assert_eq!(grid.get(2, 5).unwrap().boundary_side, None);
     }
 }

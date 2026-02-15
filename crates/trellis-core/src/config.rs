@@ -33,6 +33,9 @@ pub struct RoutingCosts {
     pub adjacent_cost: f64,
     pub crossing_cost: f64,
     pub blocked_cost: f64,
+    /// Penalty for moving parallel to a node boundary near connector points.
+    /// Forces edges to approach/leave nodes perpendicularly.
+    pub perpendicular_cost: f64,
 }
 
 /// Decomposition mode for handling large graphs
@@ -65,6 +68,7 @@ impl Default for RoutingCosts {
             adjacent_cost: 0.5,
             crossing_cost: 10.0,
             blocked_cost: 1000.0,
+            perpendicular_cost: 6.0,
         }
     }
 }
