@@ -218,6 +218,9 @@ fn parse_node_ref(input: &str) -> Option<(NodeRef, &str)> {
         }
     }
 
+    // TODO: Add cylinder support - MVP
+    // TODO: Add custom shape string support - Future release
+
     // No shape → just the ID
     Some((
         NodeRef {

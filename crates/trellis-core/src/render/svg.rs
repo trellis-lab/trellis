@@ -41,7 +41,10 @@ pub fn build_svg(
     );
 
     // Background
-    svg.push_str("<rect width=\"100%\" height=\"100%\" fill=\"white\"/>\n");
+    svg.push_str(&format!(
+        "<rect x=\"{}\" y=\"{}\" width=\"{}\" height=\"{}\" fill=\"white\"/>\n",
+        vx, vy, vw, vh
+    ));
 
     // Show grid
     for i in 0..grid.rows {
@@ -79,11 +82,7 @@ pub fn build_svg(
         let from_node = graph.nodes.iter().find(|n| n.id == edge.from);
         let to_node = graph.nodes.iter().find(|n| n.id == edge.to);
         if let (Some(f), Some(t)) = (from_node, to_node) {
-            let edge_svg = render_fallback_edge(
-                edge,
-                f.x + f.width / 2.0, f.y + f.height / 2.0,
-                t.x + t.width / 2.0, t.y + t.height / 2.0,
-            );
+            let edge_svg = render_fallback_edge(edge, f.x, f.y, t.x, t.y);
             svg.push_str("  ");
             svg.push_str(&edge_svg);
             svg.push('\n');
@@ -126,7 +125,7 @@ fn calculate_viewbox(
     grid: &Grid,
     routing_result: &RoutingResult,
 ) -> (f64, f64, f64, f64) {
-    let padding = 40.0;
+    let padding = grid.cell_size as f64;
 
     // Start with node bounds
     let mut max_x = f64::NEG_INFINITY;
@@ -135,10 +134,15 @@ fn calculate_viewbox(
     let mut min_y = f64::INFINITY;
 
     for node in &graph.nodes {
-        min_x = min_x.min(node.x);
-        max_x = max_x.max(node.x + node.width);
-        min_y = min_y.min(node.y);
-        max_y = max_y.max(node.y + node.height);
+        let left = node.x;
+        let right = node.x + node.width;
+        let top = node.y;
+        let bottom = node.y + node.height;
+
+        min_x = min_x.min(left);
+        max_x = max_x.max(right);
+        min_y = min_y.min(top);
+        max_y = max_y.max(bottom);
     }
 
     // Also consider routed edge paths

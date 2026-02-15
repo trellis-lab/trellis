@@ -1,7 +1,7 @@
-pub mod sugiyama;
 pub mod snap;
+pub mod sugiyama;
 
-use trellis_parser::Graph;
+use trellis_parser::{Graph, NodeShape};
 
 /// Layer spacing in pixels (distance between layers)
 pub const LAYER_SPACING: f64 = 100.0;
@@ -50,8 +50,25 @@ fn snap_node_dimensions_to_grid(graph: &mut Graph, cell_size: i32) {
         // Calculate how many grid points needed to cover the text-based dimension.
         // N grid points span (N-1) cell intervals = (N-1)*cs pixels.
         // So N = ceil(pixels / cs) + 1.
-        let w_points = ((node.width / cs).ceil() as i32 + 1).max(5); // min 5 grid points
-        let h_points = ((node.height / cs).ceil() as i32 + 1).max(3); // min 3 grid points
+        let mut w_points = ((node.width / cs).ceil() as i32 + 1).max(5); // min 5 grid points
+        let mut h_points = ((node.height / cs).ceil() as i32 + 1).max(3); // min 3 grid points
+
+        // Make it always odd number
+        if w_points % 2 == 0 {
+            w_points += 1;
+        }
+
+        if h_points % 2 == 0 {
+            h_points += 1;
+        }
+
+        // Correct circles
+        if node.shape == NodeShape::Circle {
+            let max = w_points.max(h_points);
+            w_points = max;
+            h_points = max;
+        }
+
         node.width = (w_points - 1) as f64 * cs;
         node.height = (h_points - 1) as f64 * cs;
     }
