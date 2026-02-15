@@ -28,6 +28,6 @@ pub struct RenderMetrics {
     pub grid_utilization: f64,
     pub grid_rows: usize,
     pub grid_cols: usize,
-    pub cell_size: f64,
+    pub cell_size: i32,
     pub port_count: usize,
 }

@@ -148,7 +148,7 @@ mod tests {
 
     #[test]
     fn test_crossing_fallback_routes_through_occupied() {
-        let mut grid = Grid::new(10, 10, 10.0, 0.0, 0.0);
+        let mut grid = Grid::new(10, 10, 10, 0, 0);
 
         // Create a wall of occupied cells at col 5, rows 0-9
         for row in 0..10 {

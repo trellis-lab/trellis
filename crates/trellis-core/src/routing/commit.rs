@@ -88,7 +88,7 @@ mod tests {
 
     #[test]
     fn test_commit_path_marks_occupied() {
-        let mut grid = Grid::new(10, 10, 10.0, 0.0, 0.0);
+        let mut grid = Grid::new(10, 10, 10, 0, 0);
         let path = vec![
             GridPoint { row: 5, col: 0 },
             GridPoint { row: 5, col: 1 },
@@ -106,7 +106,7 @@ mod tests {
 
     #[test]
     fn test_commit_increases_adjacent_costs() {
-        let mut grid = Grid::new(10, 10, 10.0, 0.0, 0.0);
+        let mut grid = Grid::new(10, 10, 10, 0, 0);
         let path = vec![GridPoint { row: 5, col: 5 }];
 
         let original_cost = grid.get(4, 5).unwrap().cost;
@@ -119,7 +119,7 @@ mod tests {
 
     #[test]
     fn test_uncommit_restores_free() {
-        let mut grid = Grid::new(10, 10, 10.0, 0.0, 0.0);
+        let mut grid = Grid::new(10, 10, 10, 0, 0);
         let path = vec![
             GridPoint { row: 5, col: 0 },
             GridPoint { row: 5, col: 1 },
@@ -137,7 +137,7 @@ mod tests {
 
     #[test]
     fn test_commit_does_not_overwrite_blocked() {
-        let mut grid = Grid::new(10, 10, 10.0, 0.0, 0.0);
+        let mut grid = Grid::new(10, 10, 10, 0, 0);
         grid.get_mut(5, 5).unwrap().state = CellState::Blocked;
 
         let path = vec![GridPoint { row: 5, col: 5 }];

@@ -54,7 +54,7 @@ mod tests {
         assert_eq!(m.edges, 4);
         assert!(m.grid_rows > 0, "grid should have rows");
         assert!(m.grid_cols > 0, "grid should have cols");
-        assert!(m.cell_size >= 5.0, "cell size should be at least 5");
+        assert!(m.cell_size >= 5, "cell size should be at least 5");
         assert_eq!(m.port_count, 8); // 4 edges * 2 ports each
         assert!(m.grid_utilization > 0.0, "grid should have blocked cells from nodes");
     }

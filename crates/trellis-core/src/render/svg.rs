@@ -169,7 +169,7 @@ mod tests {
     #[test]
     fn test_empty_graph_svg() {
         let graph = Graph::new();
-        let grid = Grid::new(1, 1, 10.0, 0.0, 0.0);
+        let grid = Grid::new(1, 1, 10, 0, 0);
         let routing = RoutingResult {
             paths: std::collections::HashMap::new(),
             crossings: 0,

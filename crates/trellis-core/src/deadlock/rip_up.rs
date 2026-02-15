@@ -257,7 +257,7 @@ mod tests {
 
     #[test]
     fn test_find_blocking_edges_empty_grid() {
-        let grid = Grid::new(10, 10, 10.0, 0.0, 0.0);
+        let grid = Grid::new(10, 10, 10, 0, 0);
         let port_assignments = HashMap::new();
         let result = find_blocking_edges(&grid, 0, &port_assignments);
         assert!(result.is_empty());
@@ -265,7 +265,7 @@ mod tests {
 
     #[test]
     fn test_find_blocking_edges_with_occupied_cells() {
-        let mut grid = Grid::new(10, 10, 10.0, 0.0, 0.0);
+        let mut grid = Grid::new(10, 10, 10, 0, 0);
 
         // Mark some cells as occupied by edge_1
         for col in 2..8 {

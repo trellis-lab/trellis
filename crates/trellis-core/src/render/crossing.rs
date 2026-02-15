@@ -13,7 +13,7 @@ pub fn render_crossings(grid: &Grid) -> String {
             if let Some(cell) = grid.get(row, col) {
                 if cell.crossing {
                     let (x, y) = grid.grid_to_world(row, col);
-                    let r = grid.cell_size * 0.4;
+                    let r = grid.cell_size as f64 * 0.4;
 
                     // White background circle to create the "gap" effect
                     svg.push_str(&format!(
@@ -43,14 +43,14 @@ mod tests {
 
     #[test]
     fn test_no_crossings_empty_output() {
-        let grid = Grid::new(5, 5, 10.0, 0.0, 0.0);
+        let grid = Grid::new(5, 5, 10, 0, 0);
         let svg = render_crossings(&grid);
         assert!(svg.is_empty());
     }
 
     #[test]
     fn test_crossing_generates_svg() {
-        let mut grid = Grid::new(5, 5, 10.0, 0.0, 0.0);
+        let mut grid = Grid::new(5, 5, 10, 0, 0);
         if let Some(cell) = grid.get_mut(2, 3) {
             cell.state = CellState::Occupied;
             cell.crossing = true;

@@ -56,7 +56,7 @@ pub fn angle_to_side(angle_deg: f64) -> Side {
 ///
 /// For each node, edges are grouped by side (based on the angle to the connected node),
 /// overflow is handled, edges are sorted within each side, and port positions are calculated.
-pub fn assign_ports(graph: &Graph, cell_size: f64, offset_x: f64, offset_y: f64) -> HashMap<usize, EdgePorts> {
+pub fn assign_ports(graph: &Graph, cell_size: i32, offset_x: i32, offset_y: i32) -> HashMap<usize, EdgePorts> {
     let mut port_assignments: HashMap<usize, EdgePorts> = HashMap::new();
 
     // Build a node lookup by id
@@ -146,8 +146,8 @@ pub fn assign_ports(graph: &Graph, cell_size: f64, offset_x: f64, offset_y: f64)
                     ),
                 };
 
-                let grid_col = ((port_x - offset_x) / cell_size).round() as i64;
-                let grid_row = ((port_y - offset_y) / cell_size).round() as i64;
+                let grid_col = ((port_x - offset_x as f64) / cell_size as f64).round() as i64;
+                let grid_row = ((port_y - offset_y as f64) / cell_size as f64).round() as i64;
 
                 let port = Port {
                     x: port_x,
@@ -364,7 +364,7 @@ mod tests {
         ];
         graph.edges = vec![make_edge("A", "B")];
 
-        let ports = assign_ports(&graph, 10.0, 0.0, 0.0);
+        let ports = assign_ports(&graph, 10, 0, 0);
         assert_eq!(ports.len(), 1);
 
         let edge_ports = &ports[&0];
@@ -383,7 +383,7 @@ mod tests {
         ];
         graph.edges = vec![make_edge("A", "B")];
 
-        let ports = assign_ports(&graph, 10.0, 0.0, 0.0);
+        let ports = assign_ports(&graph, 10, 0, 0);
         let edge_ports = &ports[&0];
         assert_eq!(edge_ports.source_port.side, Side::Right);
         assert_eq!(edge_ports.target_port.side, Side::Left);
@@ -400,7 +400,7 @@ mod tests {
         ];
         graph.edges = vec![make_edge("A", "B"), make_edge("A", "C")];
 
-        let ports = assign_ports(&graph, 10.0, 0.0, 0.0);
+        let ports = assign_ports(&graph, 10, 0, 0);
 
         // A→B: source port on A's top
         let ab = &ports[&0];
@@ -430,7 +430,7 @@ mod tests {
             make_edge("A", "B3"),
         ];
 
-        let ports = assign_ports(&graph, 10.0, 0.0, 0.0);
+        let ports = assign_ports(&graph, 10, 0, 0);
 
         // All source ports should be on A's bottom
         for i in 0..3 {

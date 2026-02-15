@@ -3,9 +3,9 @@ use trellis_parser::Graph;
 /// Calculate the optimal cell size based on node dimensions and edge density.
 ///
 /// Follows the spec: cellSize = floor(minDimension / R), where R depends on edge density.
-pub fn calculate_cell_size(graph: &Graph) -> f64 {
+pub fn calculate_cell_size(graph: &Graph) -> i32 {
     if graph.nodes.is_empty() {
-        return 20.0; // default fallback
+        return 20; // default fallback
     }
 
     // Find the smallest node dimension
@@ -30,10 +30,10 @@ pub fn calculate_cell_size(graph: &Graph) -> f64 {
         6.0 // dense graph
     };
 
-    let cell_size = (min_dimension / r).floor();
+    let cell_size = (min_dimension / r).floor() as i32;
 
     // Minimum cell size
-    cell_size.max(5.0)
+    cell_size.max(5)
 }
 
 /// Grid extent (width and height in pixels) with safety multiplier.
@@ -41,8 +41,8 @@ pub fn calculate_cell_size(graph: &Graph) -> f64 {
 pub struct GridExtent {
     pub width: f64,
     pub height: f64,
-    pub offset_x: f64,
-    pub offset_y: f64,
+    pub offset_x: i32,
+    pub offset_y: i32,
 }
 
 /// Calculate the grid extent based on node positions, with a safety multiplier K.
@@ -53,8 +53,8 @@ pub fn calculate_grid_extent(graph: &Graph) -> GridExtent {
         return GridExtent {
             width: 100.0,
             height: 100.0,
-            offset_x: 0.0,
-            offset_y: 0.0,
+            offset_x: 0,
+            offset_y: 0,
         };
     }
 
@@ -105,8 +105,8 @@ pub fn calculate_grid_extent(graph: &Graph) -> GridExtent {
     GridExtent {
         width: (bounding_width * k).ceil(),
         height: (bounding_height * k).ceil(),
-        offset_x: min_x - (bounding_width * (k - 1.0) / 2.0),
-        offset_y: min_y - (bounding_height * (k - 1.0) / 2.0),
+        offset_x: (min_x - (bounding_width * (k - 1.0) / 2.0)).floor() as i32,
+        offset_y: (min_y - (bounding_height * (k - 1.0) / 2.0)).floor() as i32,
     }
 }
 
@@ -164,7 +164,7 @@ mod tests {
 
         let cell_size = calculate_cell_size(&graph);
         // min_dimension = 40, density < 1.5 → R=4, cell = floor(40/4) = 10
-        assert_eq!(cell_size, 10.0);
+        assert_eq!(cell_size, 10);
     }
 
     #[test]
@@ -186,7 +186,7 @@ mod tests {
 
         let cell_size = calculate_cell_size(&graph);
         // min_dimension = 30, density = 3.5 > 3.0 → R=6, cell = floor(30/6) = 5
-        assert_eq!(cell_size, 5.0);
+        assert_eq!(cell_size, 5);
     }
 
     #[test]
@@ -197,7 +197,7 @@ mod tests {
 
         let cell_size = calculate_cell_size(&graph);
         // min_dimension = 10, density = 0 → R=4, cell = floor(10/4) = 2 → max(2, 5) = 5
-        assert_eq!(cell_size, 5.0);
+        assert_eq!(cell_size, 5);
     }
 
     #[test]

@@ -37,15 +37,15 @@ impl Default for Cell {
 pub struct Grid {
     pub rows: usize,
     pub cols: usize,
-    pub cell_size: f64,
-    pub offset_x: f64,
-    pub offset_y: f64,
+    pub cell_size: i32,
+    pub offset_x: i32,
+    pub offset_y: i32,
     cells: Vec<Cell>,
 }
 
 impl Grid {
     /// Create a new grid with the given dimensions
-    pub fn new(rows: usize, cols: usize, cell_size: f64, offset_x: f64, offset_y: f64) -> Self {
+    pub fn new(rows: usize, cols: usize, cell_size: i32, offset_x: i32, offset_y: i32) -> Self {
         let cells = vec![Cell::default(); rows * cols];
         Self {
             rows,
@@ -82,15 +82,15 @@ impl Grid {
 
     /// Convert world coordinates to grid coordinates
     pub fn world_to_grid(&self, x: f64, y: f64) -> (i64, i64) {
-        let col = ((x - self.offset_x) / self.cell_size).round() as i64;
-        let row = ((y - self.offset_y) / self.cell_size).round() as i64;
+        let col = ((x - self.offset_x as f64) / self.cell_size as f64).round() as i64;
+        let row = ((y - self.offset_y as f64) / self.cell_size as f64).round() as i64;
         (row, col)
     }
 
     /// Convert grid coordinates to world coordinates
     pub fn grid_to_world(&self, row: usize, col: usize) -> (f64, f64) {
-        let x = col as f64 * self.cell_size + self.offset_x;
-        let y = row as f64 * self.cell_size + self.offset_y;
+        let x = col as f64 * self.cell_size as f64 + self.offset_x as f64;
+        let y = row as f64 * self.cell_size as f64 + self.offset_y as f64;
         (x, y)
     }
 
@@ -117,15 +117,19 @@ impl Grid {
 /// Build a routing grid from the graph with placed nodes.
 ///
 /// Blocks cells underneath node bounding boxes.
-pub fn build_grid(graph: &Graph, cell_size: f64, extent: &GridExtent) -> Grid {
-    let cols = (extent.width / cell_size).ceil() as usize;
-    let rows = (extent.height / cell_size).ceil() as usize;
+pub fn build_grid(graph: &Graph, cell_size: i32, extent: &GridExtent) -> Grid {
+    let cs = cell_size as f64;
+    let cols = (extent.width / cs).ceil() as usize;
+    let rows = (extent.height / cs).ceil() as usize;
 
     // Ensure minimum grid size
     let rows = rows.max(1);
     let cols = cols.max(1);
 
     let mut grid = Grid::new(rows, cols, cell_size, extent.offset_x, extent.offset_y);
+
+    let ox = extent.offset_x as f64;
+    let oy = extent.offset_y as f64;
 
     // Block cells underneath each node
     for node in &graph.nodes {
@@ -135,10 +139,10 @@ pub fn build_grid(graph: &Graph, cell_size: f64, extent: &GridExtent) -> Grid {
         let node_right = node.x + node.width / 2.0;
         let node_bottom = node.y + node.height / 2.0;
 
-        let start_col = ((node_left - extent.offset_x) / cell_size).floor() as i64;
-        let end_col = ((node_right - extent.offset_x) / cell_size).ceil() as i64;
-        let start_row = ((node_top - extent.offset_y) / cell_size).floor() as i64;
-        let end_row = ((node_bottom - extent.offset_y) / cell_size).ceil() as i64;
+        let start_col = ((node_left - ox) / cs).floor() as i64;
+        let end_col = ((node_right - ox) / cs).ceil() as i64;
+        let start_row = ((node_top - oy) / cs).floor() as i64;
+        let end_row = ((node_bottom - oy) / cs).ceil() as i64;
 
         for row in start_row..end_row {
             for col in start_col..end_col {
@@ -181,11 +185,11 @@ mod tests {
         let extent = GridExtent {
             width: 200.0,
             height: 200.0,
-            offset_x: 0.0,
-            offset_y: 0.0,
+            offset_x: 0,
+            offset_y: 0,
         };
 
-        let grid = build_grid(&graph, 10.0, &extent);
+        let grid = build_grid(&graph, 10, &extent);
         assert_eq!(grid.rows, 20);
         assert_eq!(grid.cols, 20);
 
@@ -197,14 +201,14 @@ mod tests {
 
     #[test]
     fn test_grid_utilization() {
-        let grid = Grid::new(10, 10, 10.0, 0.0, 0.0);
+        let grid = Grid::new(10, 10, 10, 0, 0);
         assert_eq!(grid.utilization(), 0.0);
         assert_eq!(grid.free_cell_count(), 100);
     }
 
     #[test]
     fn test_world_to_grid_conversion() {
-        let grid = Grid::new(10, 10, 10.0, 0.0, 0.0);
+        let grid = Grid::new(10, 10, 10, 0, 0);
         let (row, col) = grid.world_to_grid(55.0, 35.0);
         assert_eq!(col, 6); // round(55/10) = 6
         assert_eq!(row, 4); // round(35/10) = 4 (note: was 3, let me check - 35/10=3.5 rounds to 4)
@@ -212,7 +216,7 @@ mod tests {
 
     #[test]
     fn test_grid_to_world_conversion() {
-        let grid = Grid::new(10, 10, 10.0, 5.0, 5.0);
+        let grid = Grid::new(10, 10, 10, 5, 5);
         let (x, y) = grid.grid_to_world(3, 4);
         assert_eq!(x, 45.0); // 4*10 + 5
         assert_eq!(y, 35.0); // 3*10 + 5
@@ -220,7 +224,7 @@ mod tests {
 
     #[test]
     fn test_in_bounds() {
-        let grid = Grid::new(5, 5, 10.0, 0.0, 0.0);
+        let grid = Grid::new(5, 5, 10, 0, 0);
         assert!(grid.in_bounds(0, 0));
         assert!(grid.in_bounds(4, 4));
         assert!(!grid.in_bounds(5, 0));

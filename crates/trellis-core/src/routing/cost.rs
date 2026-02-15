@@ -117,14 +117,14 @@ mod tests {
 
     #[test]
     fn test_movement_cost_free_cell() {
-        let grid = Grid::new(10, 10, 10.0, 0.0, 0.0);
+        let grid = Grid::new(10, 10, 10, 0, 0);
         let cost = movement_cost(&grid, 5, 5, None, Direction::Right, &default_costs());
         assert!((cost - 1.0).abs() < 0.01); // base cost only
     }
 
     #[test]
     fn test_movement_cost_bend() {
-        let grid = Grid::new(10, 10, 10.0, 0.0, 0.0);
+        let grid = Grid::new(10, 10, 10, 0, 0);
         let cost = movement_cost(
             &grid, 5, 5,
             Some(Direction::Right), Direction::Down,
@@ -135,7 +135,7 @@ mod tests {
 
     #[test]
     fn test_movement_cost_blocked() {
-        let mut grid = Grid::new(10, 10, 10.0, 0.0, 0.0);
+        let mut grid = Grid::new(10, 10, 10, 0, 0);
         grid.get_mut(5, 5).unwrap().state = CellState::Blocked;
         let cost = movement_cost(&grid, 5, 5, None, Direction::Right, &default_costs());
         assert!((cost - 1000.0).abs() < 0.01);
