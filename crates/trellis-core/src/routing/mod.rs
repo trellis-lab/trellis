@@ -152,14 +152,14 @@ fn route_single_edge(
 
     // Temporarily mark source and target cells as free if they're blocked
     // (ports are on node boundaries, which may be blocked in the grid)
-    let source_state = save_and_free_cell(grid, source);
-    let target_state = save_and_free_cell(grid, target);
+    let source_state = save_and_free_cell(grid, source, &config.routing_costs);
+    let target_state = save_and_free_cell(grid, target, &config.routing_costs);
 
     match route_edge(grid, source, target, &config.routing_costs) {
         Some(path) => {
             result.total_bends += path.bend_count;
             let edge_id = format!("edge_{}", edge_idx);
-            commit_path(grid, &path.points, &edge_id);
+            commit_path(grid, &path.points, &edge_id, &config.routing_costs);
             result.paths.insert(edge_idx, path);
         }
         None => {
@@ -192,7 +192,7 @@ fn route_single_edge(
 }
 
 /// Save a cell's state and temporarily mark it as free for routing
-fn save_and_free_cell(grid: &mut Grid, point: GridPoint) -> Option<crate::grid::CellState> {
+fn save_and_free_cell(grid: &mut Grid, point: GridPoint, costs: &crate::config::RoutingCosts) -> Option<crate::grid::CellState> {
     if !grid.in_bounds(point.row, point.col) {
         return None;
     }
@@ -205,7 +205,7 @@ fn save_and_free_cell(grid: &mut Grid, point: GridPoint) -> Option<crate::grid::
         if original_state == crate::grid::CellState::Blocked {
             if let Some(cell) = grid.get_mut(row, col) {
                 cell.state = crate::grid::CellState::Free;
-                cell.cost = 1.0;
+                cell.cost = costs.base_cost;
             }
         }
         Some(original_state)

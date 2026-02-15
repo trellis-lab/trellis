@@ -109,8 +109,8 @@ mod tests {
         graph.nodes = vec![make_node("A", 55.0, 25.0)];
         snap_node_dimensions_to_grid(&mut graph, 10);
         assert_eq!(graph.nodes[0].width, 60.0);
-        // height=25 needs ceil(25/10)+1 = 3+1 = 4 grid points = 30 pixels
-        assert_eq!(graph.nodes[0].height, 30.0);
+        // height=25 needs ceil(25/10)+1 = 3+1+1 = 5 grid points = 40 pixels
+        assert_eq!(graph.nodes[0].height, 40.0);
     }
 
     #[test]

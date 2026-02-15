@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::config::TrellisConfig;
+use crate::config::{RoutingCosts, TrellisConfig};
 use crate::grid::{CellState, Grid};
 use crate::ports::EdgePorts;
 use crate::routing::astar::{route_edge, GridPoint, RoutedPath};
@@ -107,15 +107,15 @@ pub fn rip_up_and_reroute(
         for &blocking_idx in &blocking_edges {
             if let Some(path) = result.paths.remove(&blocking_idx) {
                 let edge_id = format!("edge_{}", blocking_idx);
-                uncommit_path(grid, &path.points, &edge_id);
+                uncommit_path(grid, &path.points, &edge_id, &config.routing_costs);
                 result.total_bends = result.total_bends.saturating_sub(path.bend_count);
                 saved_paths.push((blocking_idx, path));
             }
         }
 
         // Temporarily free source/target cells
-        let source_state = save_and_free_cell(grid, source);
-        let target_state = save_and_free_cell(grid, target);
+        let source_state = save_and_free_cell(grid, source, &config.routing_costs);
+        let target_state = save_and_free_cell(grid, target, &config.routing_costs);
 
         // Try routing the failed edge
         let failed_path = route_edge(grid, source, target, &config.routing_costs);
@@ -126,7 +126,7 @@ pub fn rip_up_and_reroute(
         if let Some(path) = failed_path {
             // Commit the failed edge's new path
             let edge_id = format!("edge_{}", failed_edge_idx);
-            commit_path(grid, &path.points, &edge_id);
+            commit_path(grid, &path.points, &edge_id, &config.routing_costs);
             result.total_bends += path.bend_count;
 
             // Try to re-route all blocking edges
@@ -144,8 +144,8 @@ pub fn rip_up_and_reroute(
                         col: blocking_ports.target_port.grid_col,
                     };
 
-                    let bs = save_and_free_cell(grid, b_source);
-                    let bt = save_and_free_cell(grid, b_target);
+                    let bs = save_and_free_cell(grid, b_source, &config.routing_costs);
+                    let bt = save_and_free_cell(grid, b_target, &config.routing_costs);
 
                     let re_path = route_edge(grid, b_source, b_target, &config.routing_costs);
 
@@ -154,7 +154,7 @@ pub fn rip_up_and_reroute(
 
                     if let Some(rp) = re_path {
                         let b_edge_id = format!("edge_{}", blocking_idx);
-                        commit_path(grid, &rp.points, &b_edge_id);
+                        commit_path(grid, &rp.points, &b_edge_id, &config.routing_costs);
                         result.total_bends += rp.bend_count;
                         rerouted_paths.push((blocking_idx, rp));
                     } else {
@@ -177,18 +177,18 @@ pub fn rip_up_and_reroute(
             // Uncommit rerouted blocking edges
             for (idx, rp) in &rerouted_paths {
                 let eid = format!("edge_{}", idx);
-                uncommit_path(grid, &rp.points, &eid);
+                uncommit_path(grid, &rp.points, &eid, &config.routing_costs);
                 result.total_bends = result.total_bends.saturating_sub(rp.bend_count);
             }
 
             // Uncommit the failed edge
-            uncommit_path(grid, &path.points, &edge_id);
+            uncommit_path(grid, &path.points, &edge_id, &config.routing_costs);
             result.total_bends = result.total_bends.saturating_sub(path.bend_count);
 
             // Restore original blocking edge paths
             for (idx, sp) in saved_paths {
                 let eid = format!("edge_{}", idx);
-                commit_path(grid, &sp.points, &eid);
+                commit_path(grid, &sp.points, &eid, &config.routing_costs);
                 result.total_bends += sp.bend_count;
                 result.paths.insert(idx, sp);
             }
@@ -197,7 +197,7 @@ pub fn rip_up_and_reroute(
             // Restore blocking edges and try next iteration (with different blocking candidates?)
             for (idx, sp) in saved_paths {
                 let eid = format!("edge_{}", idx);
-                commit_path(grid, &sp.points, &eid);
+                commit_path(grid, &sp.points, &eid, &config.routing_costs);
                 result.total_bends += sp.bend_count;
                 result.paths.insert(idx, sp);
             }
@@ -208,7 +208,7 @@ pub fn rip_up_and_reroute(
 }
 
 /// Save a cell's state and temporarily mark it as free for routing
-fn save_and_free_cell(grid: &mut Grid, point: GridPoint) -> Option<CellState> {
+fn save_and_free_cell(grid: &mut Grid, point: GridPoint, costs: &RoutingCosts) -> Option<CellState> {
     if !grid.in_bounds(point.row, point.col) {
         return None;
     }
@@ -219,7 +219,7 @@ fn save_and_free_cell(grid: &mut Grid, point: GridPoint) -> Option<CellState> {
         if original_state == CellState::Blocked {
             if let Some(cell) = grid.get_mut(row, col) {
                 cell.state = CellState::Free;
-                cell.cost = 1.0;
+                cell.cost = costs.base_cost;
             }
         }
         Some(original_state)

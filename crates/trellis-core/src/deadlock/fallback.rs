@@ -59,8 +59,8 @@ pub fn route_with_crossings_allowed(
     };
 
     // Temporarily free source/target if blocked
-    let source_state = save_and_free_cell(grid, source);
-    let target_state = save_and_free_cell(grid, target);
+    let source_state = save_and_free_cell(grid, source, &config.routing_costs);
+    let target_state = save_and_free_cell(grid, target, &config.routing_costs);
 
     let path = route_edge(grid, source, target, &crossing_costs);
 
@@ -97,7 +97,7 @@ pub fn route_with_crossings_allowed(
 
         // Commit the path (cells that are already occupied become crossings)
         let edge_id = format!("edge_{}", failed_edge_idx);
-        commit_path(grid, &path.points, &edge_id);
+        commit_path(grid, &path.points, &edge_id, &config.routing_costs);
 
         return Some(path);
     }
@@ -106,7 +106,7 @@ pub fn route_with_crossings_allowed(
 }
 
 /// Save a cell's state and temporarily mark it as free for routing
-fn save_and_free_cell(grid: &mut Grid, point: GridPoint) -> Option<CellState> {
+fn save_and_free_cell(grid: &mut Grid, point: GridPoint, costs: &RoutingCosts) -> Option<CellState> {
     if !grid.in_bounds(point.row, point.col) {
         return None;
     }
@@ -117,7 +117,7 @@ fn save_and_free_cell(grid: &mut Grid, point: GridPoint) -> Option<CellState> {
         if original_state == CellState::Blocked {
             if let Some(cell) = grid.get_mut(row, col) {
                 cell.state = CellState::Free;
-                cell.cost = 1.0;
+                cell.cost = costs.base_cost;
             }
         }
         Some(original_state)
