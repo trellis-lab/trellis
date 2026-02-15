@@ -10,7 +10,7 @@ pub enum Side {
     Left,
 }
 
-/// A port on a node's edge (connection point)
+/// A port on a node's edge (connection point at an exact grid point)
 #[derive(Debug, Clone)]
 pub struct Port {
     pub x: f64,
@@ -36,6 +36,15 @@ struct NodeEdgeInfo {
     is_source: bool, // true if this node is the source of the edge
 }
 
+/// A connector: a grid point on a node boundary available for edge routing.
+#[derive(Debug, Clone)]
+struct Connector {
+    grid_row: i64,
+    grid_col: i64,
+    x: f64,
+    y: f64,
+}
+
 /// Convert an angle (degrees, 0=right, 90=down) to a side of a node.
 ///
 /// Uses 4 sectors of 90 degrees each.
@@ -52,10 +61,85 @@ pub fn angle_to_side(angle_deg: f64) -> Side {
     }
 }
 
-/// Assign ports to all edges in the graph.
+/// Enumerate the available connector grid points on a given side of a node.
+///
+/// Connectors are non-corner grid points on the node boundary.
+/// Node positions are top-left, dimensions are grid-aligned.
+fn enumerate_connectors(
+    node: &Node,
+    side: Side,
+    cell_size: i32,
+    offset_x: i32,
+    offset_y: i32,
+) -> Vec<Connector> {
+    let cs = cell_size as f64;
+    let ox = offset_x as f64;
+    let oy = offset_y as f64;
+
+    // Grid position of node top-left corner
+    let gc = ((node.x - ox) / cs).round() as i64;
+    let gr = ((node.y - oy) / cs).round() as i64;
+
+    // Grid-point counts (N grid points = (N-1)*cs pixels)
+    let w_points = (node.width / cs).round() as i64 + 1;
+    let h_points = (node.height / cs).round() as i64 + 1;
+
+    let mut connectors = Vec::new();
+
+    match side {
+        Side::Top => {
+            // Non-corner points on the top edge: (gr, gc+1) through (gr, gc+w_points-2)
+            for c in (gc + 1)..=(gc + w_points - 2) {
+                connectors.push(Connector {
+                    grid_row: gr,
+                    grid_col: c,
+                    x: c as f64 * cs + ox,
+                    y: gr as f64 * cs + oy,
+                });
+            }
+        }
+        Side::Bottom => {
+            let bottom_row = gr + h_points - 1;
+            for c in (gc + 1)..=(gc + w_points - 2) {
+                connectors.push(Connector {
+                    grid_row: bottom_row,
+                    grid_col: c,
+                    x: c as f64 * cs + ox,
+                    y: bottom_row as f64 * cs + oy,
+                });
+            }
+        }
+        Side::Left => {
+            // Non-corner points on the left edge: (gr+1, gc) through (gr+h_points-2, gc)
+            for r in (gr + 1)..=(gr + h_points - 2) {
+                connectors.push(Connector {
+                    grid_row: r,
+                    grid_col: gc,
+                    x: gc as f64 * cs + ox,
+                    y: r as f64 * cs + oy,
+                });
+            }
+        }
+        Side::Right => {
+            let right_col = gc + w_points - 1;
+            for r in (gr + 1)..=(gr + h_points - 2) {
+                connectors.push(Connector {
+                    grid_row: r,
+                    grid_col: right_col,
+                    x: right_col as f64 * cs + ox,
+                    y: r as f64 * cs + oy,
+                });
+            }
+        }
+    }
+
+    connectors
+}
+
+/// Assign ports to all edges in the graph using discrete grid-point connectors.
 ///
 /// For each node, edges are grouped by side (based on the angle to the connected node),
-/// overflow is handled, edges are sorted within each side, and port positions are calculated.
+/// overflow is handled, edges are sorted within each side, and connector positions are assigned.
 pub fn assign_ports(graph: &Graph, cell_size: i32, offset_x: i32, offset_y: i32) -> HashMap<usize, EdgePorts> {
     let mut port_assignments: HashMap<usize, EdgePorts> = HashMap::new();
 
@@ -69,7 +153,6 @@ pub fn assign_ports(graph: &Graph, cell_size: i32, offset_x: i32, offset_y: i32)
     // Group edges by node
     let mut node_edges: HashMap<&str, Vec<NodeEdgeInfo>> = HashMap::new();
     for (edge_idx, edge) in graph.edges.iter().enumerate() {
-        // Source node side
         if let (Some(source), Some(target)) = (node_map.get(edge.from.as_str()), node_map.get(edge.to.as_str())) {
             let angle_from_source = calculate_angle(source, target);
             node_edges
@@ -109,51 +192,44 @@ pub fn assign_ports(graph: &Graph, cell_size: i32, offset_x: i32, offset_y: i32)
             sides.entry(side).or_default().push(info);
         }
 
-        // Handle overflow
-        handle_overflow(&mut sides, node);
+        // Handle overflow using connector counts
+        handle_overflow(&mut sides, node, cell_size, offset_x, offset_y);
 
         // Sort edges on each side
         for (&side, edge_list) in sides.iter_mut() {
             sort_edges_on_side(edge_list, side, &node_map);
         }
 
-        // Assign port positions
+        // Assign connector positions to each edge on each side
         for (&side, edge_list) in &sides {
-            let n = edge_list.len();
-            if n == 0 {
+            let n_edges = edge_list.len();
+            if n_edges == 0 {
+                continue;
+            }
+
+            let connectors = enumerate_connectors(node, side, cell_size, offset_x, offset_y);
+            let n_connectors = connectors.len();
+
+            if n_connectors == 0 {
                 continue;
             }
 
             for (i, info) in edge_list.iter().enumerate() {
-                let fraction = (i as f64 + 1.0) / (n as f64 + 1.0);
-
-                let (port_x, port_y) = match side {
-                    Side::Top => (
-                        (node.x - node.width / 2.0) + node.width * fraction,
-                        node.y - node.height / 2.0,
-                    ),
-                    Side::Bottom => (
-                        (node.x - node.width / 2.0) + node.width * fraction,
-                        node.y + node.height / 2.0,
-                    ),
-                    Side::Left => (
-                        node.x - node.width / 2.0,
-                        (node.y - node.height / 2.0) + node.height * fraction,
-                    ),
-                    Side::Right => (
-                        node.x + node.width / 2.0,
-                        (node.y - node.height / 2.0) + node.height * fraction,
-                    ),
+                // Evenly distribute edges among available connectors
+                let connector_idx = if n_edges == 1 {
+                    n_connectors / 2 // center connector for single edge
+                } else {
+                    // Spread evenly: fraction = (i+1) / (n_edges+1), index = fraction * n_connectors
+                    let fraction = (i as f64 + 1.0) / (n_edges as f64 + 1.0);
+                    ((fraction * n_connectors as f64).round() as usize).min(n_connectors - 1)
                 };
 
-                let grid_col = ((port_x - offset_x as f64) / cell_size as f64).round() as i64;
-                let grid_row = ((port_y - offset_y as f64) / cell_size as f64).round() as i64;
-
+                let conn = &connectors[connector_idx];
                 let port = Port {
-                    x: port_x,
-                    y: port_y,
-                    grid_row,
-                    grid_col,
+                    x: conn.x,
+                    y: conn.y,
+                    grid_row: conn.grid_row,
+                    grid_col: conn.grid_col,
                     side,
                 };
 
@@ -190,37 +266,40 @@ pub fn assign_ports(graph: &Graph, cell_size: i32, offset_x: i32, offset_y: i32)
 
 /// Calculate the angle in degrees from one node center to another.
 /// 0 degrees = right, 90 degrees = down (screen coordinates).
+/// Node positions are top-left, so centers are computed as (x + w/2, y + h/2).
 fn calculate_angle(from: &Node, to: &Node) -> f64 {
-    let dx = to.x - from.x;
-    let dy = to.y - from.y;
+    let from_cx = from.x + from.width / 2.0;
+    let from_cy = from.y + from.height / 2.0;
+    let to_cx = to.x + to.width / 2.0;
+    let to_cy = to.y + to.height / 2.0;
+    let dx = to_cx - from_cx;
+    let dy = to_cy - from_cy;
     let rad = dy.atan2(dx);
     let deg = rad.to_degrees();
     ((deg % 360.0) + 360.0) % 360.0
 }
 
-/// Minimum spacing between ports on a side (in pixels)
-pub const MIN_PORT_SPACING: f64 = 15.0;
-
 /// Handle overflow: if too many edges are assigned to one side, move excess to adjacent sides.
-fn handle_overflow(sides: &mut HashMap<Side, Vec<&NodeEdgeInfo>>, node: &Node) {
-    let max_ports = |side: Side| -> usize {
-        let dimension = match side {
-            Side::Top | Side::Bottom => node.width,
-            Side::Left | Side::Right => node.height,
-        };
-        (dimension / MIN_PORT_SPACING).floor() as usize
+/// Uses connector count (grid-point based) instead of pixel-based spacing.
+fn handle_overflow(
+    sides: &mut HashMap<Side, Vec<&NodeEdgeInfo>>,
+    node: &Node,
+    cell_size: i32,
+    offset_x: i32,
+    offset_y: i32,
+) {
+    let max_connectors = |side: Side| -> usize {
+        enumerate_connectors(node, side, cell_size, offset_x, offset_y).len()
     };
 
     let side_order = [Side::Top, Side::Right, Side::Bottom, Side::Left];
 
     for &side in &side_order {
-        let max = max_ports(side).max(1);
+        let max = max_connectors(side).max(1);
         while sides.get(&side).map_or(0, |v| v.len()) > max {
-            // Find the edge closest to the boundary of this side's angle range
             let edges = sides.get(&side).unwrap();
             let boundary_edge_idx = find_edge_closest_to_boundary(edges, side);
 
-            // Remove from current side and add to clockwise neighbor
             let edge_info = sides.get_mut(&side).unwrap().remove(boundary_edge_idx);
             let neighbor = clockwise_neighbor(side);
             sides.entry(neighbor).or_default().push(edge_info);
@@ -230,7 +309,6 @@ fn handle_overflow(sides: &mut HashMap<Side, Vec<&NodeEdgeInfo>>, node: &Node) {
 
 /// Find the index of the edge whose angle is closest to the boundary of the given side.
 fn find_edge_closest_to_boundary(edges: &[&NodeEdgeInfo], side: Side) -> usize {
-    // Boundaries for each side (the angles at the edge of each sector)
     let (low_boundary, high_boundary) = match side {
         Side::Right => (315.0, 45.0),
         Side::Bottom => (45.0, 135.0),
@@ -244,8 +322,6 @@ fn find_edge_closest_to_boundary(edges: &[&NodeEdgeInfo], side: Side) -> usize {
         .max_by(|(_, a), (_, b)| {
             let dist_a = min_angle_distance_to_boundary(a.angle_deg, low_boundary, high_boundary);
             let dist_b = min_angle_distance_to_boundary(b.angle_deg, low_boundary, high_boundary);
-            // We want the one closest to boundary (smallest distance from center → biggest min_dist)
-            // Actually we want the one closest to a boundary, which means smallest distance
             dist_a.partial_cmp(&dist_b).unwrap().reverse()
         })
         .map(|(i, _)| i)
@@ -277,22 +353,22 @@ fn clockwise_neighbor(side: Side) -> Side {
     }
 }
 
-/// Sort edges on a given side by the perpendicular axis position of the other node.
+/// Sort edges on a given side by the perpendicular axis center position of the other node.
 fn sort_edges_on_side(edges: &mut Vec<&NodeEdgeInfo>, side: Side, node_map: &HashMap<&str, &Node>) {
     match side {
         Side::Top | Side::Bottom => {
-            // Sort by other node's x coordinate (left to right)
+            // Sort by other node's center x coordinate (left to right)
             edges.sort_by(|a, b| {
-                let ax = node_map.get(a.other_node_id.as_str()).map(|n| n.x).unwrap_or(0.0);
-                let bx = node_map.get(b.other_node_id.as_str()).map(|n| n.x).unwrap_or(0.0);
+                let ax = node_map.get(a.other_node_id.as_str()).map(|n| n.x + n.width / 2.0).unwrap_or(0.0);
+                let bx = node_map.get(b.other_node_id.as_str()).map(|n| n.x + n.width / 2.0).unwrap_or(0.0);
                 ax.partial_cmp(&bx).unwrap()
             });
         }
         Side::Left | Side::Right => {
-            // Sort by other node's y coordinate (top to bottom)
+            // Sort by other node's center y coordinate (top to bottom)
             edges.sort_by(|a, b| {
-                let ay = node_map.get(a.other_node_id.as_str()).map(|n| n.y).unwrap_or(0.0);
-                let by = node_map.get(b.other_node_id.as_str()).map(|n| n.y).unwrap_or(0.0);
+                let ay = node_map.get(a.other_node_id.as_str()).map(|n| n.y + n.height / 2.0).unwrap_or(0.0);
+                let by = node_map.get(b.other_node_id.as_str()).map(|n| n.y + n.height / 2.0).unwrap_or(0.0);
                 ay.partial_cmp(&by).unwrap()
             });
         }
@@ -355,12 +431,51 @@ mod tests {
     }
 
     #[test]
+    fn test_enumerate_connectors_top() {
+        // Node at top-left (0,0), 40x20 pixels, cell_size=10
+        // w_points = 40/10 + 1 = 5, h_points = 20/10 + 1 = 3
+        // Top connectors: cols 1,2,3 → 3 connectors
+        let node = make_node("A", 40.0, 20.0, 0.0, 0.0);
+        let connectors = enumerate_connectors(&node, Side::Top, 10, 0, 0);
+        assert_eq!(connectors.len(), 3);
+        assert_eq!(connectors[0].grid_col, 1);
+        assert_eq!(connectors[1].grid_col, 2);
+        assert_eq!(connectors[2].grid_col, 3);
+        assert_eq!(connectors[0].grid_row, 0);
+    }
+
+    #[test]
+    fn test_enumerate_connectors_left() {
+        // Node at (0,0), 40x20, cell_size=10
+        // h_points = 3, left connectors: rows 1 → 1 connector
+        let node = make_node("A", 40.0, 20.0, 0.0, 0.0);
+        let connectors = enumerate_connectors(&node, Side::Left, 10, 0, 0);
+        assert_eq!(connectors.len(), 1);
+        assert_eq!(connectors[0].grid_row, 1);
+        assert_eq!(connectors[0].grid_col, 0);
+    }
+
+    #[test]
+    fn test_enumerate_connectors_with_offset() {
+        // Node at (50,30), 40x20, cell_size=10, offset (0,0)
+        // gc = 5, gr = 3, w_points = 5, h_points = 3
+        let node = make_node("A", 40.0, 20.0, 50.0, 30.0);
+        let connectors = enumerate_connectors(&node, Side::Bottom, 10, 0, 0);
+        assert_eq!(connectors.len(), 3);
+        // Bottom row = 3 + 3 - 1 = 5
+        assert_eq!(connectors[0].grid_row, 5);
+        assert_eq!(connectors[0].grid_col, 6); // gc+1 = 6
+        assert_eq!(connectors[0].x, 60.0);
+        assert_eq!(connectors[0].y, 50.0);
+    }
+
+    #[test]
     fn test_assign_ports_simple_vertical() {
-        // A above B (TB layout)
+        // A above B (TB layout), top-left coordinates, grid-aligned dimensions
         let mut graph = Graph::new();
         graph.nodes = vec![
-            make_node("A", 80.0, 40.0, 100.0, 50.0),
-            make_node("B", 80.0, 40.0, 100.0, 150.0),
+            make_node("A", 40.0, 20.0, 60.0, 30.0),
+            make_node("B", 40.0, 20.0, 60.0, 130.0),
         ];
         graph.edges = vec![make_edge("A", "B")];
 
@@ -371,15 +486,18 @@ mod tests {
         // A→B: A's port should be on bottom, B's port on top
         assert_eq!(edge_ports.source_port.side, Side::Bottom);
         assert_eq!(edge_ports.target_port.side, Side::Top);
+        // Port should be at exact grid point
+        assert_eq!(edge_ports.source_port.x % 10.0, 0.0);
+        assert_eq!(edge_ports.source_port.y % 10.0, 0.0);
     }
 
     #[test]
     fn test_assign_ports_horizontal() {
-        // A left of B
+        // A left of B, top-left coordinates
         let mut graph = Graph::new();
         graph.nodes = vec![
-            make_node("A", 80.0, 40.0, 50.0, 100.0),
-            make_node("B", 80.0, 40.0, 250.0, 100.0),
+            make_node("A", 40.0, 20.0, 10.0, 80.0),
+            make_node("B", 40.0, 20.0, 210.0, 80.0),
         ];
         graph.edges = vec![make_edge("A", "B")];
 
@@ -391,38 +509,37 @@ mod tests {
 
     #[test]
     fn test_port_symmetry_for_opposite_edges() {
-        // A at center, B above, C below → symmetrical ports
+        // A in middle, B above, C below → symmetrical ports (top-left coords)
         let mut graph = Graph::new();
         graph.nodes = vec![
-            make_node("A", 80.0, 40.0, 100.0, 100.0),
-            make_node("B", 80.0, 40.0, 100.0, 0.0),
-            make_node("C", 80.0, 40.0, 100.0, 200.0),
+            make_node("A", 40.0, 20.0, 60.0, 80.0),
+            make_node("B", 40.0, 20.0, 60.0, 0.0),
+            make_node("C", 40.0, 20.0, 60.0, 180.0),
         ];
         graph.edges = vec![make_edge("A", "B"), make_edge("A", "C")];
 
         let ports = assign_ports(&graph, 10, 0, 0);
 
-        // A→B: source port on A's top
         let ab = &ports[&0];
         assert_eq!(ab.source_port.side, Side::Top);
 
-        // A→C: source port on A's bottom
         let ac = &ports[&1];
         assert_eq!(ac.source_port.side, Side::Bottom);
 
-        // Both source ports should have the same x (centered on A)
-        assert!((ab.source_port.x - ac.source_port.x).abs() < 1.0);
+        // Both source ports should have the same x (center connector)
+        assert!((ab.source_port.x - ac.source_port.x).abs() < 0.01);
     }
 
     #[test]
     fn test_multiple_edges_same_side() {
-        // A above, B1/B2/B3 below at different x positions
+        // A above, B1/B2/B3 below at different x positions (top-left coords)
+        // A is wider (80px = 9 grid points wide, 7 top/bottom connectors)
         let mut graph = Graph::new();
         graph.nodes = vec![
-            make_node("A", 120.0, 40.0, 100.0, 50.0),
-            make_node("B1", 40.0, 40.0, 50.0, 200.0),
-            make_node("B2", 40.0, 40.0, 100.0, 200.0),
-            make_node("B3", 40.0, 40.0, 150.0, 200.0),
+            make_node("A", 80.0, 20.0, 40.0, 30.0),
+            make_node("B1", 40.0, 20.0, 20.0, 180.0),
+            make_node("B2", 40.0, 20.0, 70.0, 180.0),
+            make_node("B3", 40.0, 20.0, 120.0, 180.0),
         ];
         graph.edges = vec![
             make_edge("A", "B1"),
@@ -437,11 +554,16 @@ mod tests {
             assert_eq!(ports[&i].source_port.side, Side::Bottom);
         }
 
-        // Ports should be ordered left to right (B1.x < B2.x < B3.x)
+        // Ports should be ordered left to right
         let x0 = ports[&0].source_port.x;
         let x1 = ports[&1].source_port.x;
         let x2 = ports[&2].source_port.x;
         assert!(x0 < x1, "Port for B1 should be left of B2: {} < {}", x0, x1);
         assert!(x1 < x2, "Port for B2 should be left of B3: {} < {}", x1, x2);
+
+        // All ports should be at exact grid points
+        assert_eq!(x0 % 10.0, 0.0);
+        assert_eq!(x1 % 10.0, 0.0);
+        assert_eq!(x2 % 10.0, 0.0);
     }
 }

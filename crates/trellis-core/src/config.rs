@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TrellisConfig {
     /// Grid cell size in pixels
-    pub cell_size: f64,
+    pub cell_size: i32,
 
     /// Density factor for grid calculation (higher = more space)
     pub density_factor: f64,
@@ -46,7 +46,7 @@ pub enum DecompositionMode {
 impl Default for TrellisConfig {
     fn default() -> Self {
         Self {
-            cell_size: 20.0,
+            cell_size: 10,
             density_factor: 1.5,
             safety_multiplier: 1.2,
             routing_costs: RoutingCosts::default(),

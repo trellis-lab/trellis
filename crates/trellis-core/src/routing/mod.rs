@@ -239,20 +239,19 @@ fn restore_cell(
 mod tests {
     use super::*;
     use crate::grid::build_grid;
-    use crate::grid::params::{calculate_cell_size, calculate_grid_extent};
+    use crate::grid::params::calculate_grid_extent;
     use crate::placement;
     use crate::ports::assign_ports;
 
     /// Helper: parse, place, build grid, assign ports, route, return result
     fn route_fixture(mermaid: &str) -> (RoutingResult, Grid) {
         let mut graph = trellis_parser::parse(mermaid).expect("parse failed");
-        placement::place_nodes(&mut graph);
-
-        let cell_size = calculate_cell_size(&graph);
-        let extent = calculate_grid_extent(&graph);
+        let config = TrellisConfig::default();
+        let cell_size = config.cell_size;
+        placement::place_nodes(&mut graph, cell_size);
+        let extent = calculate_grid_extent(&graph, cell_size);
         let mut grid = build_grid(&graph, cell_size, &extent);
         let port_assignments = assign_ports(&graph, cell_size, extent.offset_x, extent.offset_y);
-        let config = TrellisConfig::default();
 
         let result = route_all_edges(&graph, &mut grid, &port_assignments, &config);
         (result, grid)

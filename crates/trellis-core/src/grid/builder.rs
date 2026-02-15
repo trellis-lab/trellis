@@ -116,7 +116,10 @@ impl Grid {
 
 /// Build a routing grid from the graph with placed nodes.
 ///
-/// Blocks cells underneath node bounding boxes.
+/// Distinguishes three types of grid points on node rectangles:
+/// - **Interior** (strictly inside): `Blocked` (impassable)
+/// - **Corners** (4 vertices): `Blocked` (impassable)
+/// - **Boundary non-corner** (edge points excluding corners): `Free` (connectors)
 pub fn build_grid(graph: &Graph, cell_size: i32, extent: &GridExtent) -> Grid {
     let cs = cell_size as f64;
     let cols = (extent.width / cs).ceil() as usize;
@@ -131,27 +134,39 @@ pub fn build_grid(graph: &Graph, cell_size: i32, extent: &GridExtent) -> Grid {
     let ox = extent.offset_x as f64;
     let oy = extent.offset_y as f64;
 
-    // Block cells underneath each node
+    // Block cells underneath each node with boundary/interior distinction
     for node in &graph.nodes {
-        // Node positions are center coordinates
-        let node_left = node.x - node.width / 2.0;
-        let node_top = node.y - node.height / 2.0;
-        let node_right = node.x + node.width / 2.0;
-        let node_bottom = node.y + node.height / 2.0;
+        // Node grid coordinates (top-left is on a grid point)
+        let gc = ((node.x - ox) / cs).round() as i64;
+        let gr = ((node.y - oy) / cs).round() as i64;
 
-        let start_col = ((node_left - ox) / cs).floor() as i64;
-        let end_col = ((node_right - ox) / cs).ceil() as i64;
-        let start_row = ((node_top - oy) / cs).floor() as i64;
-        let end_row = ((node_bottom - oy) / cs).ceil() as i64;
+        // Grid-point counts
+        let w_points = (node.width / cs).round() as i64 + 1;
+        let h_points = (node.height / cs).round() as i64 + 1;
 
-        for row in start_row..end_row {
-            for col in start_col..end_col {
-                if grid.in_bounds(row, col) {
-                    if let Some(cell) = grid.get_mut(row as usize, col as usize) {
+        let max_col = gc + w_points - 1;
+        let max_row = gr + h_points - 1;
+
+        for row in gr..=max_row {
+            for col in gc..=max_col {
+                if !grid.in_bounds(row, col) {
+                    continue;
+                }
+                let on_top = row == gr;
+                let on_bottom = row == max_row;
+                let on_left = col == gc;
+                let on_right = col == max_col;
+                let on_boundary = on_top || on_bottom || on_left || on_right;
+                let is_corner = (on_top || on_bottom) && (on_left || on_right);
+
+                if let Some(cell) = grid.get_mut(row as usize, col as usize) {
+                    if !on_boundary || is_corner {
+                        // Interior or corner → blocked
                         cell.state = CellState::Blocked;
                         cell.cost = f64::INFINITY;
-                        cell.owner = Some(node.id.clone());
                     }
+                    // Boundary non-corner → leave as Free (connector point)
+                    cell.owner = Some(node.id.clone());
                 }
             }
         }
@@ -180,7 +195,10 @@ mod tests {
     #[test]
     fn test_build_grid_basic() {
         let mut graph = Graph::new();
-        graph.nodes = vec![make_node("A", 40.0, 20.0, 50.0, 50.0)];
+        // Top-left at (30, 40), size 40x20, cell_size=10
+        // Grid points: gc=3, gr=4, w_points=5, h_points=3
+        // Node spans grid rows 4..6, cols 3..7
+        graph.nodes = vec![make_node("A", 40.0, 20.0, 30.0, 40.0)];
 
         let extent = GridExtent {
             width: 200.0,
@@ -193,10 +211,27 @@ mod tests {
         assert_eq!(grid.rows, 20);
         assert_eq!(grid.cols, 20);
 
-        // Node A centered at (50,50) with size 40x20 occupies (30..70, 40..60)
-        // In grid coords: cols 3..7, rows 4..6
-        assert_eq!(grid.get(5, 5).unwrap().state, CellState::Blocked);
+        // Outside the node → Free
         assert_eq!(grid.get(0, 0).unwrap().state, CellState::Free);
+
+        // Interior cell (row 5, col 5) → Blocked
+        assert_eq!(grid.get(5, 5).unwrap().state, CellState::Blocked);
+
+        // Corner (top-left: row 4, col 3) → Blocked
+        assert_eq!(grid.get(4, 3).unwrap().state, CellState::Blocked);
+
+        // Corner (bottom-right: row 6, col 7) → Blocked
+        assert_eq!(grid.get(6, 7).unwrap().state, CellState::Blocked);
+
+        // Boundary non-corner (top edge, row 4, col 5) → Free (connector)
+        assert_eq!(grid.get(4, 5).unwrap().state, CellState::Free);
+
+        // Boundary non-corner (left edge, row 5, col 3) → Free (connector)
+        assert_eq!(grid.get(5, 3).unwrap().state, CellState::Free);
+
+        // Owner should be set for all node grid points
+        assert_eq!(grid.get(5, 5).unwrap().owner, Some("A".to_string()));
+        assert_eq!(grid.get(4, 5).unwrap().owner, Some("A".to_string()));
     }
 
     #[test]

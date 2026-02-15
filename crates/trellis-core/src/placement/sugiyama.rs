@@ -333,7 +333,7 @@ pub fn assign_coordinates(
         layer_nodes.sort_by_key(|&i| positions.get(&graph.nodes[i].id).copied().unwrap_or(0));
     }
 
-    // Assign coordinates with centering
+    // Assign coordinates with centering (node.x/y = top-left corner)
     for (layer_idx, layer_nodes) in nodes_in_layer.iter().enumerate() {
         if layer_nodes.is_empty() {
             continue;
@@ -351,24 +351,23 @@ pub fn assign_coordinates(
         for &node_idx in layer_nodes {
             let node = &mut graph.nodes[node_idx];
             let layer = layer_idx;
-            let node_center_x = offset + node.width / 2.0;
 
             match graph.direction {
                 Direction::TB => {
-                    node.x = node_center_x;
+                    node.x = offset;
                     node.y = layer as f64 * LAYER_SPACING;
                 }
                 Direction::BT => {
-                    node.x = node_center_x;
+                    node.x = offset;
                     node.y = -(layer as f64) * LAYER_SPACING;
                 }
                 Direction::LR => {
                     node.x = layer as f64 * LAYER_SPACING;
-                    node.y = node_center_x;
+                    node.y = offset;
                 }
                 Direction::RL => {
                     node.x = -(layer as f64) * LAYER_SPACING;
-                    node.y = node_center_x;
+                    node.y = offset;
                 }
             }
 
@@ -376,17 +375,17 @@ pub fn assign_coordinates(
         }
     }
 
-    // Normalize: shift so minimum coordinate is at a reasonable origin
+    // Normalize: shift so minimum top-left coordinate is at a reasonable origin
     if !graph.nodes.is_empty() {
         let min_x = graph
             .nodes
             .iter()
-            .map(|n| n.x - n.width / 2.0)
+            .map(|n| n.x)
             .fold(f64::INFINITY, f64::min);
         let min_y = graph
             .nodes
             .iter()
-            .map(|n| n.y - n.height / 2.0)
+            .map(|n| n.y)
             .fold(f64::INFINITY, f64::min);
         let margin = 50.0;
         for node in &mut graph.nodes {

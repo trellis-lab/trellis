@@ -32,7 +32,7 @@ mod tests {
     #[test]
     fn test_config_default() {
         let config = TrellisConfig::default();
-        assert_eq!(config.cell_size, 20.0);
+        assert_eq!(config.cell_size, 10);
         assert_eq!(config.decomposition_threshold, 50);
     }
 
@@ -111,18 +111,18 @@ mod tests {
     fn test_port_positions_within_node_bounds() {
         let graph = trellis_parser::parse("graph TB\n    A --> B\n    A --> C\n    B --> D\n    C --> D").unwrap();
         let mut graph = graph.clone();
-        placement::place_nodes(&mut graph);
-
-        let cell_size = grid::calculate_cell_size(&graph);
-        let extent = grid::calculate_grid_extent(&graph);
+        let config = config::TrellisConfig::default();
+        let cell_size = config.cell_size;
+        placement::place_nodes(&mut graph, cell_size);
+        let extent = grid::calculate_grid_extent(&graph, cell_size);
         let port_assignments = ports::assign_ports(&graph, cell_size, extent.offset_x, extent.offset_y);
 
         // All ports should be on the boundary of their respective nodes
         for node in &graph.nodes {
-            let left = node.x - node.width / 2.0;
-            let right = node.x + node.width / 2.0;
-            let top = node.y - node.height / 2.0;
-            let bottom = node.y + node.height / 2.0;
+            let left = node.x;
+            let right = node.x + node.width;
+            let top = node.y;
+            let bottom = node.y + node.height;
 
             for (_, ep) in &port_assignments {
                 // Check source ports

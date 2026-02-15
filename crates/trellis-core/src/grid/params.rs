@@ -3,7 +3,7 @@ use trellis_parser::Graph;
 /// Calculate the optimal cell size based on node dimensions and edge density.
 ///
 /// Follows the spec: cellSize = floor(minDimension / R), where R depends on edge density.
-pub fn calculate_cell_size(graph: &Graph) -> i32 {
+pub fn suggest_cell_size(graph: &Graph) -> i32 {
     if graph.nodes.is_empty() {
         return 20; // default fallback
     }
@@ -48,7 +48,8 @@ pub struct GridExtent {
 /// Calculate the grid extent based on node positions, with a safety multiplier K.
 ///
 /// K starts at 1.5 and increases based on edge density, max degree, and subgraphs.
-pub fn calculate_grid_extent(graph: &Graph) -> GridExtent {
+/// Offsets are snapped to `cell_size` multiples so the grid stays aligned with nodes.
+pub fn calculate_grid_extent(graph: &Graph, cell_size: i32) -> GridExtent {
     if graph.nodes.is_empty() {
         return GridExtent {
             width: 100.0,
@@ -58,26 +59,26 @@ pub fn calculate_grid_extent(graph: &Graph) -> GridExtent {
         };
     }
 
-    // Bounding box from node positions (nodes store center coordinates)
+    // Bounding box from node positions (nodes store top-left coordinates)
     let min_x = graph
         .nodes
         .iter()
-        .map(|n| n.x - n.width / 2.0)
+        .map(|n| n.x)
         .fold(f64::INFINITY, f64::min);
     let max_x = graph
         .nodes
         .iter()
-        .map(|n| n.x + n.width / 2.0)
+        .map(|n| n.x + n.width)
         .fold(f64::NEG_INFINITY, f64::max);
     let min_y = graph
         .nodes
         .iter()
-        .map(|n| n.y - n.height / 2.0)
+        .map(|n| n.y)
         .fold(f64::INFINITY, f64::min);
     let max_y = graph
         .nodes
         .iter()
-        .map(|n| n.y + n.height / 2.0)
+        .map(|n| n.y + n.height)
         .fold(f64::NEG_INFINITY, f64::max);
 
     let bounding_width = max_x - min_x;
@@ -102,11 +103,23 @@ pub fn calculate_grid_extent(graph: &Graph) -> GridExtent {
         k += 0.2;
     }
 
+    let cs = cell_size as f64;
+
+    // Snap offsets to cell_size multiples (round down so the grid origin is before the nodes)
+    let raw_offset_x = min_x - (bounding_width * (k - 1.0) / 2.0);
+    let raw_offset_y = min_y - (bounding_height * (k - 1.0) / 2.0);
+    let offset_x = (raw_offset_x / cs).floor() as i32 * cell_size;
+    let offset_y = (raw_offset_y / cs).floor() as i32 * cell_size;
+
+    // Recompute width/height to cover from offset to max + margin, snapped up
+    let needed_w = max_x - offset_x as f64 + bounding_width * (k - 1.0) / 2.0;
+    let needed_h = max_y - offset_y as f64 + bounding_height * (k - 1.0) / 2.0;
+
     GridExtent {
-        width: (bounding_width * k).ceil(),
-        height: (bounding_height * k).ceil(),
-        offset_x: (min_x - (bounding_width * (k - 1.0) / 2.0)).floor() as i32,
-        offset_y: (min_y - (bounding_height * (k - 1.0) / 2.0)).floor() as i32,
+        width: (needed_w / cs).ceil() * cs,
+        height: (needed_h / cs).ceil() * cs,
+        offset_x,
+        offset_y,
     }
 }
 
@@ -162,7 +175,7 @@ mod tests {
         ];
         graph.edges = vec![make_edge("A", "B")];
 
-        let cell_size = calculate_cell_size(&graph);
+        let cell_size = suggest_cell_size(&graph);
         // min_dimension = 40, density < 1.5 → R=4, cell = floor(40/4) = 10
         assert_eq!(cell_size, 10);
     }
@@ -184,7 +197,7 @@ mod tests {
             make_edge("A", "B"),
         ];
 
-        let cell_size = calculate_cell_size(&graph);
+        let cell_size = suggest_cell_size(&graph);
         // min_dimension = 30, density = 3.5 > 3.0 → R=6, cell = floor(30/6) = 5
         assert_eq!(cell_size, 5);
     }
@@ -195,7 +208,7 @@ mod tests {
         graph.nodes = vec![make_node("A", 10.0, 10.0, 0.0, 0.0)];
         graph.edges = vec![];
 
-        let cell_size = calculate_cell_size(&graph);
+        let cell_size = suggest_cell_size(&graph);
         // min_dimension = 10, density = 0 → R=4, cell = floor(10/4) = 2 → max(2, 5) = 5
         assert_eq!(cell_size, 5);
     }
@@ -203,23 +216,30 @@ mod tests {
     #[test]
     fn test_grid_extent_basic() {
         let mut graph = Graph::new();
+        // Top-left coordinates: A at (0,0), B at (200,100)
         graph.nodes = vec![
-            make_node("A", 80.0, 40.0, 40.0, 20.0),  // left edge 0, right 80, top 0, bottom 40
-            make_node("B", 80.0, 40.0, 240.0, 120.0), // left 200, right 280, top 100, bottom 140
+            make_node("A", 80.0, 40.0, 0.0, 0.0),    // left 0, right 80, top 0, bottom 40
+            make_node("B", 80.0, 40.0, 200.0, 100.0), // left 200, right 280, top 100, bottom 140
         ];
         graph.edges = vec![make_edge("A", "B")];
 
-        let extent = calculate_grid_extent(&graph);
-        // bounding: width = 280-0 = 280, height = 140-0 = 140
+        let cell_size = 10;
+        let extent = calculate_grid_extent(&graph, cell_size);
+        // bounding: width = 280, height = 140
         // density = 0.5, K = 1.5
-        assert_eq!(extent.width, (280.0 * 1.5_f64).ceil());
-        assert_eq!(extent.height, (140.0 * 1.5_f64).ceil());
+        // offsets snapped to cell_size multiples, width/height snapped up
+        assert!(extent.width >= 280.0, "width {} should cover bounding box", extent.width);
+        assert!(extent.height >= 140.0, "height {} should cover bounding box", extent.height);
+        assert_eq!(extent.offset_x % cell_size, 0, "offset_x should be cell_size-aligned");
+        assert_eq!(extent.offset_y % cell_size, 0, "offset_y should be cell_size-aligned");
+        // width and height should be multiples of cell_size
+        assert_eq!((extent.width as i32) % cell_size, 0, "width should be cell_size-aligned");
     }
 
     #[test]
     fn test_grid_extent_empty() {
         let graph = Graph::new();
-        let extent = calculate_grid_extent(&graph);
+        let extent = calculate_grid_extent(&graph, 10);
         assert_eq!(extent.width, 100.0);
         assert_eq!(extent.height, 100.0);
     }

@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use crate::config::TrellisConfig;
-use crate::grid::{build_grid, calculate_cell_size, calculate_grid_extent, Grid};
+use crate::grid::{build_grid, calculate_grid_extent, Grid};
 use crate::ports::{assign_ports, EdgePorts};
 use crate::routing::astar::RoutedPath;
 use crate::routing::RoutingResult;
@@ -28,28 +28,33 @@ pub fn expand_grid_and_retry(
     // Clone the graph and scale node coordinates
     let mut scaled_graph = graph.clone();
 
-    // Scale all node positions by EXPANSION_FACTOR relative to center
-    let center_x = scaled_graph
+    // Scale all node positions by EXPANSION_FACTOR relative to centroid
+    // Node positions are top-left, so use center of each node for centroid
+    let centroid_x = scaled_graph
         .nodes
         .iter()
-        .map(|n| n.x)
+        .map(|n| n.x + n.width / 2.0)
         .sum::<f64>()
         / scaled_graph.nodes.len().max(1) as f64;
-    let center_y = scaled_graph
+    let centroid_y = scaled_graph
         .nodes
         .iter()
-        .map(|n| n.y)
+        .map(|n| n.y + n.height / 2.0)
         .sum::<f64>()
         / scaled_graph.nodes.len().max(1) as f64;
 
     for node in &mut scaled_graph.nodes {
-        node.x = center_x + (node.x - center_x) * EXPANSION_FACTOR;
-        node.y = center_y + (node.y - center_y) * EXPANSION_FACTOR;
+        let node_cx = node.x + node.width / 2.0;
+        let node_cy = node.y + node.height / 2.0;
+        let new_cx = centroid_x + (node_cx - centroid_x) * EXPANSION_FACTOR;
+        let new_cy = centroid_y + (node_cy - centroid_y) * EXPANSION_FACTOR;
+        node.x = new_cx - node.width / 2.0;
+        node.y = new_cy - node.height / 2.0;
     }
 
     // Rebuild grid and ports with expanded coordinates
-    let cell_size = calculate_cell_size(&scaled_graph);
-    let extent = calculate_grid_extent(&scaled_graph);
+    let cell_size = config.cell_size;
+    let extent = calculate_grid_extent(&scaled_graph, cell_size);
     let mut new_grid = build_grid(&scaled_graph, cell_size, &extent);
     let new_port_assignments =
         assign_ports(&scaled_graph, cell_size, extent.offset_x, extent.offset_y);

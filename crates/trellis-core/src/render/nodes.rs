@@ -1,14 +1,14 @@
 use trellis_parser::{Node, NodeShape};
 
 /// Render a single node as an SVG element string.
-/// Node positions (x, y) are center coordinates.
+/// Node positions (x, y) are top-left coordinates.
 pub fn render_node(node: &Node) -> String {
-    let cx = node.x;
-    let cy = node.y;
     let w = node.width;
     let h = node.height;
-    let left = cx - w / 2.0;
-    let top = cy - h / 2.0;
+    let left = node.x;
+    let top = node.y;
+    let cx = left + w / 2.0;
+    let cy = top + h / 2.0;
 
     let mut svg = String::new();
 

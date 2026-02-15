@@ -1,6 +1,6 @@
 use crate::{
     config::TrellisConfig,
-    grid::{build_grid, calculate_cell_size, calculate_grid_extent},
+    grid::{build_grid, calculate_grid_extent},
     placement,
     ports::assign_ports,
     routing,
@@ -18,12 +18,13 @@ pub fn render(graph: &Graph, config: &TrellisConfig, format: OutputFormat) -> Re
     // Clone the graph so we can mutate it during placement
     let mut graph = graph.clone();
 
+    let cell_size = config.cell_size;
+
     // Phase 2: Node placement (Sugiyama for flowcharts)
-    placement::place_nodes(&mut graph);
+    placement::place_nodes(&mut graph, cell_size);
 
     // Phase 3: Grid construction
-    let cell_size = calculate_cell_size(&graph);
-    let extent = calculate_grid_extent(&graph);
+    let extent = calculate_grid_extent(&graph, cell_size);
     let mut grid = build_grid(&graph, cell_size, &extent);
 
     // Phase 4: Port assignment

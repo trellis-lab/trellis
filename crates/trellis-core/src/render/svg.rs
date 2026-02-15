@@ -79,7 +79,11 @@ pub fn build_svg(
         let from_node = graph.nodes.iter().find(|n| n.id == edge.from);
         let to_node = graph.nodes.iter().find(|n| n.id == edge.to);
         if let (Some(f), Some(t)) = (from_node, to_node) {
-            let edge_svg = render_fallback_edge(edge, f.x, f.y, t.x, t.y);
+            let edge_svg = render_fallback_edge(
+                edge,
+                f.x + f.width / 2.0, f.y + f.height / 2.0,
+                t.x + t.width / 2.0, t.y + t.height / 2.0,
+            );
             svg.push_str("  ");
             svg.push_str(&edge_svg);
             svg.push('\n');
@@ -131,15 +135,10 @@ fn calculate_viewbox(
     let mut min_y = f64::INFINITY;
 
     for node in &graph.nodes {
-        let left = node.x - node.width / 2.0;
-        let right = node.x + node.width / 2.0;
-        let top = node.y - node.height / 2.0;
-        let bottom = node.y + node.height / 2.0;
-
-        min_x = min_x.min(left);
-        max_x = max_x.max(right);
-        min_y = min_y.min(top);
-        max_y = max_y.max(bottom);
+        min_x = min_x.min(node.x);
+        max_x = max_x.max(node.x + node.width);
+        min_y = min_y.min(node.y);
+        max_y = max_y.max(node.y + node.height);
     }
 
     // Also consider routed edge paths
