@@ -109,7 +109,7 @@
 * [x] PNG export (`render/png.rs` – `resvg` SVG→PNG konverzió)
 * [x] CLI `render` parancs teljes bekötése (parser → placement → grid → ports → routing → SVG → fájl)
 * [x] CLI `-f png` és `-f svg` kapcsoló működés
-* [ ] Vizuális ellenőrzés: B01–B07 fixture-ök renderelése és manuális átnézés
+* [x] Vizuális ellenőrzés: B01–B07 fixture-ök renderelése és manuális átnézés
 
 ---
 
@@ -134,14 +134,14 @@
 > **Cél:** Az élek szöveges címkéi megjelennek, ütközésmentesen.
 > **Smoke test:** Címkés élek olvashatóan jelennek meg a fixture-ökben
 
-* [ ] Szegmens kiválasztás (`labels/placement.rs` – `selectBestSegment`, középső > leghosszabb)
-* [ ] Pozíció-jelöltek generálása (vízszintes: fölötte/alatta, függőleges: balra/jobbra)
-* [ ] Ütközés-detektálás (`labels/collision.rs` – csomópontokkal, élekkel, más címkékkel)
-* [ ] Eltolás a szegmens mentén (`labels/slide.rs` – középponttól kifelé keresés)
-* [ ] Fallback pozíció (ha minden ütközik: eredeti középpont)
-* [ ] Címke SVG renderelés (háttér téglalap + szöveg)
-* [ ] Teljes pipeline bekötés: routing után, SVG renderelés előtt
-* [ ] Unit tesztek: címke-ütközés szcenáriók
+* [x] Szegmens kiválasztás (`labels/placement.rs` – `selectBestSegment`, középső > leghosszabb)
+* [x] Pozíció-jelöltek generálása (vízszintes: fölötte/alatta, függőleges: balra/jobbra)
+* [x] Ütközés-detektálás (`labels/collision.rs` – csomópontokkal, élekkel, más címkékkel)
+* [x] Eltolás a szegmens mentén (`labels/slide.rs` – középponttól kifelé keresés)
+* [x] Fallback pozíció (ha minden ütközik: eredeti középpont)
+* [x] Címke SVG renderelés (háttér téglalap + szöveg)
+* [x] Teljes pipeline bekötés: routing után, SVG renderelés előtt
+* [x] Unit tesztek: címke-ütközés szcenáriók
 
 ---
 

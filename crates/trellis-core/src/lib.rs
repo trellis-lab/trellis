@@ -1,6 +1,7 @@
 pub mod config;
 pub mod deadlock;
 pub mod grid;
+pub mod labels;
 pub mod pipeline;
 pub mod placement;
 pub mod ports;
@@ -103,6 +104,65 @@ mod tests {
         assert!(m.grid_rows > 0);
         assert!(m.grid_cols > 0);
         assert_eq!(m.port_count, 12);
+    }
+
+    // --- Edge label tests ---
+
+    #[test]
+    fn test_edge_labels_appear_in_svg() {
+        let graph = trellis_parser::parse(
+            "graph TB\n    A -->|Yes| B\n    A -->|No| C",
+        )
+        .expect("parse failed");
+        let config = TrellisConfig::default();
+        let result = render(&graph, &config, OutputFormat::Svg).expect("render failed");
+        let svg = String::from_utf8(result.data).expect("invalid utf8");
+
+        assert!(svg.contains("Yes"), "SVG should contain label 'Yes'");
+        assert!(svg.contains("No"), "SVG should contain label 'No'");
+        assert!(svg.contains("edge-labels"), "SVG should have edge-labels group");
+    }
+
+    #[test]
+    fn test_edge_labels_no_labels_no_group() {
+        let graph = trellis_parser::parse(
+            "graph TB\n    A --> B\n    B --> C",
+        )
+        .expect("parse failed");
+        let config = TrellisConfig::default();
+        let result = render(&graph, &config, OutputFormat::Svg).expect("render failed");
+        let svg = String::from_utf8(result.data).expect("invalid utf8");
+
+        assert!(!svg.contains("edge-labels"), "SVG should NOT have edge-labels group when no labels");
+    }
+
+    #[test]
+    fn test_edge_labels_inline_syntax() {
+        let graph = trellis_parser::parse(
+            "graph TB\n    A --text--> B",
+        )
+        .expect("parse failed");
+        let config = TrellisConfig::default();
+        let result = render(&graph, &config, OutputFormat::Svg).expect("render failed");
+        let svg = String::from_utf8(result.data).expect("invalid utf8");
+
+        assert!(svg.contains("text"), "SVG should contain inline label 'text'");
+    }
+
+    #[test]
+    fn test_edge_labels_collision_avoidance() {
+        // Two labeled edges between close nodes - labels should both be placed
+        let graph = trellis_parser::parse(
+            "graph TB\n    A -->|first| B\n    B -->|second| C\n    C -->|third| D",
+        )
+        .expect("parse failed");
+        let config = TrellisConfig::default();
+        let result = render(&graph, &config, OutputFormat::Svg).expect("render failed");
+        let svg = String::from_utf8(result.data).expect("invalid utf8");
+
+        assert!(svg.contains("first"), "SVG should contain label 'first'");
+        assert!(svg.contains("second"), "SVG should contain label 'second'");
+        assert!(svg.contains("third"), "SVG should contain label 'third'");
     }
 
     // --- Port symmetry tests ---

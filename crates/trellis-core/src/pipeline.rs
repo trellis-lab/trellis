@@ -1,6 +1,7 @@
 use crate::{
     config::TrellisConfig,
     grid::{build_grid, calculate_grid_extent},
+    labels,
     placement,
     ports::assign_ports,
     routing,
@@ -50,8 +51,11 @@ pub fn render(graph: &Graph, config: &TrellisConfig, format: OutputFormat) -> Re
         port_count: port_assignments.len() * 2, // source + target for each edge
     };
 
+    // Phase 8: Edge label placement
+    let label_placements = labels::place_all_labels(&graph, &routing_result.paths, &grid);
+
     // Phase 9: SVG rendering
-    let svg_data = crate::render::svg::build_svg(&graph, &grid, &routing_result, config);
+    let svg_data = crate::render::svg::build_svg(&graph, &grid, &routing_result, config, &label_placements);
 
     let data = match format {
         OutputFormat::Svg => svg_data,
