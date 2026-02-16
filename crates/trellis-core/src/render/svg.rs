@@ -1,11 +1,16 @@
+use std::collections::HashMap;
+
 use crate::config::TrellisConfig;
 use crate::grid::Grid;
 use crate::labels::LabelPlacement;
+use crate::placement::subgraph::VIRTUAL_PREFIX;
 use crate::render::crossing::render_crossings;
 use crate::render::edges::{arrow_marker_defs, render_edge, render_fallback_edge};
 use crate::render::grid::render_grid_dot;
 use crate::render::nodes::render_nodes;
+use crate::render::subgraph::render_subgraph_backgrounds;
 use crate::routing::RoutingResult;
+use crate::types::{BoundingBox, SubgraphTree};
 use trellis_parser::Graph;
 
 /// Build the complete SVG document from graph, grid, routing data, and label placements.
@@ -15,6 +20,7 @@ pub fn build_svg(
     routing_result: &RoutingResult,
     config: &TrellisConfig,
     label_placements: &[LabelPlacement],
+    subgraph_data: Option<&(SubgraphTree, HashMap<String, BoundingBox>)>,
 ) -> Vec<u8> {
     if graph.nodes.is_empty() {
         return b"<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"400\" height=\"300\">\
@@ -22,8 +28,8 @@ pub fn build_svg(
             .to_vec();
     }
 
-    // Calculate viewBox from node positions and routed paths
-    let (vx, vy, vw, vh) = calculate_viewbox(graph, grid, routing_result);
+    // Calculate viewBox from node positions, routed paths, and subgraph boxes
+    let (vx, vy, vw, vh) = calculate_viewbox(graph, grid, routing_result, subgraph_data);
 
     let mut svg = String::with_capacity(4096);
 
@@ -60,7 +66,22 @@ pub fn build_svg(
     svg.push_str(arrow_marker_defs());
     svg.push('\n');
 
-    // Z-order: 1. subgraph backgrounds (future M9), 2. edges, 3. nodes, 4. edge labels
+    // Z-order: 1. subgraph backgrounds, 2. edges, 3. nodes, 4. edge labels
+
+    // --- Subgraph backgrounds (below everything) ---
+    if let Some((tree, boxes)) = subgraph_data {
+        let sg_svg = render_subgraph_backgrounds(tree, boxes);
+        if !sg_svg.is_empty() {
+            svg.push_str("<!-- Subgraph Backgrounds -->\n");
+            svg.push_str("<g class=\"subgraphs\">\n");
+            for line in sg_svg.lines() {
+                svg.push_str("  ");
+                svg.push_str(line);
+                svg.push('\n');
+            }
+            svg.push_str("</g>\n");
+        }
+    }
 
     // --- Edges ---
     svg.push_str("<!-- Edges -->\n");
@@ -109,7 +130,14 @@ pub fn build_svg(
     // --- Nodes (on top of edges) ---
     svg.push_str("<!-- Nodes -->\n");
     svg.push_str("<g class=\"nodes\">\n");
-    let nodes_svg = render_nodes(&graph.nodes);
+    // Filter out virtual subgraph nodes
+    let visible_nodes: Vec<_> = graph
+        .nodes
+        .iter()
+        .filter(|n| !n.id.starts_with(VIRTUAL_PREFIX))
+        .cloned()
+        .collect();
+    let nodes_svg = render_nodes(&visible_nodes);
     for line in nodes_svg.lines() {
         svg.push_str("  ");
         svg.push_str(line);
@@ -164,11 +192,13 @@ fn escape_xml(text: &str) -> String {
         .replace('\'', "&apos;")
 }
 
-/// Calculate the viewBox (origin x, origin y, width, height) from nodes and routed paths.
+/// Calculate the viewBox (origin x, origin y, width, height) from nodes, routed paths,
+/// and subgraph bounding boxes.
 fn calculate_viewbox(
     graph: &Graph,
     grid: &Grid,
     routing_result: &RoutingResult,
+    subgraph_data: Option<&(SubgraphTree, HashMap<String, BoundingBox>)>,
 ) -> (f64, f64, f64, f64) {
     let padding = grid.cell_size as f64;
 
@@ -201,6 +231,16 @@ fn calculate_viewbox(
         }
     }
 
+    // Also consider subgraph bounding boxes
+    if let Some((_tree, boxes)) = subgraph_data {
+        for bbox in boxes.values() {
+            min_x = min_x.min(bbox.x);
+            max_x = max_x.max(bbox.x + bbox.width);
+            min_y = min_y.min(bbox.y);
+            max_y = max_y.max(bbox.y + bbox.height);
+        }
+    }
+
     let origin_x = min_x - padding;
     let origin_y = min_y - padding;
     let width = (max_x - min_x + 2.0 * padding).ceil();
@@ -226,7 +266,7 @@ mod tests {
         };
         let config = TrellisConfig::default();
 
-        let svg = build_svg(&graph, &grid, &routing, &config, &[]);
+        let svg = build_svg(&graph, &grid, &routing, &config, &[], None);
         let svg_str = String::from_utf8(svg).unwrap();
         assert!(svg_str.contains("<svg"));
         assert!(svg_str.contains("</svg>"));

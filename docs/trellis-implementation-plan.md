@@ -150,13 +150,13 @@
 > **Cél:** Subgraph-ok vizuálisan csoportosítva jelennek meg, kerettel és címkével.
 > **Smoke test:** B08 (nested subgraph) és B09 (subgraph edges) renderelődik
 
-* [ ] Subgraph fa felépítése (`placement/subgraph.rs` – `buildSubgraphTree`, szülő-gyerek mapping)
-* [ ] Rekurzív elhelyezés bottom-up (`placeSubgraphRecursive` – virtuális csomópontok, lokális→globális offset)
-* [ ] Bounding box számítás (padding + label height)
-* [ ] Subgraph élek feloldása (`resolveSubgraphEdges` – virtuális csomópontok, `blocksGrid: false`)
-* [ ] Subgraph keret renderelés (`render/subgraph.rs` – szaggatott keret, háttérszín mélység szerint, címke)
-* [ ] Z-order: subgraph háttér → élek → csomópontok → címkék
-* [ ] Unit tesztek: B08 (nested), B09 (subgraph edges)
+* [x] Subgraph fa felépítése (`placement/subgraph.rs` – `buildSubgraphTree`, szülő-gyerek mapping)
+* [x] Rekurzív elhelyezés bottom-up (`placeSubgraphRecursive` – virtuális csomópontok, lokális→globális offset)
+* [x] Bounding box számítás (padding + label height)
+* [x] Subgraph élek feloldása (`resolveSubgraphEdges` – virtuális csomópontok, `blocksGrid: false`)
+* [x] Subgraph keret renderelés (`render/subgraph.rs` – szaggatott keret, háttérszín mélység szerint, címke)
+* [x] Z-order: subgraph háttér → élek → csomópontok → címkék
+* [x] Unit tesztek: B08 (nested), B09 (subgraph edges)
 
 ---
 

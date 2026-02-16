@@ -1,7 +1,11 @@
 pub mod snap;
+pub mod subgraph;
 pub mod sugiyama;
 
+use std::collections::HashMap;
 use trellis_parser::{Graph, NodeShape};
+
+use crate::types::{BoundingBox, SubgraphTree};
 
 /// Layer spacing in pixels (distance between layers)
 pub const LAYER_SPACING: f64 = 100.0;
@@ -10,24 +14,35 @@ pub const LAYER_SPACING: f64 = 100.0;
 pub const NODE_SPACING: f64 = 80.0;
 
 /// Place all nodes in the graph by assigning (x, y) coordinates.
-/// Currently only supports flowcharts via Sugiyama layout.
+///
+/// If the graph contains subgraphs, uses recursive bottom-up placement
+/// and returns the subgraph tree and bounding boxes for rendering.
 ///
 /// `cell_size` is used to snap node dimensions to grid-point multiples.
-pub fn place_nodes(graph: &mut Graph, cell_size: i32) {
+pub fn place_nodes(
+    graph: &mut Graph,
+    cell_size: i32,
+) -> Option<(SubgraphTree, HashMap<String, BoundingBox>)> {
     snap_node_dimensions_to_grid(graph, cell_size);
 
-    match graph.diagram_type {
-        trellis_parser::DiagramType::Flowchart => {
-            sugiyama::layout(graph);
+    if !graph.subgraphs.is_empty() {
+        // Subgraph-aware placement (M9)
+        let result = subgraph::place_with_subgraphs(graph, cell_size);
+        snap_node_positions_to_grid(graph, cell_size);
+        Some(result)
+    } else {
+        match graph.diagram_type {
+            trellis_parser::DiagramType::Flowchart => {
+                sugiyama::layout(graph);
+            }
+            // Other diagram types will be implemented in M10
+            _ => {
+                sugiyama::layout(graph);
+            }
         }
-        // Other diagram types will be implemented in M10
-        _ => {
-            sugiyama::layout(graph);
-        }
+        snap_node_positions_to_grid(graph, cell_size);
+        None
     }
-
-    // Snap top-left positions to grid points
-    snap_node_positions_to_grid(graph, cell_size);
 }
 
 /// Snap node top-left positions to the nearest grid points.

@@ -1,4 +1,5 @@
 use super::params::GridExtent;
+use crate::placement::subgraph::VIRTUAL_PREFIX;
 use trellis_parser::Graph;
 
 /// State of a grid cell
@@ -164,6 +165,8 @@ pub fn build_grid(graph: &Graph, cell_size: i32, extent: &GridExtent) -> Grid {
     let mut connectors: Vec<(i64, i64, BoundarySide)> = Vec::new();
 
     for node in &graph.nodes {
+        let is_virtual = node.id.starts_with(VIRTUAL_PREFIX);
+
         // Node grid coordinates (top-left is on a grid point)
         let gc = ((node.x - ox) / cs).round() as i64;
         let gr = ((node.y - oy) / cs).round() as i64;
@@ -188,27 +191,47 @@ pub fn build_grid(graph: &Graph, cell_size: i32, extent: &GridExtent) -> Grid {
                 let is_corner = (on_top || on_bottom) && (on_left || on_right);
 
                 if let Some(cell) = grid.get_mut(row as usize, col as usize) {
-                    if !on_boundary || is_corner {
-                        // Interior or corner → blocked
-                        cell.state = CellState::Blocked;
-                        cell.cost = f64::INFINITY;
+                    if is_virtual {
+                        // Virtual subgraph nodes: don't block cells, but mark
+                        // boundary cells for perpendicularity enforcement so
+                        // edges approach the subgraph frame perpendicularly.
+                        if on_boundary && !is_corner {
+                            let side = if on_top {
+                                BoundarySide::Top
+                            } else if on_bottom {
+                                BoundarySide::Bottom
+                            } else if on_left {
+                                BoundarySide::Left
+                            } else {
+                                BoundarySide::Right
+                            };
+                            cell.boundary_side = Some(side);
+                            cell.is_boundary_connector = true;
+                            cell.owner = Some(node.id.clone());
+                            connectors.push((row, col, side));
+                        }
                     } else {
-                        // Boundary non-corner → Free connector point
-                        // Determine which side this connector is on
-                        let side = if on_top {
-                            BoundarySide::Top
-                        } else if on_bottom {
-                            BoundarySide::Bottom
-                        } else if on_left {
-                            BoundarySide::Left
+                        if !on_boundary || is_corner {
+                            // Interior or corner → blocked
+                            cell.state = CellState::Blocked;
+                            cell.cost = f64::INFINITY;
                         } else {
-                            BoundarySide::Right
-                        };
-                        cell.boundary_side = Some(side);
-                        cell.is_boundary_connector = true;
-                        connectors.push((row, col, side));
+                            // Boundary non-corner → Free connector point
+                            let side = if on_top {
+                                BoundarySide::Top
+                            } else if on_bottom {
+                                BoundarySide::Bottom
+                            } else if on_left {
+                                BoundarySide::Left
+                            } else {
+                                BoundarySide::Right
+                            };
+                            cell.boundary_side = Some(side);
+                            cell.is_boundary_connector = true;
+                            connectors.push((row, col, side));
+                        }
+                        cell.owner = Some(node.id.clone());
                     }
-                    cell.owner = Some(node.id.clone());
                 }
             }
         }

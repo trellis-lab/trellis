@@ -3,4 +3,5 @@ pub mod edges;
 pub mod grid;
 pub mod nodes;
 pub mod png;
+pub mod subgraph;
 pub mod svg;

@@ -21,8 +21,13 @@ pub fn render(graph: &Graph, config: &TrellisConfig, format: OutputFormat) -> Re
 
     let cell_size = config.cell_size;
 
-    // Phase 2: Node placement (Sugiyama for flowcharts)
-    placement::place_nodes(&mut graph, cell_size);
+    // Phase 2: Node placement (Sugiyama for flowcharts, subgraph-aware if needed)
+    let subgraph_data = placement::place_nodes(&mut graph, cell_size);
+
+    // Phase 2.5: Resolve subgraph edges (create virtual nodes for edges targeting subgraphs)
+    if let Some((ref _tree, ref boxes)) = subgraph_data {
+        placement::subgraph::resolve_subgraph_edges(&mut graph, boxes);
+    }
 
     // Phase 3: Grid construction
     let extent = calculate_grid_extent(&graph, cell_size);
@@ -55,7 +60,14 @@ pub fn render(graph: &Graph, config: &TrellisConfig, format: OutputFormat) -> Re
     let label_placements = labels::place_all_labels(&graph, &routing_result.paths, &grid);
 
     // Phase 9: SVG rendering
-    let svg_data = crate::render::svg::build_svg(&graph, &grid, &routing_result, config, &label_placements);
+    let svg_data = crate::render::svg::build_svg(
+        &graph,
+        &grid,
+        &routing_result,
+        config,
+        &label_placements,
+        subgraph_data.as_ref(),
+    );
 
     let data = match format {
         OutputFormat::Svg => svg_data,
