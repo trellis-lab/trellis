@@ -115,9 +115,30 @@ pub fn calculate_grid_extent(graph: &Graph, cell_size: i32) -> GridExtent {
     let needed_w = max_x - offset_x as f64 + bounding_width * (k - 1.0) / 2.0;
     let needed_h = max_y - offset_y as f64 + bounding_height * (k - 1.0) / 2.0;
 
+    let mut width = (needed_w / cs).ceil() * cs;
+    let mut height = (needed_h / cs).ceil() * cs;
+    let mut offset_x = offset_x;
+    let mut offset_y = offset_y;
+
+    // Enforce minimum grid dimensions (200px wide, 150px tall).
+    // When expanding, grow symmetrically by shifting the offset left/up.
+    let min_width = 200.0_f64;
+    let min_height = 150.0_f64;
+
+    if width < min_width {
+        let extra = ((min_width - width) / 2.0 / cs).ceil() * cs;
+        offset_x -= extra as i32;
+        width += extra * 2.0;
+    }
+    if height < min_height {
+        let extra = ((min_height - height) / 2.0 / cs).ceil() * cs;
+        offset_y -= extra as i32;
+        height += extra * 2.0;
+    }
+
     GridExtent {
-        width: (needed_w / cs).ceil() * cs,
-        height: (needed_h / cs).ceil() * cs,
+        width,
+        height,
         offset_x,
         offset_y,
     }
@@ -242,5 +263,44 @@ mod tests {
         let extent = calculate_grid_extent(&graph, 10);
         assert_eq!(extent.width, 100.0);
         assert_eq!(extent.height, 100.0);
+    }
+
+    #[test]
+    fn test_grid_extent_minimum_width() {
+        // A single small node that produces a narrow grid
+        let mut graph = Graph::new();
+        graph.nodes = vec![make_node("A", 60.0, 40.0, 50.0, 50.0)];
+        graph.edges = vec![];
+
+        let cell_size = 10;
+        let extent = calculate_grid_extent(&graph, cell_size);
+        assert!(
+            extent.width >= 200.0,
+            "Grid width {} should be at least 200px",
+            extent.width
+        );
+        assert_eq!((extent.width as i32) % cell_size, 0);
+        assert_eq!(extent.offset_x % cell_size, 0);
+    }
+
+    #[test]
+    fn test_grid_extent_minimum_height() {
+        // Two nodes close together horizontally → short grid
+        let mut graph = Graph::new();
+        graph.nodes = vec![
+            make_node("A", 60.0, 40.0, 0.0, 50.0),
+            make_node("B", 60.0, 40.0, 100.0, 50.0),
+        ];
+        graph.edges = vec![make_edge("A", "B")];
+
+        let cell_size = 10;
+        let extent = calculate_grid_extent(&graph, cell_size);
+        assert!(
+            extent.height >= 150.0,
+            "Grid height {} should be at least 150px",
+            extent.height
+        );
+        assert_eq!((extent.height as i32) % cell_size, 0);
+        assert_eq!(extent.offset_y % cell_size, 0);
     }
 }

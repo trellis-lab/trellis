@@ -72,16 +72,16 @@ pub fn movement_cost(
             // Adjacent occupied cell penalty
             cost += adjacent_penalty(grid, to_row, to_col, costs);
 
-            // Perpendicularity penalty: penalize movement parallel to a node boundary.
-            // Connector cells (directly on the boundary) get a much stronger penalty
-            // to ensure the very first/last edge segment is perpendicular.
-            // Approach-zone cells (1 cell outside) get a softer penalty.
-            if let Some(boundary_side) = cell.boundary_side {
-                if is_parallel_to_boundary(new_direction, boundary_side) {
-                    if cell.is_boundary_connector {
+            // Perpendicularity penalty: penalize movement parallel to a node boundary
+            // on connector cells (directly on the boundary) to ensure the very
+            // first/last edge segment is perpendicular.
+            // Only applied to connector cells, NOT approach-zone cells, because
+            // approach-zone penalties would penalize pass-through traffic and
+            // push edges into worse routes (e.g., crossing existing edges).
+            if cell.is_boundary_connector {
+                if let Some(boundary_side) = cell.boundary_side {
+                    if is_parallel_to_boundary(new_direction, boundary_side) {
                         cost += costs.perpendicular_cost * 4.0;
-                    } else {
-                        cost += costs.perpendicular_cost;
                     }
                 }
             }
@@ -177,23 +177,28 @@ mod tests {
     }
 
     #[test]
-    fn test_perpendicular_penalty_parallel_to_top_boundary() {
+    fn test_perpendicular_penalty_parallel_to_top_boundary_connector() {
         let mut grid = Grid::new(10, 10, 10, 0, 0);
-        grid.get_mut(3, 5).unwrap().boundary_side = Some(BoundarySide::Top);
+        let cell = grid.get_mut(3, 5).unwrap();
+        cell.boundary_side = Some(BoundarySide::Top);
+        cell.is_boundary_connector = true;
 
         let costs = default_costs();
-        // Moving Left along a Top boundary → parallel → should incur penalty
+        // Moving Left along a Top boundary connector → parallel → should incur 4x penalty
         let cost = movement_cost(&grid, 3, 5, None, Direction::Left, &costs);
+        let expected = costs.base_cost + costs.perpendicular_cost * 4.0;
         assert!(
-            (cost - (costs.base_cost + costs.perpendicular_cost)).abs() < 0.01,
-            "Parallel movement along Top boundary should add perpendicular_cost"
+            (cost - expected).abs() < 0.01,
+            "Parallel movement along Top boundary connector should add 4x perpendicular_cost"
         );
     }
 
     #[test]
     fn test_perpendicular_no_penalty_when_approaching_perpendicularly() {
         let mut grid = Grid::new(10, 10, 10, 0, 0);
-        grid.get_mut(3, 5).unwrap().boundary_side = Some(BoundarySide::Top);
+        let cell = grid.get_mut(3, 5).unwrap();
+        cell.boundary_side = Some(BoundarySide::Top);
+        cell.is_boundary_connector = true;
 
         let costs = default_costs();
         // Moving Down toward a Top boundary → perpendicular → no penalty
@@ -205,16 +210,19 @@ mod tests {
     }
 
     #[test]
-    fn test_perpendicular_penalty_parallel_to_right_boundary() {
+    fn test_perpendicular_penalty_parallel_to_right_boundary_connector() {
         let mut grid = Grid::new(10, 10, 10, 0, 0);
-        grid.get_mut(5, 7).unwrap().boundary_side = Some(BoundarySide::Right);
+        let cell = grid.get_mut(5, 7).unwrap();
+        cell.boundary_side = Some(BoundarySide::Right);
+        cell.is_boundary_connector = true;
 
         let costs = default_costs();
-        // Moving Up along a Right boundary → parallel → should incur penalty
+        // Moving Up along a Right boundary connector → parallel → should incur 4x penalty
         let cost = movement_cost(&grid, 5, 7, None, Direction::Up, &costs);
+        let expected = costs.base_cost + costs.perpendicular_cost * 4.0;
         assert!(
-            (cost - (costs.base_cost + costs.perpendicular_cost)).abs() < 0.01,
-            "Parallel movement along Right boundary should add perpendicular_cost"
+            (cost - expected).abs() < 0.01,
+            "Parallel movement along Right boundary connector should add 4x perpendicular_cost"
         );
         // Moving Right toward a Right boundary → perpendicular → no penalty
         let cost = movement_cost(&grid, 5, 7, None, Direction::Right, &costs);
@@ -253,15 +261,20 @@ mod tests {
     }
 
     #[test]
-    fn test_approach_zone_gets_softer_penalty_than_connector() {
+    fn test_approach_zone_gets_no_perpendicular_penalty() {
         let costs = default_costs();
 
-        // Approach zone cell (not a connector)
+        // Approach zone cell (not a connector) — should get NO perpendicular penalty
         let mut grid = Grid::new(10, 10, 10, 0, 0);
         grid.get_mut(5, 7).unwrap().boundary_side = Some(BoundarySide::Left);
         let approach_cost = movement_cost(&grid, 5, 7, None, Direction::Down, &costs);
+        assert!(
+            (approach_cost - costs.base_cost).abs() < 0.01,
+            "Approach zone cell should not incur perpendicular penalty, got {}",
+            approach_cost
+        );
 
-        // Connector cell
+        // Connector cell — should get 4x penalty
         let mut grid2 = Grid::new(10, 10, 10, 0, 0);
         let cell = grid2.get_mut(5, 7).unwrap();
         cell.boundary_side = Some(BoundarySide::Left);
@@ -270,7 +283,7 @@ mod tests {
 
         assert!(
             connector_cost > approach_cost,
-            "Connector penalty ({}) should be stronger than approach zone penalty ({})",
+            "Connector penalty ({}) should be stronger than approach zone ({})",
             connector_cost,
             approach_cost
         );
