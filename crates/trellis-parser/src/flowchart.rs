@@ -119,8 +119,22 @@ struct NodeRef {
     shape: Option<NodeShape>,
 }
 
+/// Maps a node shape specifier to a `NodeShape`.
+/// Each entry is `(open_delimiter, close_delimiter, shape)`.
+/// `parse_node_ref` sorts these by open-delimiter length (descending) at runtime,
+/// so the declaration order here does not matter.
+const NODE_SHAPES: &[(&str, &str, NodeShape)] = &[
+    ("((", "))", NodeShape::Circle),
+    ("{{", "}}", NodeShape::Hexagon),
+    ("[",  "]",  NodeShape::Rectangle),
+    ("(",  ")",  NodeShape::RoundedRectangle),
+    ("{",  "}",  NodeShape::Diamond),
+    // TODO: Add cylinder support - MVP
+    // TODO: Add custom shape string support - Future release
+];
+
 /// Parse a node reference: `ID`, `ID[label]`, `ID(label)`, `ID{label}`,
-/// `ID((label))`, `ID{{label}}`, or `ID>label]`
+/// `ID((label))`, or `ID{{label}}`
 fn parse_node_ref(input: &str) -> Option<(NodeRef, &str)> {
     let input = input.trim_start();
     if input.is_empty() {
@@ -139,87 +153,26 @@ fn parse_node_ref(input: &str) -> Option<(NodeRef, &str)> {
     let id = &input[..id_end];
     let rest = &input[id_end..];
 
-    // Try to parse shape/label (longer prefixes first to avoid ambiguity)
+    // Sort by open-delimiter length descending so that longer (more-specific)
+    // delimiters like "((" are always tried before shorter ones like "(".
+    let mut sorted_shapes = NODE_SHAPES.to_vec();
+    sorted_shapes.sort_by(|a, b| b.0.len().cmp(&a.0.len()));
 
-    // TODO: Make it more readable with for loop and preconfigured setup. E.g., { "((", "))", NodeShape::Circle }
-
-    // ((label)) → Circle
-    if let Some(line_content) = rest.strip_prefix("((") {
-        if let Some(close) = line_content.find("))") {
-            let label = strip_quotes(rest[2..2 + close].trim());
-            return Some((
-                NodeRef {
-                    id: id.to_string(),
-                    label: Some(label),
-                    shape: Some(NodeShape::Circle),
-                },
-                &rest[2 + close + 2..],
-            ));
+    for (open, close, shape) in sorted_shapes {
+        if let Some(inner) = rest.strip_prefix(open) {
+            if let Some(close_pos) = inner.find(close) {
+                let label = strip_quotes(inner[..close_pos].trim());
+                return Some((
+                    NodeRef {
+                        id: id.to_string(),
+                        label: Some(label),
+                        shape: Some(shape),
+                    },
+                    &rest[open.len() + close_pos + close.len()..],
+                ));
+            }
         }
     }
-
-    // {{label}} → Hexagon
-    if let Some(line_content) = rest.strip_prefix("{{") {
-        if let Some(close) = line_content.find("}}") {
-            let label = strip_quotes(rest[2..2 + close].trim());
-            return Some((
-                NodeRef {
-                    id: id.to_string(),
-                    label: Some(label),
-                    shape: Some(NodeShape::Hexagon),
-                },
-                &rest[2 + close + 2..],
-            ));
-        }
-    }
-
-    // [label] → Rectangle
-    if let Some(line_content) = rest.strip_prefix("[") {
-        if let Some(close) = line_content.find(']') {
-            let label = strip_quotes(rest[1..1 + close].trim());
-            return Some((
-                NodeRef {
-                    id: id.to_string(),
-                    label: Some(label),
-                    shape: Some(NodeShape::Rectangle),
-                },
-                &rest[1 + close + 1..],
-            ));
-        }
-    }
-
-    // (label) → RoundedRectangle
-    if rest.starts_with('(') && !rest.starts_with("((") {
-        if let Some(close) = rest[1..].find(')') {
-            let label = strip_quotes(rest[1..1 + close].trim());
-            return Some((
-                NodeRef {
-                    id: id.to_string(),
-                    label: Some(label),
-                    shape: Some(NodeShape::RoundedRectangle),
-                },
-                &rest[1 + close + 1..],
-            ));
-        }
-    }
-
-    // {label} → Diamond
-    if rest.starts_with('{') && !rest.starts_with("{{") {
-        if let Some(close) = rest[1..].find('}') {
-            let label = strip_quotes(rest[1..1 + close].trim());
-            return Some((
-                NodeRef {
-                    id: id.to_string(),
-                    label: Some(label),
-                    shape: Some(NodeShape::Diamond),
-                },
-                &rest[1 + close + 1..],
-            ));
-        }
-    }
-
-    // TODO: Add cylinder support - MVP
-    // TODO: Add custom shape string support - Future release
 
     // No shape → just the ID
     Some((
