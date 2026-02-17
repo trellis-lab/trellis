@@ -34,10 +34,14 @@ pub fn render_node(node: &Node) -> String {
             // Diamond: four points at top, right, bottom, left of center
             let points = format!(
                 "{:.1},{:.1} {:.1},{:.1} {:.1},{:.1} {:.1},{:.1}",
-                cx, top,           // top
-                left + w, cy,      // right
-                cx, top + h,       // bottom
-                left, cy,          // left
+                cx,
+                top, // top
+                left + w,
+                cy, // right
+                cx,
+                top + h, // bottom
+                left,
+                cy, // left
             );
             svg.push_str(&format!(
                 "<polygon points=\"{}\" \
@@ -58,17 +62,183 @@ pub fn render_node(node: &Node) -> String {
             let dx = w / 4.0;
             let points = format!(
                 "{:.1},{:.1} {:.1},{:.1} {:.1},{:.1} {:.1},{:.1} {:.1},{:.1} {:.1},{:.1}",
-                left + dx, top,           // top-left
-                left + w - dx, top,       // top-right
-                left + w, cy,             // right
-                left + w - dx, top + h,   // bottom-right
-                left + dx, top + h,       // bottom-left
-                left, cy,                 // left
+                left + dx,
+                top, // top-left
+                left + w - dx,
+                top, // top-right
+                left + w,
+                cy, // right
+                left + w - dx,
+                top + h, // bottom-right
+                left + dx,
+                top + h, // bottom-left
+                left,
+                cy, // left
             );
             svg.push_str(&format!(
                 "<polygon points=\"{}\" \
                  fill=\"#f3e5f5\" stroke=\"#8e24aa\" stroke-width=\"1.5\"/>\n",
                 points,
+            ));
+        }
+        NodeShape::Stadium => {
+            // Stadium: rectangle with fully-rounded ends (rx = half height)
+            svg.push_str(&format!(
+                "<rect x=\"{:.1}\" y=\"{:.1}\" width=\"{:.1}\" height=\"{:.1}\" rx=\"{:.1}\" \
+                 fill=\"#e8f4fd\" stroke=\"#4a90d9\" stroke-width=\"1.5\"/>\n",
+                left,
+                top,
+                w,
+                h,
+                h / 2.0,
+            ));
+        }
+        NodeShape::Subroutine => {
+            // Subroutine: rectangle with inner vertical lines 6 px from each side
+            svg.push_str(&format!(
+                "<rect x=\"{:.1}\" y=\"{:.1}\" width=\"{:.1}\" height=\"{:.1}\" \
+                 fill=\"#e8f4fd\" stroke=\"#4a90d9\" stroke-width=\"1.5\"/>\n",
+                left, top, w, h,
+            ));
+            let inset = 6.0;
+            svg.push_str(&format!(
+                "<line x1=\"{:.1}\" y1=\"{:.1}\" x2=\"{:.1}\" y2=\"{:.1}\" \
+                 stroke=\"#4a90d9\" stroke-width=\"1.5\"/>\n",
+                left + inset,
+                top,
+                left + inset,
+                top + h,
+            ));
+            svg.push_str(&format!(
+                "<line x1=\"{:.1}\" y1=\"{:.1}\" x2=\"{:.1}\" y2=\"{:.1}\" \
+                 stroke=\"#4a90d9\" stroke-width=\"1.5\"/>\n",
+                left + w - inset,
+                top,
+                left + w - inset,
+                top + h,
+            ));
+        }
+        NodeShape::Asymmetric => {
+            // Asymmetric (flag/tag): left side has an inward notch at mid-height, right side is flat
+            let tip = h / 3.0;
+            let right = left + w;
+            let points = format!(
+                "{:.1},{:.1} {:.1},{:.1} {:.1},{:.1} {:.1},{:.1} {:.1},{:.1}",
+                left,
+                top, // top-left
+                right,
+                top, // top-right
+                right,
+                top + h, // bottom-right
+                left,
+                top + h, // bottom-left
+                left + tip,
+                cy, // inward notch pointing right (into the shape)
+            );
+            svg.push_str(&format!(
+                "<polygon points=\"{}\" \
+                 fill=\"#e8f4fd\" stroke=\"#4a90d9\" stroke-width=\"1.5\"/>\n",
+                points,
+            ));
+        }
+        NodeShape::Parallelogram => {
+            // Parallelogram: both sides slant like / (leans right)
+            let skew = h / 4.0;
+            let right = left + w;
+            let points = format!(
+                "{:.1},{:.1} {:.1},{:.1} {:.1},{:.1} {:.1},{:.1}",
+                left + skew,
+                top, // top-left
+                right,
+                top, // top-right
+                right - skew,
+                top + h, // bottom-right
+                left,
+                top + h, // bottom-left
+            );
+            svg.push_str(&format!(
+                "<polygon points=\"{}\" \
+                 fill=\"#e8f4fd\" stroke=\"#4a90d9\" stroke-width=\"1.5\"/>\n",
+                points,
+            ));
+        }
+        NodeShape::ParallelogramAlt => {
+            // Parallelogram alt: both sides slant like \ (leans left)
+            let skew = h / 4.0;
+            let right = left + w;
+            let points = format!(
+                "{:.1},{:.1} {:.1},{:.1} {:.1},{:.1} {:.1},{:.1}",
+                left,
+                top, // top-left
+                right - skew,
+                top, // top-right
+                right,
+                top + h, // bottom-right
+                left + skew,
+                top + h, // bottom-left
+            );
+            svg.push_str(&format!(
+                "<polygon points=\"{}\" \
+                 fill=\"#e8f4fd\" stroke=\"#4a90d9\" stroke-width=\"1.5\"/>\n",
+                points,
+            ));
+        }
+        NodeShape::TrapezoidAlt => {
+            // Trapezoid [/label\]: wider at top, narrower at bottom
+            let skew = h / 4.0;
+            let right = left + w;
+            let points = format!(
+                "{:.1},{:.1} {:.1},{:.1} {:.1},{:.1} {:.1},{:.1}",
+                left,
+                top, // top-left
+                right,
+                top, // top-right
+                right - skew,
+                top + h, // bottom-right
+                left + skew,
+                top + h, // bottom-left
+            );
+            svg.push_str(&format!(
+                "<polygon points=\"{}\" \
+                 fill=\"#e8f4fd\" stroke=\"#4a90d9\" stroke-width=\"1.5\"/>\n",
+                points,
+            ));
+        }
+        NodeShape::Trapezoid => {
+            // Trapezoid alt [\label/]: wider at bottom, narrower at top
+            let skew = h / 4.0;
+            let right = left + w;
+            let points = format!(
+                "{:.1},{:.1} {:.1},{:.1} {:.1},{:.1} {:.1},{:.1}",
+                left + skew,
+                top, // top-left
+                right - skew,
+                top, // top-right
+                right,
+                top + h, // bottom-right
+                left,
+                top + h, // bottom-left
+            );
+            svg.push_str(&format!(
+                "<polygon points=\"{}\" \
+                 fill=\"#e8f4fd\" stroke=\"#4a90d9\" stroke-width=\"1.5\"/>\n",
+                points,
+            ));
+        }
+        NodeShape::DoubleCircle => {
+            // Double circle: two concentric circles; inner ring drawn with fill=none
+            let r = w.max(h) / 2.0;
+            svg.push_str(&format!(
+                "<circle cx=\"{:.1}\" cy=\"{:.1}\" r=\"{:.1}\" \
+                 fill=\"#e8f5e9\" stroke=\"#43a047\" stroke-width=\"1.5\"/>\n",
+                cx, cy, r,
+            ));
+            svg.push_str(&format!(
+                "<circle cx=\"{:.1}\" cy=\"{:.1}\" r=\"{:.1}\" \
+                 fill=\"none\" stroke=\"#43a047\" stroke-width=\"1.5\"/>\n",
+                cx,
+                cy,
+                r - 5.0,
             ));
         }
         NodeShape::Cylinder => {
@@ -89,18 +259,26 @@ pub fn render_node(node: &Node) -> String {
                             A {:.1},{:.1} 0 0 0 {:.1},{:.1} \
                             L {:.1},{:.1} Z\" \
                  fill=\"#e8f4fd\" stroke=\"#4a90d9\" stroke-width=\"1.5\"/>\n",
-                left,  top + ry,       // M top-left
-                left,  top + h - ry,   // L bottom-left
-                rx, ry,                // A radii
-                right, top + h - ry,   // A end bottom-right (through bottom)
-                right, top + ry,       // L top-right
+                left,
+                top + ry, // M top-left
+                left,
+                top + h - ry, // L bottom-left
+                rx,
+                ry, // A radii
+                right,
+                top + h - ry, // A end bottom-right (through bottom)
+                right,
+                top + ry, // L top-right
             ));
             // Top ellipse — slightly lighter fill to suggest the top face.
             // Its fill hides the straight closing line of the body path.
             svg.push_str(&format!(
                 "<ellipse cx=\"{:.1}\" cy=\"{:.1}\" rx=\"{:.1}\" ry=\"{:.1}\" \
                  fill=\"#cce5ff\" stroke=\"#4a90d9\" stroke-width=\"1.5\"/>\n",
-                cx, top + ry, rx, ry,
+                cx,
+                top + ry,
+                rx,
+                ry,
             ));
             // Push the label below the top ellipse so it stays readable.
             label_cy += 10.0;

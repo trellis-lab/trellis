@@ -70,6 +70,14 @@ pub enum NodeShape {
     Circle,
     Hexagon,
     Cylinder,
+    Stadium,
+    Subroutine,
+    Asymmetric,
+    Parallelogram,
+    ParallelogramAlt,
+    Trapezoid,
+    TrapezoidAlt,
+    DoubleCircle,
 }
 
 /// Style of an edge

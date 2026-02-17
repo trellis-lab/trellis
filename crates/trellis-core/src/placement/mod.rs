@@ -77,8 +77,8 @@ fn snap_node_dimensions_to_grid(graph: &mut Graph, cell_size: i32) {
             h_points += 1;
         }
 
-        // Correct circles
-        if node.shape == NodeShape::Circle {
+        // Correct circles and double-circles: force equal width and height
+        if node.shape == NodeShape::Circle || node.shape == NodeShape::DoubleCircle {
             let max = w_points.max(h_points);
             w_points = max;
             h_points = max;

@@ -124,12 +124,20 @@ struct NodeRef {
 /// `parse_node_ref` sorts these by open-delimiter length (descending) at runtime,
 /// so the declaration order here does not matter.
 const NODE_SHAPES: &[(&str, &str, NodeShape)] = &[
+    ("(((", ")))", NodeShape::DoubleCircle),
     ("((", "))", NodeShape::Circle),
+    ("([", "])", NodeShape::Stadium),
     ("{{", "}}", NodeShape::Hexagon),
-    ("[",  "]",  NodeShape::Rectangle),
-    ("(",  ")",  NodeShape::RoundedRectangle),
-    ("{",  "}",  NodeShape::Diamond),
+    ("[[", "]]", NodeShape::Subroutine),
     ("[(", ")]", NodeShape::Cylinder),
+    ("[/", "/]", NodeShape::Parallelogram),
+    ("[\\", "\\]", NodeShape::ParallelogramAlt),
+    ("[/", "\\]", NodeShape::Trapezoid),
+    ("[\\", "/]", NodeShape::TrapezoidAlt),
+    ("[", "]", NodeShape::Rectangle),
+    ("(", ")", NodeShape::RoundedRectangle),
+    ("{", "}", NodeShape::Diamond),
+    (">", "]", NodeShape::Asymmetric),
     // TODO: Add custom shape string support - Future release
 ];
 
@@ -597,6 +605,62 @@ mod tests {
         assert_eq!(node.label.as_deref(), Some("Database"));
         assert_eq!(node.shape, Some(NodeShape::Cylinder));
         assert_eq!(rest, " --> B");
+    }
+
+    #[test]
+    fn test_parse_node_ref_stadium() {
+        let (node, _) = parse_node_ref("A([Stadium])").unwrap();
+        assert_eq!(node.shape, Some(NodeShape::Stadium));
+        assert_eq!(node.label.as_deref(), Some("Stadium"));
+    }
+
+    #[test]
+    fn test_parse_node_ref_subroutine() {
+        let (node, _) = parse_node_ref("A[[Sub]]").unwrap();
+        assert_eq!(node.shape, Some(NodeShape::Subroutine));
+        assert_eq!(node.label.as_deref(), Some("Sub"));
+    }
+
+    #[test]
+    fn test_parse_node_ref_asymmetric() {
+        let (node, _) = parse_node_ref("A>Flag]").unwrap();
+        assert_eq!(node.shape, Some(NodeShape::Asymmetric));
+        assert_eq!(node.label.as_deref(), Some("Flag"));
+    }
+
+    #[test]
+    fn test_parse_node_ref_double_circle() {
+        let (node, _) = parse_node_ref("A(((DC)))").unwrap();
+        assert_eq!(node.shape, Some(NodeShape::DoubleCircle));
+        assert_eq!(node.label.as_deref(), Some("DC"));
+    }
+
+    #[test]
+    fn test_parse_node_ref_parallelogram() {
+        let (node, _) = parse_node_ref("A[/Para/]").unwrap();
+        assert_eq!(node.shape, Some(NodeShape::Parallelogram));
+        assert_eq!(node.label.as_deref(), Some("Para"));
+    }
+
+    #[test]
+    fn test_parse_node_ref_parallelogram_alt() {
+        let (node, _) = parse_node_ref("A[\\Para\\]").unwrap();
+        assert_eq!(node.shape, Some(NodeShape::ParallelogramAlt));
+        assert_eq!(node.label.as_deref(), Some("Para"));
+    }
+
+    #[test]
+    fn test_parse_node_ref_trapezoid() {
+        let (node, _) = parse_node_ref("A[/Trap\\]").unwrap();
+        assert_eq!(node.shape, Some(NodeShape::Trapezoid));
+        assert_eq!(node.label.as_deref(), Some("Trap"));
+    }
+
+    #[test]
+    fn test_parse_node_ref_trapezoid_alt() {
+        let (node, _) = parse_node_ref("A[\\Trap/]").unwrap();
+        assert_eq!(node.shape, Some(NodeShape::TrapezoidAlt));
+        assert_eq!(node.label.as_deref(), Some("Trap"));
     }
 
     #[test]
