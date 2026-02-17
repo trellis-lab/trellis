@@ -129,7 +129,7 @@ const NODE_SHAPES: &[(&str, &str, NodeShape)] = &[
     ("[",  "]",  NodeShape::Rectangle),
     ("(",  ")",  NodeShape::RoundedRectangle),
     ("{",  "}",  NodeShape::Diamond),
-    // TODO: Add cylinder support - MVP
+    ("[(", ")]", NodeShape::Cylinder),
     // TODO: Add custom shape string support - Future release
 ];
 
@@ -588,6 +588,15 @@ mod tests {
         assert_eq!(node.id, "A");
         assert_eq!(node.label.as_deref(), Some("Hexagon"));
         assert_eq!(node.shape, Some(NodeShape::Hexagon));
+    }
+
+    #[test]
+    fn test_parse_node_ref_cylinder() {
+        let (node, rest) = parse_node_ref("A[(Database)] --> B").unwrap();
+        assert_eq!(node.id, "A");
+        assert_eq!(node.label.as_deref(), Some("Database"));
+        assert_eq!(node.shape, Some(NodeShape::Cylinder));
+        assert_eq!(rest, " --> B");
     }
 
     #[test]

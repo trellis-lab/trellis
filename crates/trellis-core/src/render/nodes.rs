@@ -9,6 +9,8 @@ pub fn render_node(node: &Node) -> String {
     let top = node.y;
     let cx = left + w / 2.0;
     let cy = top + h / 2.0;
+    // label_cy may be shifted down for shapes whose top decoration overlaps the centre
+    let mut label_cy = cy;
 
     let mut svg = String::new();
 
@@ -69,6 +71,40 @@ pub fn render_node(node: &Node) -> String {
                 points,
             ));
         }
+        NodeShape::Cylinder => {
+            // Cylinder: two vertical side lines, a full ellipse on top, and a
+            // bottom half-arc. Drawn as:
+            //   1. Body path  – left wall + bottom semicircle + right wall,
+            //                   closed with a straight line (hidden by the top ellipse).
+            //   2. Top ellipse – drawn on top of the body to show the top face.
+            let ry = (h / 5.0).max(5.0);
+            let rx = w / 2.0;
+            let right = left + w;
+            // Body path:
+            //   M top-left  →  L bottom-left  →  arc bottom-right  →  L top-right  →  Z
+            // In SVG (y-down), sweep=0 (counter-clockwise) from left to right
+            // traces the LOWER arc — the one that bulges downward (∪).
+            svg.push_str(&format!(
+                "<path d=\"M {:.1},{:.1} L {:.1},{:.1} \
+                            A {:.1},{:.1} 0 0 0 {:.1},{:.1} \
+                            L {:.1},{:.1} Z\" \
+                 fill=\"#e8f4fd\" stroke=\"#4a90d9\" stroke-width=\"1.5\"/>\n",
+                left,  top + ry,       // M top-left
+                left,  top + h - ry,   // L bottom-left
+                rx, ry,                // A radii
+                right, top + h - ry,   // A end bottom-right (through bottom)
+                right, top + ry,       // L top-right
+            ));
+            // Top ellipse — slightly lighter fill to suggest the top face.
+            // Its fill hides the straight closing line of the body path.
+            svg.push_str(&format!(
+                "<ellipse cx=\"{:.1}\" cy=\"{:.1}\" rx=\"{:.1}\" ry=\"{:.1}\" \
+                 fill=\"#cce5ff\" stroke=\"#4a90d9\" stroke-width=\"1.5\"/>\n",
+                cx, top + ry, rx, ry,
+            ));
+            // Push the label below the top ellipse so it stays readable.
+            label_cy += 10.0;
+        }
     }
 
     // Label text
@@ -76,7 +112,7 @@ pub fn render_node(node: &Node) -> String {
     svg.push_str(&format!(
         "<text x=\"{:.1}\" y=\"{:.1}\" text-anchor=\"middle\" dominant-baseline=\"central\" \
          font-family=\"Arial, Helvetica, sans-serif\" font-size=\"12\">{}</text>\n",
-        cx, cy, escaped_label,
+        cx, label_cy, escaped_label,
     ));
 
     svg
@@ -152,6 +188,16 @@ mod tests {
         let svg = render_node(&node);
         assert!(svg.contains("<polygon"));
         // Hexagon has 6 points (6 pairs of coordinates)
+    }
+
+    #[test]
+    fn test_render_cylinder() {
+        let node = make_node("F", NodeShape::Cylinder, 100.0, 50.0);
+        let svg = render_node(&node);
+        // Body uses a path (left wall + bottom arc + right wall)
+        assert!(svg.contains("<path"));
+        // One top-face ellipse
+        assert_eq!(svg.matches("<ellipse").count(), 1);
     }
 
     #[test]

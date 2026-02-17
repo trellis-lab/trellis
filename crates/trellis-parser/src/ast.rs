@@ -69,6 +69,7 @@ pub enum NodeShape {
     Diamond,
     Circle,
     Hexagon,
+    Cylinder,
 }
 
 /// Style of an edge
