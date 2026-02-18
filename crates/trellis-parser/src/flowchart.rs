@@ -483,6 +483,21 @@ fn parse_statement(
     Ok(())
 }
 
+/// Adjust raw text-based dimensions to match the actual rendered extent of a shape.
+///
+/// Shapes like Circle and DoubleCircle are rendered as circles whose radius is
+/// `max(w, h) / 2`, so the bounding box must be square or the circle will overflow
+/// and nodes will visually overlap despite correct grid spacing.
+fn shape_adjusted_size(shape: NodeShape, width: f64, height: f64) -> (f64, f64) {
+    match shape {
+        NodeShape::Circle | NodeShape::DoubleCircle => {
+            let size = width.max(height);
+            (size, size)
+        }
+        _ => (width, height),
+    }
+}
+
 /// Ensure a node exists in the graph. Creates it if new, updates shape/label
 /// if re-defined. Adds to the current subgraph context.
 fn ensure_node(
@@ -503,12 +518,22 @@ fn ensure_node(
         if let Some(shape) = node_ref.shape {
             graph.nodes[idx].shape = shape;
         }
+        // Re-apply shape constraints after any updates (shape may have changed
+        // independently of label, or label changed with an existing shape).
+        let (w, h) = shape_adjusted_size(
+            graph.nodes[idx].shape,
+            graph.nodes[idx].width,
+            graph.nodes[idx].height,
+        );
+        graph.nodes[idx].width = w;
+        graph.nodes[idx].height = h;
     } else {
         // New node
         let label = node_ref.label.clone().unwrap_or_else(|| id.clone());
-        let width = text_metrics::calculate_text_width(&label);
-        let height = text_metrics::calculate_text_height(&label);
         let shape = node_ref.shape.unwrap_or(NodeShape::Rectangle);
+        let raw_width = text_metrics::calculate_text_width(&label);
+        let raw_height = text_metrics::calculate_text_height(&label);
+        let (width, height) = shape_adjusted_size(shape, raw_width, raw_height);
 
         graph.nodes.push(Node {
             id: id.clone(),

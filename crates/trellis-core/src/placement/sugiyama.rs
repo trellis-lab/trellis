@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use trellis_parser::{Direction, Graph};
 
-use super::{LAYER_SPACING, NODE_SPACING};
+use super::NODE_SPACING;
 
 /// Maximum iterations for barycenter ordering
 const MAX_BARYCENTER_ITERATIONS: usize = 20;
@@ -333,45 +333,73 @@ pub fn assign_coordinates(
         layer_nodes.sort_by_key(|&i| positions.get(&graph.nodes[i].id).copied().unwrap_or(0));
     }
 
+    // Compute dynamic layer positions along the main axis.
+    //
+    // Using a fixed LAYER_SPACING caused nodes taller/wider than LAYER_SPACING to
+    // overlap with the next layer. Instead, each layer starts immediately after the
+    // tallest (TB/BT) or widest (LR/RL) node in the previous layer plus a fixed gap.
+    let is_vertical = matches!(graph.direction, Direction::TB | Direction::BT);
+    let mut layer_main_pos: Vec<f64> = vec![0.0; max_layer + 1];
+    for layer in 1..=max_layer {
+        let prev_max_dim = nodes_in_layer[layer - 1]
+            .iter()
+            .map(|&i| {
+                if is_vertical {
+                    graph.nodes[i].height
+                } else {
+                    graph.nodes[i].width
+                }
+            })
+            .fold(0.0_f64, f64::max);
+        layer_main_pos[layer] = layer_main_pos[layer - 1] + prev_max_dim + NODE_SPACING;
+    }
+
     // Assign coordinates with centering (node.x/y = top-left corner)
     for (layer_idx, layer_nodes) in nodes_in_layer.iter().enumerate() {
         if layer_nodes.is_empty() {
             continue;
         }
 
-        // Calculate total width of this layer
-        let total_width: f64 = layer_nodes
-            .iter()
-            .map(|&i| graph.nodes[i].width)
-            .sum::<f64>()
+        // Cross-axis: sum of node extents perpendicular to the main flow direction.
+        // TB/BT → cross axis is x, extent is width.
+        // LR/RL → cross axis is y, extent is height.
+        let cross_dim = |i: usize| -> f64 {
+            if is_vertical {
+                graph.nodes[i].width
+            } else {
+                graph.nodes[i].height
+            }
+        };
+        let total_cross: f64 = layer_nodes.iter().map(|&i| cross_dim(i)).sum::<f64>()
             + (layer_nodes.len() as f64 - 1.0) * NODE_SPACING;
 
-        let mut offset = -total_width / 2.0;
+        let mut offset = -total_cross / 2.0;
+        let main_pos = layer_main_pos[layer_idx];
 
         for &node_idx in layer_nodes {
             let node = &mut graph.nodes[node_idx];
-            let layer = layer_idx;
+            let cross_extent = if is_vertical { node.width } else { node.height };
 
             match graph.direction {
                 Direction::TB => {
                     node.x = offset;
-                    node.y = layer as f64 * LAYER_SPACING;
+                    node.y = main_pos;
                 }
                 Direction::BT => {
                     node.x = offset;
-                    node.y = -(layer as f64) * LAYER_SPACING;
+                    node.y = -main_pos;
                 }
                 Direction::LR => {
-                    node.x = layer as f64 * LAYER_SPACING;
+                    node.x = main_pos;
                     node.y = offset;
                 }
                 Direction::RL => {
-                    node.x = -(layer as f64) * LAYER_SPACING;
+                    node.x = -main_pos;
                     node.y = offset;
                 }
             }
 
-            offset += node.width + NODE_SPACING;
+            offset += cross_extent + NODE_SPACING;
         }
     }
 
