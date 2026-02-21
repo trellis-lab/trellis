@@ -273,25 +273,25 @@ fn parse_visibility_prefix(s: &str) -> (ClassVisibility, &str, bool, bool) {
     let mut is_abstract = false;
 
     // Check for modifier prefixes after visibility
-    let (vis, rest) = if s.starts_with('+') {
-        (ClassVisibility::Public, s[1..].trim_start())
-    } else if s.starts_with('-') {
-        (ClassVisibility::Private, s[1..].trim_start())
-    } else if s.starts_with('#') {
-        (ClassVisibility::Protected, s[1..].trim_start())
-    } else if s.starts_with('~') {
-        (ClassVisibility::Package, s[1..].trim_start())
+    let (vis, rest) = if let Some(rest) = s.strip_prefix('+') {
+        (ClassVisibility::Public, rest.trim_start())
+    } else if let Some(rest) = s.strip_prefix('-') {
+        (ClassVisibility::Private, rest.trim_start())
+    } else if let Some(rest) = s.strip_prefix('#') {
+        (ClassVisibility::Protected, rest.trim_start())
+    } else if let Some(rest) = s.strip_prefix('~') {
+        (ClassVisibility::Package, rest.trim_start())
     } else {
         (ClassVisibility::Public, s)
     };
 
     // Check for $ (static) or * (abstract) modifier
-    let rest = if rest.starts_with('$') {
+    let rest = if let Some(rest) = rest.strip_prefix('$') {
         is_static = true;
-        rest[1..].trim_start()
-    } else if rest.starts_with('*') {
+        rest.trim_start()
+    } else if let Some(rest) = rest.strip_prefix('*') {
         is_abstract = true;
-        rest[1..].trim_start()
+        rest.trim_start()
     } else {
         rest
     };
@@ -316,6 +316,10 @@ fn split_type_name(s: &str) -> (String, String) {
 
 // ── Relation parsing ──────────────────────────────────────────────────
 
+/// Return type for `parse_relation`: (from, edge_type, to, source_mult, target_mult, label).
+type RelationParts =
+    (String, ClassEdgeType, String, Option<String>, Option<String>, Option<String>);
+
 /// Try to parse a class diagram relation line.
 ///
 /// Returns `(from, edge_type, to, source_mult, target_mult, label)` or None.
@@ -334,9 +338,7 @@ fn split_type_name(s: &str) -> (String, String) {
 /// - `ClassA <.. ClassB`
 /// - `ClassA .. ClassB`
 /// - `ClassA "1" --> "0..*" ClassB : label`
-pub fn parse_relation(
-    line: &str,
-) -> Option<(String, ClassEdgeType, String, Option<String>, Option<String>, Option<String>)> {
+pub fn parse_relation(line: &str) -> Option<RelationParts> {
     let line = line.trim();
 
     // Extract label at the end: "... : label"
@@ -461,10 +463,9 @@ fn extract_multiplicities(
     let mut parts = Vec::new();
     let mut current = String::new();
     let mut in_quotes = false;
-    let mut chars = line.chars().peekable();
     let mut quote_content = String::new();
 
-    while let Some(c) = chars.next() {
+    for c in line.chars() {
         if c == '"' {
             if in_quotes {
                 // End of quote
@@ -492,13 +493,6 @@ fn extract_multiplicities(
         return Some((line.to_string(), None, String::new(), None));
     }
 
-    // With quotes: find quoted parts and non-quoted parts
-    let mut source_mult: Option<String> = None;
-    let mut target_mult: Option<String> = None;
-    let mut class_a = String::new();
-    let mut class_b = String::new();
-    let mut arrow_part = String::new();
-
     // Expected structure: classA [smult] arrow [tmult] classB
     // parts alternates: non-quoted, quoted, non-quoted, quoted, non-quoted
     let non_quoted: Vec<&str> = parts
@@ -512,24 +506,20 @@ fn extract_multiplicities(
         .map(|p| p.trim_matches('"'))
         .collect();
 
-    match (non_quoted.len(), quoted.len()) {
-        (2, 1) => {
-            // "ClassA ARROW "mult" ClassB" or "ClassA "mult" ARROW ClassB"
-            // Hard to determine without more context — fall back to simple
+    // "ClassA "smult" ARROW "tmult" ClassB" — the only structured case we handle
+    let (class_a, source_mult, arrow_part, target_mult, class_b) =
+        if let (3, 2) = (non_quoted.len(), quoted.len()) {
+            (
+                non_quoted[0].to_string(),
+                Some(quoted[0].to_string()),
+                non_quoted[1].to_string(),
+                Some(quoted[1].to_string()),
+                non_quoted[2].to_string(),
+            )
+        } else {
+            // (2,1) or any other pattern — fall back to simple (no multiplicity extracted)
             return Some((line.to_string(), None, String::new(), None));
-        }
-        (3, 2) => {
-            // "ClassA "smult" ARROW "tmult" ClassB"
-            class_a = non_quoted[0].to_string();
-            source_mult = Some(quoted[0].to_string());
-            arrow_part = non_quoted[1].to_string();
-            target_mult = Some(quoted[1].to_string());
-            class_b = non_quoted[2].to_string();
-        }
-        _ => {
-            return Some((line.to_string(), None, String::new(), None));
-        }
-    }
+        };
 
     if class_a.is_empty() || class_b.is_empty() {
         return Some((line.to_string(), None, String::new(), None));

@@ -1,0 +1,146 @@
+classDiagram
+    %% Inheritance hierarchy
+    Animal <|-- Dog
+    Animal <|-- Cat
+    Animal <|-- Bird
+
+    %% Realization (interface implementation)
+    Flyable <|.. Bird
+    Flyable <|.. Drone
+
+    %% Composition (strong ownership)
+    Dog *-- Collar
+    Car *-- Engine
+    Car *-- Wheel
+
+    %% Aggregation (weak ownership)
+    Team o-- Player
+    Library o-- Book
+
+    %% Association (directional)
+    Player --> Team
+    Vet --> Animal
+
+    %% Dependency (uses)
+    Vet ..> Medication
+    Drone ..> Battery
+
+    %% Link (plain)
+    Book .. Author
+
+    class Animal {
+        +String name
+        +int age
+        +makeSound()
+        +move() bool
+    }
+
+    class Dog {
+        +String breed
+        -int tricks
+        +bark()
+        +fetch() bool
+    }
+
+    class Cat {
+        +bool indoor
+        +String color
+        +meow()
+        +purr()
+    }
+
+    class Bird {
+        +float wingspan
+        +bool migratory
+        +chirp()
+        +fly() bool
+    }
+
+    class Flyable {
+        <<interface>>
+        +fly() bool
+        +land()
+    }
+
+    class Drone {
+        +String model
+        -int batteryLevel
+        +fly() bool
+        +land()
+        +takePicture()
+    }
+
+    class Collar {
+        +String material
+        +bool hasTag
+    }
+
+    class Car {
+        +String make
+        +String model
+        +int year
+        +start()
+        +stop()
+    }
+
+    class Engine {
+        +int horsepower
+        +String fuelType
+        +start()
+    }
+
+    class Wheel {
+        +float diameter
+        +String brand
+    }
+
+    class Team {
+        +String name
+        +String league
+        +addPlayer()
+        +removePlayer()
+    }
+
+    class Player {
+        +String name
+        +String position
+        +int jerseyNumber
+        +play()
+    }
+
+    class Library {
+        +String name
+        +String address
+        +addBook()
+        +removeBook()
+    }
+
+    class Book {
+        +String title
+        +String isbn
+        +int pages
+    }
+
+    class Author {
+        +String name
+        +String nationality
+    }
+
+    class Vet {
+        +String name
+        +String license
+        +treat(Animal a)
+        +prescribe() Medication
+    }
+
+    class Medication {
+        +String name
+        +float dosage
+        +String unit
+    }
+
+    class Battery {
+        +int capacity
+        +float voltage
+        +charge()
+    }

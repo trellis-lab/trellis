@@ -30,21 +30,21 @@ pub fn render_class_node(node: &Node) -> String {
 
     let attr_height = attr_rows as f64 * LINE_HEIGHT;
     let method_height = method_rows as f64 * LINE_HEIGHT;
-    let _ = h; // height is already computed from content during parsing
-
-    // Actual height: header + separator + attrs + separator + methods + bottom padding
-    let actual_h = HEADER_HEIGHT + 1.0 + attr_height + 1.0 + method_height + 8.0;
+    // method_height used only to satisfy the pattern; internal layout uses sep positions.
+    let _ = method_height;
 
     let sep1_y = y + HEADER_HEIGHT; // line after name compartment
     let sep2_y = sep1_y + 1.0 + attr_height; // line after attribute compartment
 
     let mut svg = String::with_capacity(512);
 
-    // Outer box
+    // Outer box — use node.height (grid-snapped) so the visible box edge aligns
+    // exactly with the routing port. The content is top-aligned; any extra space
+    // appears as padding at the bottom.
     svg.push_str(&format!(
         "<rect x=\"{:.1}\" y=\"{:.1}\" width=\"{:.1}\" height=\"{:.1}\" \
          fill=\"#f5f5f5\" stroke=\"#555\" stroke-width=\"1.5\"/>\n",
-        x, y, w, actual_h
+        x, y, w, h
     ));
 
     // ── Name compartment ──────────────────────────────────────────────
