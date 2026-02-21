@@ -26,6 +26,10 @@ pub struct Node {
     pub class_methods: Vec<ClassMethod>,
     // ER diagram specific fields
     pub er_attributes: Vec<ErAttribute>,
+    // C4 diagram specific fields
+    pub c4_type: Option<C4NodeType>,
+    pub c4_description: Option<String>,
+    pub c4_technology: Option<String>,
 }
 
 /// An edge connecting two nodes
@@ -44,6 +48,10 @@ pub struct Edge {
     pub er_source_card: Option<ErCardinality>,
     pub er_target_card: Option<ErCardinality>,
     pub er_identifying: Option<bool>,
+    // C4 diagram specific fields
+    pub c4_rel_type: Option<C4RelType>,
+    pub c4_technology: Option<String>,
+    pub c4_bidirectional: bool,
 }
 
 /// A subgraph containing nodes and edges
@@ -72,6 +80,8 @@ pub enum DiagramType {
     Flowchart,
     ClassDiagram,
     ErDiagram,
+    /// C4 architecture diagrams (Context, Container, Component, Dynamic, Deployment)
+    C4Diagram,
 }
 
 /// Shape of a node
@@ -96,6 +106,8 @@ pub enum NodeShape {
     ClassBox,
     /// ER diagram entity box
     ErBox,
+    /// C4 diagram element box
+    C4Box,
 }
 
 /// Style of an edge
@@ -187,6 +199,116 @@ pub enum ErCardinality {
     ZeroOrOne,   // |o or o|
     OneOrMore,   // }| or |{
     ZeroOrMore,  // }o or o{
+}
+
+// ── C4 diagram types ──────────────────────────────────────────────────
+
+/// C4 element type — determines rendering shape and boundary semantics.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum C4NodeType {
+    // C4Context / common
+    Person,
+    PersonExt,
+    System,
+    SystemDb,
+    SystemQueue,
+    SystemExt,
+    SystemDbExt,
+    SystemQueueExt,
+    // C4Container
+    Container,
+    ContainerDb,
+    ContainerQueue,
+    ContainerExt,
+    ContainerDbExt,
+    ContainerQueueExt,
+    // C4Component
+    Component,
+    ComponentDb,
+    ComponentQueue,
+    ComponentExt,
+    ComponentDbExt,
+    ComponentQueueExt,
+    // Boundaries (rendered as group frames, not boxes)
+    EnterpriseBoundary,
+    SystemBoundary,
+    ContainerBoundary,
+    // C4Deployment
+    DeploymentNode,
+}
+
+impl C4NodeType {
+    /// Returns true if this element is external (dashed border).
+    pub fn is_external(self) -> bool {
+        matches!(
+            self,
+            C4NodeType::PersonExt
+                | C4NodeType::SystemExt
+                | C4NodeType::SystemDbExt
+                | C4NodeType::SystemQueueExt
+                | C4NodeType::ContainerExt
+                | C4NodeType::ContainerDbExt
+                | C4NodeType::ContainerQueueExt
+                | C4NodeType::ComponentExt
+                | C4NodeType::ComponentDbExt
+                | C4NodeType::ComponentQueueExt
+        )
+    }
+
+    /// Returns true if this element is a boundary or deployment node — rendered as a
+    /// frame enclosing its contents rather than as an individual box.
+    pub fn is_boundary(self) -> bool {
+        matches!(
+            self,
+            C4NodeType::EnterpriseBoundary
+                | C4NodeType::SystemBoundary
+                | C4NodeType::ContainerBoundary
+                | C4NodeType::DeploymentNode
+        )
+    }
+
+    /// Returns true if this element uses a database cylinder shape.
+    pub fn is_db(self) -> bool {
+        matches!(
+            self,
+            C4NodeType::SystemDb
+                | C4NodeType::SystemDbExt
+                | C4NodeType::ContainerDb
+                | C4NodeType::ContainerDbExt
+                | C4NodeType::ComponentDb
+                | C4NodeType::ComponentDbExt
+        )
+    }
+
+    /// Returns true if this element uses a queue (double-frame) shape.
+    pub fn is_queue(self) -> bool {
+        matches!(
+            self,
+            C4NodeType::SystemQueue
+                | C4NodeType::SystemQueueExt
+                | C4NodeType::ContainerQueue
+                | C4NodeType::ContainerQueueExt
+                | C4NodeType::ComponentQueue
+                | C4NodeType::ComponentQueueExt
+        )
+    }
+
+    /// Returns true if this element uses the person (human figure) shape.
+    pub fn is_person(self) -> bool {
+        matches!(self, C4NodeType::Person | C4NodeType::PersonExt)
+    }
+}
+
+/// C4 relationship type
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+pub enum C4RelType {
+    #[default]
+    Rel,
+    RelBack,
+    RelU,
+    RelD,
+    RelL,
+    RelR,
 }
 
 impl Graph {

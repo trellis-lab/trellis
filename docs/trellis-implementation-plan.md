@@ -308,43 +308,43 @@
 
 ### Parsing
 
-* [ ] C4 diagramtípus felismerése a tokenizer-ben (`detectType` – `C4Context`, `C4Container`, `C4Component`, `C4Dynamic`, `C4Deployment` kulcsszavak)
-* [ ] C4 elem-parser (`parser/c4_diagram.rs` – mind az öt diagramszintet egységes elemtípus-készlettel kezeli)
-* [ ] Person / Person_Ext parsing (label, description)
-* [ ] System-elemek parsing: `System`, `SystemDb`, `SystemQueue` és `_Ext` variánsaik (label, description, technológia)
-* [ ] Container-elemek parsing: `Container`, `ContainerDb`, `ContainerQueue` és `_Ext` variánsaik
-* [ ] Component-elemek parsing: `Component`, `ComponentDb`, `ComponentQueue` és `_Ext` variánsaik
-* [ ] Deployment_Node / Node / Node_L / Node_R parsing (nested deployment fák)
-* [ ] Boundary-blokkok parsing: `Enterprise_Boundary`, `System_Boundary`, `Container_Boundary` – egymásba ágyazva (rekurzív)
-* [ ] Kapcsolat-parser: `Rel`, `BiRel`, `Rel_U/D/L/R/Back`, `RelIndex` (forrás, cél, label, technológia)
-* [ ] `UpdateLayoutConfig(?c4ShapeInRow, ?c4BoundaryInRow)` directive parsing (névvel és pozíció alapján is)
+* [x] C4 diagramtípus felismerése a tokenizer-ben (`detectType` – `C4Context`, `C4Container`, `C4Component`, `C4Dynamic`, `C4Deployment` kulcsszavak)
+* [x] C4 elem-parser (`parser/c4_diagram.rs` – mind az öt diagramszintet egységes elemtípus-készlettel kezeli)
+* [x] Person / Person_Ext parsing (label, description)
+* [x] System-elemek parsing: `System`, `SystemDb`, `SystemQueue` és `_Ext` variánsaik (label, description, technológia)
+* [x] Container-elemek parsing: `Container`, `ContainerDb`, `ContainerQueue` és `_Ext` variánsaik
+* [x] Component-elemek parsing: `Component`, `ComponentDb`, `ComponentQueue` és `_Ext` variánsaik
+* [x] Deployment_Node / Node / Node_L / Node_R parsing (nested deployment fák)
+* [x] Boundary-blokkok parsing: `Enterprise_Boundary`, `System_Boundary`, `Container_Boundary` – egymásba ágyazva (rekurzív)
+* [x] Kapcsolat-parser: `Rel`, `BiRel`, `Rel_U/D/L/R/Back`, `RelIndex` (forrás, cél, label, technológia)
+* [x] `UpdateLayoutConfig(?c4ShapeInRow, ?c4BoundaryInRow)` directive parsing (névvel és pozíció alapján is) – silently ignored
 
 ### Elhelyezés (placement)
 
 A C4 elhelyezés **nem gráfalgoritmus-alapú** – sorfolyásos (row-flow) elrendezést alkalmaz:
 
-* [ ] `placement/c4.rs` – `placeC4Elements`: elemek balról jobbra, `c4ShapeInRow` darabonként sortörés; boundary-k `c4BoundaryInRow` darabonként sortörés
-* [ ] Boundary bounding box számítás: gyermekelemek koordinátáiból alulról felfelé (bottom-up), padding + feliratmagasság figyelembevételével
-* [ ] Nested boundary kezelés (rekurzív: belső elemek koordinátái a belső boundary-n belül relatívak, majd globálissá alakítva)
-* [ ] Deployment_Node fa elhelyezése: mélység szerinti indent, `Node_L`/`Node_R` bal/jobb oldali elrendezés
-* [ ] `Rel_U/D/L/R` → routing hint: a megadott irány az A* pathfinder kiindulási port-oldalát kényszeríti
+* [x] `placement/c4.rs` – `placeC4Elements`: elemek balról jobbra, `c4ShapeInRow` darabonként sortörés; boundary-k `c4BoundaryInRow` darabonként sortörés
+* [x] Boundary bounding box számítás: gyermekelemek koordinátáiból alulról felfelé (bottom-up), padding + feliratmagasság figyelembevételével
+* [x] Nested boundary kezelés (rekurzív: belső elemek koordinátái a belső boundary-n belül relatívak, majd globálissá alakítva)
+* [x] Deployment_Node fa elhelyezése: mélység szerinti indent, `Node_L`/`Node_R` bal/jobb oldali elrendezés
+* [x] `Rel_U/D/L/R` → routing hint: a megadott irány az A* pathfinder kiindulási port-oldalát kényszeríti
 
 ### Renderelés
 
-* [ ] `render/c4_shapes.rs` – speciális alakzatok:
+* [x] `render/c4_shapes.rs` – speciális alakzatok:
     * `Person` / `Person_Ext`: emberfigura-ikon (kör fej + váll)
     * `SystemDb` / `ContainerDb` / `ComponentDb` és `_Ext` variánsaik: henger (cylinder)
     * `SystemQueue` / `ContainerQueue` / `ComponentQueue` és `_Ext` variánsaik: sor-ikon (dupla keret)
     * `_Ext` variánsok: szaggatott körvonal (stroke-dasharray)
-* [ ] Boundary renderelés: `render/c4_boundary.rs` – finom szaggatott keret, háttérszín mélység szerint, bal felső sarokba felirat
-* [ ] Kapcsolat renderelés: technológia-felirat az élcímke második soraként; `BiRel` → kétirányú nyíl
-* [ ] `UpdateElementStyle` directive feldolgozása (egyedi szín/stílus felülírás)
-* [ ] `UpdateRelStyle` directive feldolgozása
-* [ ] Z-order: boundary háttér → élek → elemek → elemcímkék → élcímkék
+* [x] Boundary renderelés: `render/c4_boundary.rs` – finom szaggatott keret, háttérszín mélység szerint, bal felső sarokba felirat
+* [x] Kapcsolat renderelés: technológia-felirat az élcímke második soraként; `BiRel` → kétirányú nyíl
+* [ ] `UpdateElementStyle` directive feldolgozása (egyedi szín/stílus felülírás) – nem implementált
+* [ ] `UpdateRelStyle` directive feldolgozása – nem implementált
+* [x] Z-order: boundary háttér → élek → elemek → elemcímkék → élcímkék
 
 ### Tesztelés
 
-* [ ] Unit tesztek: C4Context (Person + System + Enterprise_Boundary + Rel), C4Container (Container + System_Boundary), C4Deployment (Deployment_Node fa) fixture-ök
+* [x] Unit tesztek: C4Context (Person + System + Enterprise_Boundary + Rel), C4Container (Container + System_Boundary), C4Deployment (Deployment_Node fa) fixture-ök
 * [ ] `UpdateLayoutConfig` tesztelése: 2 shape/sor, 1 boundary/sor → elhelyezés ellenőrzés
 
 ---

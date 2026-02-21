@@ -1,4 +1,5 @@
 use crate::grid::Grid;
+use crate::render::c4_shapes::c4_edge_markers;
 use crate::render::class_shapes::class_edge_markers;
 use crate::render::er_shapes::er_edge_markers;
 use crate::routing::astar::GridPoint;
@@ -179,6 +180,8 @@ pub fn render_edge(
         class_edge_markers(edge)
     } else if edge.er_source_card.is_some() || edge.er_target_card.is_some() {
         er_edge_markers(edge)
+    } else if edge.c4_rel_type.is_some() {
+        c4_edge_markers(edge)
     } else {
         (String::new(), marker_attr(edge.arrow_head).to_string())
     };

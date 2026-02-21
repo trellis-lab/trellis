@@ -4,6 +4,8 @@ use crate::config::TrellisConfig;
 use crate::grid::Grid;
 use crate::labels::LabelPlacement;
 use crate::placement::subgraph::VIRTUAL_PREFIX;
+use crate::render::c4_boundary::render_c4_boundaries;
+use crate::render::c4_shapes::{c4_marker_defs, render_c4_node};
 use crate::render::class_shapes::{class_marker_defs, render_class_node};
 use crate::render::crossing::render_crossings;
 use crate::render::edges::{arrow_marker_defs, render_edge, render_fallback_edge};
@@ -75,8 +77,31 @@ pub fn build_svg(
         svg.push_str(er_marker_defs());
         svg.push('\n');
     }
+    if graph.diagram_type == DiagramType::C4Diagram {
+        svg.push_str(c4_marker_defs());
+        svg.push('\n');
+    }
 
-    // Z-order: 1. subgraph backgrounds, 2. edges, 3. nodes, 4. edge labels
+    // Z-order: 1. boundaries/subgraph backgrounds, 2. edges, 3. nodes, 4. edge labels
+
+    // --- C4 boundary frames (below everything) ---
+    // Bounding boxes come from the subgraph_data computed during placement,
+    // so this branch only fires when boundaries are present.
+    if graph.diagram_type == DiagramType::C4Diagram {
+        if let Some((_, boxes)) = subgraph_data {
+            let boundaries_svg = render_c4_boundaries(graph, boxes);
+            if !boundaries_svg.is_empty() {
+                svg.push_str("<!-- C4 Boundaries -->\n");
+                svg.push_str("<g class=\"c4-boundaries\">\n");
+                for line in boundaries_svg.lines() {
+                    svg.push_str("  ");
+                    svg.push_str(line);
+                    svg.push('\n');
+                }
+                svg.push_str("</g>\n");
+            }
+        }
+    }
 
     // --- Subgraph backgrounds (below everything) ---
     if let Some((tree, boxes)) = subgraph_data {
@@ -170,6 +195,20 @@ pub fn build_svg(
             } else {
                 render_node(node)
             };
+            for line in node_svg.lines() {
+                svg.push_str("  ");
+                svg.push_str(line);
+                svg.push('\n');
+            }
+        }
+    } else if graph.diagram_type == DiagramType::C4Diagram {
+        // C4 diagram: use dedicated C4 element renderer; skip boundary nodes
+        for node in &visible_nodes {
+            let is_boundary = node.c4_type.map(|t| t.is_boundary()).unwrap_or(false);
+            if is_boundary {
+                continue; // drawn separately as boundary frames
+            }
+            let node_svg = render_c4_node(node);
             for line in node_svg.lines() {
                 svg.push_str("  ");
                 svg.push_str(line);

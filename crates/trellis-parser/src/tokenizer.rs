@@ -72,6 +72,16 @@ fn classify_line(trimmed: &str) -> TokenType {
         return TokenType::Directive;
     }
 
+    // C4 diagram directives (C4Context, C4Container, C4Component, C4Dynamic, C4Deployment)
+    if lower.starts_with("c4context")
+        || lower.starts_with("c4container")
+        || lower.starts_with("c4component")
+        || lower.starts_with("c4dynamic")
+        || lower.starts_with("c4deployment")
+    {
+        return TokenType::Directive;
+    }
+
     // Subgraph boundaries
     if lower.starts_with("subgraph ") || lower == "subgraph" {
         return TokenType::SubgraphStart;
@@ -97,6 +107,14 @@ pub fn detect_diagram_type(tokens: &[Token]) -> DiagramType {
             }
             if lower.starts_with("erdiagram") {
                 return DiagramType::ErDiagram;
+            }
+            if lower.starts_with("c4context")
+                || lower.starts_with("c4container")
+                || lower.starts_with("c4component")
+                || lower.starts_with("c4dynamic")
+                || lower.starts_with("c4deployment")
+            {
+                return DiagramType::C4Diagram;
             }
         }
     }

@@ -7,7 +7,7 @@ use crate::{
     routing,
     types::*,
 };
-use trellis_parser::Graph;
+use trellis_parser::{DiagramType, Graph};
 use std::time::Instant;
 
 /// Main rendering pipeline
@@ -24,9 +24,12 @@ pub fn render(graph: &Graph, config: &TrellisConfig, format: OutputFormat) -> Re
     // Phase 2: Node placement (Sugiyama for flowcharts, subgraph-aware if needed)
     let subgraph_data = placement::place_nodes(&mut graph, cell_size);
 
-    // Phase 2.5: Resolve subgraph edges (create virtual nodes for edges targeting subgraphs)
-    if let Some((ref _tree, ref boxes)) = subgraph_data {
-        placement::subgraph::resolve_subgraph_edges(&mut graph, boxes);
+    // Phase 2.5: Resolve subgraph edges (flowchart only — creates virtual nodes for
+    // edges that target a subgraph directly rather than an individual node)
+    if graph.diagram_type == DiagramType::Flowchart {
+        if let Some((ref _tree, ref boxes)) = subgraph_data {
+            placement::subgraph::resolve_subgraph_edges(&mut graph, boxes);
+        }
     }
 
     // Phase 3: Grid construction

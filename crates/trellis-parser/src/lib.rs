@@ -1,4 +1,5 @@
 pub mod ast;
+pub mod c4_diagram;
 pub mod class_diagram;
 pub mod er_diagram;
 pub mod flowchart;
@@ -19,6 +20,7 @@ pub fn parse(input: &str) -> Result<Graph, ParseError> {
         DiagramType::Flowchart => flowchart::parse_flowchart(&tokens),
         DiagramType::ClassDiagram => class_diagram::parse_class_diagram(&tokens),
         DiagramType::ErDiagram => er_diagram::parse_er_diagram(&tokens),
+        DiagramType::C4Diagram => c4_diagram::parse_c4_diagram(&tokens),
     }
 }
 

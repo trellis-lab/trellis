@@ -1,3 +1,4 @@
+pub mod c4;
 pub mod class;
 pub mod er;
 pub mod force_directed;
@@ -28,8 +29,18 @@ pub fn place_nodes(
 ) -> Option<(SubgraphTree, HashMap<String, BoundingBox>)> {
     snap_node_dimensions_to_grid(graph, cell_size);
 
-    if !graph.subgraphs.is_empty() {
-        // Subgraph-aware placement (M9)
+    // C4 diagrams always use boundary-aware row-flow, even when graph.subgraphs is
+    // non-empty (boundaries). Must be checked before the subgraph fallback below.
+    if graph.diagram_type == trellis_parser::DiagramType::C4Diagram {
+        c4::place_c4_diagram(graph);
+        snap_node_positions_to_grid(graph, cell_size);
+        if !graph.subgraphs.is_empty() {
+            Some(c4::compute_c4_subgraph_data(graph))
+        } else {
+            None
+        }
+    } else if !graph.subgraphs.is_empty() {
+        // Subgraph-aware placement for flowcharts (M9)
         let result = subgraph::place_with_subgraphs(graph, cell_size);
         snap_node_positions_to_grid(graph, cell_size);
         Some(result)
@@ -43,6 +54,9 @@ pub fn place_nodes(
             }
             trellis_parser::DiagramType::ErDiagram => {
                 er::place_er_diagram(graph);
+            }
+            trellis_parser::DiagramType::C4Diagram => {
+                unreachable!("C4 is handled above")
             }
         }
         snap_node_positions_to_grid(graph, cell_size);

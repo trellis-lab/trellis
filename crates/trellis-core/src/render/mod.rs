@@ -1,3 +1,5 @@
+pub mod c4_boundary;
+pub mod c4_shapes;
 pub mod class_shapes;
 pub mod crossing;
 pub mod edges;

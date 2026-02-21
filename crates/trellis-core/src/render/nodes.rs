@@ -283,8 +283,8 @@ pub fn render_node(node: &Node) -> String {
             // Push the label below the top ellipse so it stays readable.
             label_cy += 10.0;
         }
-        // ClassBox and ErBox are rendered by dedicated renderers; fall back here.
-        NodeShape::ClassBox | NodeShape::ErBox => {
+        // ClassBox, ErBox, and C4Box are rendered by dedicated renderers; fall back here.
+        NodeShape::ClassBox | NodeShape::ErBox | NodeShape::C4Box => {
             svg.push_str(&format!(
                 "<rect x=\"{:.1}\" y=\"{:.1}\" width=\"{:.1}\" height=\"{:.1}\" \
                  fill=\"#f5f5f5\" stroke=\"#555\" stroke-width=\"1.5\"/>\n",
