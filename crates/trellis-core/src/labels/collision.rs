@@ -169,7 +169,7 @@ mod tests {
             height: 30.0,
             x: 15.0,
             y: 15.0,
-        };
+            ..Default::default()        };
         assert!(collides(&bbox, &[node], &[], &[]));
     }
 

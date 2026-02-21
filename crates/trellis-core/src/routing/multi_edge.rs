@@ -75,7 +75,7 @@ mod tests {
             label: None,
             style: EdgeStyle::Solid,
             arrow_head: ArrowHead::Arrow,
-        }
+            ..Default::default()        }
     }
 
     #[test]

@@ -1,3 +1,4 @@
+pub mod class;
 pub mod snap;
 pub mod subgraph;
 pub mod sugiyama;
@@ -35,7 +36,9 @@ pub fn place_nodes(
             trellis_parser::DiagramType::Flowchart => {
                 sugiyama::layout(graph);
             }
-            // Other diagram types will be implemented in M10
+            trellis_parser::DiagramType::ClassDiagram => {
+                class::place_class_diagram(graph);
+            }
             _ => {
                 sugiyama::layout(graph);
             }
@@ -109,7 +112,7 @@ mod tests {
             height: h,
             x: 0.0,
             y: 0.0,
-        }
+            ..Default::default()        }
     }
 
     #[test]

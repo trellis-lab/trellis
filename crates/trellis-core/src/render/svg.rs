@@ -4,14 +4,15 @@ use crate::config::TrellisConfig;
 use crate::grid::Grid;
 use crate::labels::LabelPlacement;
 use crate::placement::subgraph::VIRTUAL_PREFIX;
+use crate::render::class_shapes::{class_marker_defs, render_class_node};
 use crate::render::crossing::render_crossings;
 use crate::render::edges::{arrow_marker_defs, render_edge, render_fallback_edge};
 use crate::render::grid::render_grid_dot;
-use crate::render::nodes::render_nodes;
+use crate::render::nodes::{render_node, render_nodes};
 use crate::render::subgraph::render_subgraph_backgrounds;
 use crate::routing::RoutingResult;
 use crate::types::{BoundingBox, SubgraphTree};
-use trellis_parser::Graph;
+use trellis_parser::{DiagramType, Graph, NodeShape};
 
 /// Build the complete SVG document from graph, grid, routing data, and label placements.
 pub fn build_svg(
@@ -62,9 +63,13 @@ pub fn build_svg(
         }
     }
 
-    // Marker definitions (arrowheads)
+    // Marker definitions (arrowheads + class diagram markers)
     svg.push_str(arrow_marker_defs());
     svg.push('\n');
+    if graph.diagram_type == DiagramType::ClassDiagram {
+        svg.push_str(class_marker_defs());
+        svg.push('\n');
+    }
 
     // Z-order: 1. subgraph backgrounds, 2. edges, 3. nodes, 4. edge labels
 
@@ -137,13 +142,47 @@ pub fn build_svg(
         .filter(|n| !n.id.starts_with(VIRTUAL_PREFIX))
         .cloned()
         .collect();
-    let nodes_svg = render_nodes(&visible_nodes);
-    for line in nodes_svg.lines() {
-        svg.push_str("  ");
-        svg.push_str(line);
-        svg.push('\n');
+
+    if graph.diagram_type == DiagramType::ClassDiagram {
+        // Class diagram: use dedicated three-compartment renderer for ClassBox nodes
+        for node in &visible_nodes {
+            let node_svg = if node.shape == NodeShape::ClassBox {
+                render_class_node(node)
+            } else {
+                render_node(node)
+            };
+            for line in node_svg.lines() {
+                svg.push_str("  ");
+                svg.push_str(line);
+                svg.push('\n');
+            }
+        }
+    } else {
+        let nodes_svg = render_nodes(&visible_nodes);
+        for line in nodes_svg.lines() {
+            svg.push_str("  ");
+            svg.push_str(line);
+            svg.push('\n');
+        }
     }
     svg.push_str("</g>\n");
+
+    // --- Multiplicity labels for class diagram edges ---
+    if graph.diagram_type == DiagramType::ClassDiagram {
+        let has_mult = graph.edges.iter().any(|e| {
+            e.source_multiplicity.is_some() || e.target_multiplicity.is_some()
+        });
+        if has_mult {
+            svg.push_str("<!-- Multiplicity Labels -->\n");
+            svg.push_str("<g class=\"multiplicity-labels\">\n");
+            for (edge_idx, path) in &routing_result.paths {
+                if let Some(edge) = graph.edges.get(*edge_idx) {
+                    render_multiplicity_labels(&mut svg, edge, &path.points, grid);
+                }
+            }
+            svg.push_str("</g>\n");
+        }
+    }
 
     // --- Edge labels (on top of everything) ---
     if !label_placements.is_empty() {
@@ -159,6 +198,62 @@ pub fn build_svg(
 
     svg.push_str("</svg>");
     svg.into_bytes()
+}
+
+/// Render multiplicity labels near the endpoints of a class edge.
+fn render_multiplicity_labels(
+    svg: &mut String,
+    edge: &trellis_parser::Edge,
+    grid_points: &[crate::routing::astar::GridPoint],
+    grid: &Grid,
+) {
+    if grid_points.len() < 2 {
+        return;
+    }
+
+    let offset = 14.0_f64; // pixels from the endpoint
+
+    // Source multiplicity — near the first point
+    if let Some(ref mult) = edge.source_multiplicity {
+        let p0 = &grid_points[0];
+        let p1 = &grid_points[1];
+        let (x0, y0) = grid.grid_to_world(p0.row as usize, p0.col as usize);
+        let (x1, y1) = grid.grid_to_world(p1.row as usize, p1.col as usize);
+        let (lx, ly) = label_offset_point(x0, y0, x1, y1, offset);
+        svg.push_str(&format!(
+            "  <text x=\"{:.1}\" y=\"{:.1}\" font-size=\"10\" fill=\"#555\">{}</text>\n",
+            lx, ly, mult
+        ));
+    }
+
+    // Target multiplicity — near the last point
+    if let Some(ref mult) = edge.target_multiplicity {
+        let n = grid_points.len();
+        let pn = &grid_points[n - 1];
+        let pn1 = &grid_points[n - 2];
+        let (xn, yn) = grid.grid_to_world(pn.row as usize, pn.col as usize);
+        let (xn1, yn1) = grid.grid_to_world(pn1.row as usize, pn1.col as usize);
+        let (lx, ly) = label_offset_point(xn, yn, xn1, yn1, offset);
+        svg.push_str(&format!(
+            "  <text x=\"{:.1}\" y=\"{:.1}\" font-size=\"10\" fill=\"#555\">{}</text>\n",
+            lx, ly, mult
+        ));
+    }
+}
+
+/// Calculate a label position offset from point A towards B by `offset` pixels,
+/// then shifted perpendicularly.
+fn label_offset_point(ax: f64, ay: f64, bx: f64, by_: f64, offset: f64) -> (f64, f64) {
+    let dx = bx - ax;
+    let dy = by_ - ay;
+    let len = (dx * dx + dy * dy).sqrt();
+    if len < 0.001 {
+        return (ax + offset, ay - offset);
+    }
+    let nx = dx / len;
+    let ny = dy / len;
+    // Move towards B by offset, then shift perpendicular
+    (ax + nx * offset - ny * 6.0, ay + ny * offset + nx * 6.0)
 }
 
 /// Render a single edge label as SVG: background rectangle + text.

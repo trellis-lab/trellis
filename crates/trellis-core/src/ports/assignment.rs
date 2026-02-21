@@ -389,7 +389,7 @@ mod tests {
             height: h,
             x,
             y,
-        }
+            ..Default::default()        }
     }
 
     fn make_edge(from: &str, to: &str) -> Edge {
@@ -399,7 +399,7 @@ mod tests {
             label: None,
             style: EdgeStyle::Solid,
             arrow_head: ArrowHead::Arrow,
-        }
+            ..Default::default()        }
     }
 
     #[test]

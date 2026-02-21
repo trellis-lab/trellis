@@ -1,4 +1,5 @@
 use crate::grid::Grid;
+use crate::render::class_shapes::class_edge_markers;
 use crate::routing::astar::GridPoint;
 use trellis_parser::{ArrowHead, Edge, EdgeStyle};
 
@@ -171,11 +172,17 @@ pub fn render_edge(
     let path_data = generate_rounded_polyline(&simplified, corner_radius);
 
     let stroke = stroke_attrs(edge.style);
-    let marker = marker_attr(edge.arrow_head);
+
+    // Use class-specific markers when available, otherwise use arrow_head marker
+    let (marker_start, marker_end) = if edge.class_edge_type.is_some() {
+        class_edge_markers(edge)
+    } else {
+        (String::new(), marker_attr(edge.arrow_head).to_string())
+    };
 
     format!(
-        "<path d=\"{}\" fill=\"none\" stroke=\"#666\" {}{}/>",
-        path_data, stroke, marker
+        "<path d=\"{}\" fill=\"none\" stroke=\"#555\" {}{}{}/>",
+        path_data, stroke, marker_start, marker_end
     )
 }
 

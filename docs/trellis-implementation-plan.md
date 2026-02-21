@@ -167,15 +167,15 @@
 
 ### Parsing
 
-* [ ] `detectType` frissítés a tokenizer-ben: `classDiagram` kulcsszó felismerése
-* [ ] Class diagram parser (`parser/class_diagram.rs`):
+* [x] `detectType` frissítés a tokenizer-ben: `classDiagram` kulcsszó felismerése
+* [x] Class diagram parser (`parser/class_diagram.rs`):
     * Osztálydefiníció: `class ClassName { ... }` és önálló `ClassName` deklaráció
     * Sztereotípa parsing: `<<interface>>`, `<<abstract>>`, `<<enumeration>>`, `<<service>>`
     * Attribútum parsing: `visibility type name` (láthatóság: `+` public, `-` private, `#` protected, `~` package; `$` static, `*` abstract)
     * Metódus parsing: `visibility returnType name(params)` – metódusok `()` végűek; `$` static, `*` abstract
     * Megjegyzés: `note for ClassName "text"` és szabad `note "text"`
     * Namespace blokkok (`namespace ns { ... }`) – opcionális
-* [ ] Reláció parsing (7 típus, mindkét irányban):
+* [x] Reláció parsing (7 típus, mindkét irányban):
     * Öröklődés: `ClassA <|-- ClassB` és `ClassA --|> ClassB`
     * Kompozíció: `ClassA *-- ClassB` és `ClassA --* ClassB`
     * Aggregáció: `ClassA o-- ClassB` és `ClassA --o ClassB`
@@ -183,9 +183,9 @@
     * Realizáció: `ClassA <|.. ClassB` és `ClassA ..|> ClassB`
     * Függőség: `ClassA ..> ClassB` és `ClassA <.. ClassB`
     * Link: `ClassA .. ClassB`
-* [ ] Multiplicitás parsing mindkét végponton: `ClassA "1" --> "0..*" ClassB`
-* [ ] Reláció-felirat parsing: `ClassA --> ClassB : labelText`
-* [ ] AST bővítés (`ast.rs`):
+* [x] Multiplicitás parsing mindkét végponton: `ClassA "1" --> "0..*" ClassB`
+* [x] Reláció-felirat parsing: `ClassA --> ClassB : labelText`
+* [x] AST bővítés (`ast.rs`):
     * `Node.stereotype: Option<String>`
     * `Node.class_attributes: Vec<ClassAttribute>` (`{ visibility, attr_type, name, is_static, is_abstract }`)
     * `Node.class_methods: Vec<ClassMethod>` (`{ visibility, return_type, name, params, is_static, is_abstract }`)
@@ -194,22 +194,22 @@
 
 ### Elhelyezés (placement)
 
-* [ ] `placement/class.rs` – `placeClassDiagram` hibrid algoritmus:
+* [x] `placement/class.rs` – `placeClassDiagram` hibrid algoritmus:
     * Öröklődési + realizációs éleket kigyűjti → `inheritanceGraph`
     * `inheritanceGraph`-on Sugiyama: `breakCycles` → `assignLayers` → `orderWithinLayers` → `assignCoordinates(direction: "TB")`
     * Asszociáció/aggregáció/kompozíció/függőség: még nem elhelyezett csomópontokat a legtöbb éllel rendelkező elhelyezett szomszéd mellé teszi (laterálisan, `findMostConnectedPlacedNeighbor`)
     * `resolveOverlaps`: átfedő csomópontok eltolása (spirális kereséssel, mint `snap.rs`-ben)
-* [ ] `pipeline.rs` bővítés: `placeByDiagramType` → `classDiagram` eset bekötése
+* [x] `pipeline.rs` bővítés: `placeByDiagramType` → `classDiagram` eset bekötése
 
 ### Renderelés
 
-* [ ] `render/class_shapes.rs` – háromrészes osztálydoboz:
+* [x] `render/class_shapes.rs` – háromrészes osztálydoboz:
     * Felső rész (name compartment): osztálynév bold + sztereotípa (`<<stereotype>>` dőlt, középre)
     * Középső rész: attribútumok soronként (`+ type name`; abstract = dőlt, static = aláhúzott)
     * Alsó rész: metódusok soronként (`+ returnType name(params)`; abstract = dőlt, static = aláhúzott)
     * Üres compartment-nél is megjelenik az elválasztó vonal
     * Doboz szélessége: `MAX(névhossz, leghosszabb attribútum, leghosszabb metódus) + PADDING`
-* [ ] Élvégjel renderelés – új SVG marker definitiók `render/svg.rs`-ben:
+* [x] Élvégjel renderelés – új SVG marker definitiók `render/svg.rs`-ben:
     * Öröklődés: üres háromszög (hollow triangle) a célcsomóponton
     * Realizáció: üres háromszög + szaggatott vonal
     * Kompozíció: tömör rombusz a forráscsomóponton
@@ -217,17 +217,17 @@
     * Asszociáció: nyíl (open arrowhead) a célcsomóponton
     * Függőség: nyíl + szaggatott vonal (`stroke-dasharray`)
     * Link: végjelölő nélkül
-* [ ] Multiplicitás-felirat renderelés: kis szöveg az él végpontjai közelében (csomóponttól 10–15 px-re)
-* [ ] Z-order: osztálydobozok → élek → multiplicitás-feliratok → reláció-feliratok
+* [x] Multiplicitás-felirat renderelés: kis szöveg az él végpontjai közelében (csomóponttól 10–15 px-re)
+* [x] Z-order: osztálydobozok → élek → multiplicitás-feliratok → reláció-feliratok
 
 ### Tesztelés
 
-* [ ] Unit tesztek (`parser/class_diagram.rs` `#[cfg(test)]`):
+* [x] Unit tesztek (`parser/class_diagram.rs` `#[cfg(test)]`):
     * Minden relációtípus parse-olása helyes `ClassEdgeType`-ra
     * Multiplicitás parsing: `"1"`, `"0..*"`, `"1..n"` és hasonlók
     * Sztereotípa parsing: `<<interface>>`, `<<abstract>>`
     * Attribútum/metódus láthatósági szimbólum helyes kiosztása
-* [ ] Integrációs teszt: B12 (class hierarchy) teljes pipeline-on átmegy, SVG-ben az öröklődési háromszög jelen van
+* [x] Integrációs teszt: B12 (class hierarchy) teljes pipeline-on átmegy, SVG-ben az öröklődési háromszög jelen van
 
 ---
 
