@@ -167,7 +167,7 @@
 
 * [ ] Class diagram parser (`class_diagram.rs` – osztályok, metódusok, relációk: extends/implements/association)
 * [ ] Class diagram elhelyezés (`placement/class.rs` – hibrid: öröklődési fa Sugiyama + asszociáció laterális)
-* [ ] ER diagram parser (`er_diagram.rs` – entitások, attribútumok, relációk: 1:1, 1:N, N:M)
+* [ ] ER diagram parser (`er_diagram.rs` – entitások, attribútumok, relációk: 1:1, 1:N, N:M), nyílvégek
 * [ ] ER diagram elhelyezés (`placement/er.rs` – Fruchterman-Reingold force-directed)
 * [ ] `detectType` frissítés a tokenizer-ben (flowchart/classDiagram/erDiagram felismerés)
 * [ ] Pipeline routing: diagramtípus-függő elhelyezés-választás (`placeByDiagramType`)
@@ -175,7 +175,55 @@
 
 ---
 
-## M11 – Dekompozíció (Fázis 13)
+## M11 – C4 diagram parser és elhelyezés
+
+> **Cél:** Az öt C4 diagramszint (Context, Container, Component, Dynamic, Deployment) mindegyike parseolható és renderelhető.
+> **Smoke test:** `cargo run -p trellis-cli -- render c4_context.mmd -o c4_context.svg` → Enterprise_Boundary-ban Person, System, System_Ext elemek és Rel kapcsolatok megjelennek
+
+### Parsing
+
+* [ ] C4 diagramtípus felismerése a tokenizer-ben (`detectType` – `C4Context`, `C4Container`, `C4Component`, `C4Dynamic`, `C4Deployment` kulcsszavak)
+* [ ] C4 elem-parser (`parser/c4_diagram.rs` – mind az öt diagramszintet egységes elemtípus-készlettel kezeli)
+* [ ] Person / Person_Ext parsing (label, description)
+* [ ] System-elemek parsing: `System`, `SystemDb`, `SystemQueue` és `_Ext` variánsaik (label, description, technológia)
+* [ ] Container-elemek parsing: `Container`, `ContainerDb`, `ContainerQueue` és `_Ext` variánsaik
+* [ ] Component-elemek parsing: `Component`, `ComponentDb`, `ComponentQueue` és `_Ext` variánsaik
+* [ ] Deployment_Node / Node / Node_L / Node_R parsing (nested deployment fák)
+* [ ] Boundary-blokkok parsing: `Enterprise_Boundary`, `System_Boundary`, `Container_Boundary` – egymásba ágyazva (rekurzív)
+* [ ] Kapcsolat-parser: `Rel`, `BiRel`, `Rel_U/D/L/R/Back`, `RelIndex` (forrás, cél, label, technológia)
+* [ ] `UpdateLayoutConfig(?c4ShapeInRow, ?c4BoundaryInRow)` directive parsing (névvel és pozíció alapján is)
+
+### Elhelyezés (placement)
+
+A C4 elhelyezés **nem gráfalgoritmus-alapú** – sorfolyásos (row-flow) elrendezést alkalmaz:
+
+* [ ] `placement/c4.rs` – `placeC4Elements`: elemek balról jobbra, `c4ShapeInRow` darabonként sortörés; boundary-k `c4BoundaryInRow` darabonként sortörés
+* [ ] Boundary bounding box számítás: gyermekelemek koordinátáiból alulról felfelé (bottom-up), padding + feliratmagasság figyelembevételével
+* [ ] Nested boundary kezelés (rekurzív: belső elemek koordinátái a belső boundary-n belül relatívak, majd globálissá alakítva)
+* [ ] Deployment_Node fa elhelyezése: mélység szerinti indent, `Node_L`/`Node_R` bal/jobb oldali elrendezés
+* [ ] `Rel_U/D/L/R` → routing hint: a megadott irány az A* pathfinder kiindulási port-oldalát kényszeríti
+
+### Renderelés
+
+* [ ] `render/c4_shapes.rs` – speciális alakzatok:
+    * `Person` / `Person_Ext`: emberfigura-ikon (kör fej + váll)
+    * `SystemDb` / `ContainerDb` / `ComponentDb` és `_Ext` variánsaik: henger (cylinder)
+    * `SystemQueue` / `ContainerQueue` / `ComponentQueue` és `_Ext` variánsaik: sor-ikon (dupla keret)
+    * `_Ext` variánsok: szaggatott körvonal (stroke-dasharray)
+* [ ] Boundary renderelés: `render/c4_boundary.rs` – finom szaggatott keret, háttérszín mélység szerint, bal felső sarokba felirat
+* [ ] Kapcsolat renderelés: technológia-felirat az élcímke második soraként; `BiRel` → kétirányú nyíl
+* [ ] `UpdateElementStyle` directive feldolgozása (egyedi szín/stílus felülírás)
+* [ ] `UpdateRelStyle` directive feldolgozása
+* [ ] Z-order: boundary háttér → élek → elemek → elemcímkék → élcímkék
+
+### Tesztelés
+
+* [ ] Unit tesztek: C4Context (Person + System + Enterprise_Boundary + Rel), C4Container (Container + System_Boundary), C4Deployment (Deployment_Node fa) fixture-ök
+* [ ] `UpdateLayoutConfig` tesztelése: 2 shape/sor, 1 boundary/sor → elhelyezés ellenőrzés
+
+---
+
+## M12 – Dekompozíció (Fázis 13)
 
 > **Cél:** Nagy gráfok (50+ node) kezelése klaszterezéssel.
 > **Smoke test:** B10 (50 node flowchart) és B11 (100 node ER) elfogadható idő alatt renderelődik
@@ -191,7 +239,7 @@
 
 ---
 
-## M12 – CLI teljes funkciókészlet
+## M13 – CLI teljes funkciókészlet
 
 > **Cél:** Az összes CLI parancs működik, beleértve batch módot, preprocessort, és licenckezelést.
 > **Smoke test:** `trellis preprocess doc.md -o out.md --image-dir img/` → Mermaid blokkok képekre cserélve
@@ -209,7 +257,7 @@
 
 ---
 
-## M13 – WASM build + VS Code extension
+## M14 – WASM build + VS Code extension
 
 > **Cél:** A VS Code extension működik: .mmd fájl megnyitás → preview panel → renderelt diagram.
 > **Smoke test:** VS Code-ban F5 → .mmd fájl megnyitva → preview panelen renderelt diagram
@@ -227,7 +275,7 @@
 
 ---
 
-## M14 – IntelliJ plugin
+## M15 – IntelliJ plugin
 
 > **Cél:** IntelliJ plugin működik: .mmd fájl → tool window → renderelt diagram.
 > **Smoke test:** IntelliJ-ben Run Plugin → .mmd fájl → preview
@@ -243,7 +291,7 @@
 
 ---
 
-## M15 – Docker + CI/CD
+## M16 – Docker + CI/CD
 
 > **Cél:** Docker image és GitHub Actions CI pipeline működik.
 > **Smoke test:** `docker run --rm -v $(pwd):/data ghcr.io/trellis/trellis:latest trellis render /data/test.mmd -o /data/test.svg`
@@ -258,7 +306,7 @@
 
 ---
 
-## M16 – Benchmark és finomhangolás
+## M17 – Benchmark és finomhangolás
 
 > **Cél:** A költségfüggvény konstansai optimalizálva, a teljesítmény mérve és dokumentálva.
 > **Smoke test:** `cargo bench` lefut, eredmények a `target/criterion/` alatt, minden benchmark elfogadható idő alatt renderelődik
@@ -289,13 +337,14 @@
 | **M7** | Fázis 7 | Zsákutca kezelés |
 | **M8** | Fázis 8 | Él címkék |
 | **M9** | Fázis 2 (subgraph) | Subgraph vizualizáció |
-| **M10** | Fázis 1-2 (class, ER) | Három diagramtípus |
-| **M11** | Fázis 13 | Dekompozíció |
-| **M12** | CLI | Teljes CLI + Pandoc filter |
-| **M13** | – | VS Code extension |
-| **M14** | – | IntelliJ plugin |
-| **M15** | – | Docker + CI/CD |
-| **M16** | – | Benchmark + optimalizáció |
+| **M10** | Fázis 1-2 (class, ER) | Class + ER diagramtípusok |
+| **M11** | – | C4 diagramtípusok (Context/Container/Component/Dynamic/Deployment) |
+| **M12** | Fázis 13 | Dekompozíció |
+| **M13** | CLI | Teljes CLI + Pandoc filter |
+| **M14** | – | VS Code extension |
+| **M15** | – | IntelliJ plugin |
+| **M16** | – | Docker + CI/CD |
+| **M17** | – | Benchmark + optimalizáció |
 
 ---
 
@@ -308,15 +357,17 @@ M1 → M2 → M3 → M4 → M5 → M6 (első vizuális eredmény)
                                   │
                                   ├→ M10 (class + ER)
                                   │
-                                  ├→ M11 (dekompozíció)
+                                  ├→ M11 (C4 diagram)
                                   │
-                                  ├→ M12 (CLI teljes) → M15 (Docker/CI)
+                                  ├→ M12 (dekompozíció)
                                   │
-                                  └→ M13 (VS Code) ──┐
+                                  ├→ M13 (CLI teljes) → M16 (Docker/CI)
+                                  │
+                                  └→ M14 (VS Code) ──┐
                                                       ├→ Release
-                                  └→ M14 (IntelliJ) ──┘
+                                  └→ M15 (IntelliJ) ──┘
 
-M16 (benchmark) bármikor futtatható M6 után
+M17 (benchmark) bármikor futtatható M6 után
 ```
 
 A **legfontosabb mérföldkő az M6** – itt lesz először vizuálisan értékelhető kimenet. Minden ami utána jön, finomítás és platform-terjesztés.
