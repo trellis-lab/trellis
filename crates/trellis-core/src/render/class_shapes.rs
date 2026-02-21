@@ -304,6 +304,7 @@ mod tests {
                 is_static: false,
                 is_abstract: true,
             }],
+            ..Default::default()
         }
     }
 

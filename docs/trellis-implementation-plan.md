@@ -238,19 +238,19 @@
 
 ### Parsing
 
-* [ ] `detectType` frissítés a tokenizer-ben: `erDiagram` kulcsszó felismerése
-* [ ] ER diagram parser (`parser/er_diagram.rs`):
+* [x] `detectType` frissítés a tokenizer-ben: `erDiagram` kulcsszó felismerése
+* [x] ER diagram parser (`parser/er_diagram.rs`):
     * Entitásdefiníció: `EntityName { type attrName PK, type attrName FK, ... }`
     * Attribútum kulcs-jelölők: `PK` (primary key), `FK` (foreign key), `UK` (unique key) – kombinálhatók
     * Attribútum megjegyzés: `type attrName PK "comment"`
     * Standalone entitás-deklaráció (attribútum-blokk nélkül): `EntityName`
-* [ ] Reláció parsing – crow's foot jelölések mindkét oldalon:
+* [x] Reláció parsing – crow's foot jelölések mindkét oldalon:
     * Bal oldali jelölők: `||` (pontosan egy), `|o` (nulla vagy egy), `}|` (egy vagy több), `}o` (nulla vagy több)
     * Jobb oldali jelölők: `||`, `o|`, `|{`, `o{` (tükörszimmetrikus változatok)
     * Kapcsolattípus: `--` (azonosító/identifying, solid vonal), `..` (nem azonosító/non-identifying, dashed vonal)
     * Példák: `EntityA ||--|| EntityB : "label"`, `EntityA }|..|{ EntityB : "label"`
-* [ ] Reláció-felirat parsing: kötelező `"idézőjeles szöveg"` a `:` után
-* [ ] AST bővítés (`ast.rs`):
+* [x] Reláció-felirat parsing: kötelező `"idézőjeles szöveg"` a `:` után
+* [x] AST bővítés (`ast.rs`):
     * `Node.er_attributes: Vec<ErAttribute>` (`{ attr_type, name, keys: Vec<KeyType>, comment: Option<String> }`)
     * `Edge.er_source_card: Option<ErCardinality>` (4 variáns: `ZeroOrOne`, `ExactlyOne`, `ZeroOrMore`, `OneOrMore`)
     * `Edge.er_target_card: Option<ErCardinality>`
@@ -258,46 +258,46 @@
 
 ### Elhelyezés (placement)
 
-* [ ] `placement/force_directed.rs` – általános Fruchterman-Reingold algoritmus (ER-agnosztikus):
+* [x] `placement/force_directed.rs` – általános Fruchterman-Reingold algoritmus (ER-agnosztikus):
     * `ForceDirectedConfig { area_factor: f64, cooling_rate: f64, max_iterations: u32 }`
     * `force_directed_placement(nodes: &[VirtualNode], edges: &[&Edge], config: &ForceDirectedConfig) -> HashMap<NodeId, Point>`
     * Taszítóerő minden csomópont-pár között: `K² / distance`; `K = sqrt(AREA / n)`
     * Vonzóerő élek mentén: `distance² / K`
     * Hőmérséklet-csökkentés: `temperature *= cooling_rate` iterációnként
     * Határvédelem: csomópontok nem lépnek a terület határán kívülre
-* [ ] `placement/er.rs` – ER-specifikus mapping és utófeldolgozás:
+* [x] `placement/er.rs` – ER-specifikus mapping és utófeldolgozás:
     * `placeErDiagram(graph: &Graph) -> HashMap<NodeId, Point>`
     * ER csomópontok szélességét/magasságát attribútumok száma alapján számolja (`n_attrs * LINE_HEIGHT + HEADER_HEIGHT`)
     * `force_directed_placement` hívása ER-specifikus konfigurációval (`cooling_rate: 0.95`, `max_iterations: 100`)
     * `snapToGrid` hívása az eredményre (meglévő `snap.rs` újrafelhasználva)
-* [ ] `pipeline.rs` bővítés: `placeByDiagramType` → `erDiagram` eset bekötése
+* [x] `pipeline.rs` bővítés: `placeByDiagramType` → `erDiagram` eset bekötése
 
 ### Renderelés
 
-* [ ] `render/er_shapes.rs` – ER entitásdoboz:
+* [x] `render/er_shapes.rs` – ER entitásdoboz:
     * Fejléc: entitásnév (bold, középre igazítva)
     * Attribútum sorok: `[kulcs-ikon] típus neve` (PK = bold, FK = dőlt, UK = aláhúzott)
     * Doboz szélessége: `MAX(névhossz, leghosszabb attribútum-sor) + PADDING`
     * Doboz magassága: `HEADER_HEIGHT + n_attrs * LINE_HEIGHT + PADDING`
-* [ ] Crow's foot SVG marker definitiók (új markerek `render/svg.rs`-ben, mindkét végpontra alkalmazható):
+* [x] Crow's foot SVG marker definitiók (új markerek `render/er_shapes.rs`-ben, mindkét végpontra alkalmazható):
     * `ExactlyOne` (`||`): két párhuzamos vonal (double tick)
     * `ZeroOrOne` (`|o`): egy vonal + kör
     * `OneOrMore` (`|{`): egy vonal + három szétnyíló vonal (crow's foot)
     * `ZeroOrMore` (`o{`): kör + három szétnyíló vonal
     * Mindkét végpontra külön marker-ref: `sourceMarker` és `targetMarker`
-* [ ] Él stílusa: `er_identifying == true` → solid vonal; `false` → dashed (`stroke-dasharray`)
-* [ ] Reláció-felirat renderelés: az él közepén, háttér-téglalap + szöveg (meglévő `labels/placement.rs` újrafelhasználva)
-* [ ] Z-order: entitásdobozok → élek → crow's foot markerek → reláció-feliratok
+* [x] Él stílusa: `er_identifying == true` → solid vonal; `false` → dashed (`stroke-dasharray`)
+* [x] Reláció-felirat renderelés: az él közepén, háttér-téglalap + szöveg (meglévő `labels/placement.rs` újrafelhasználva)
+* [x] Z-order: entitásdobozok → élek → crow's foot markerek → reláció-feliratok
 
 ### Tesztelés
 
-* [ ] Unit tesztek (`parser/er_diagram.rs` `#[cfg(test)]`):
+* [x] Unit tesztek (`parser/er_diagram.rs` `#[cfg(test)]`):
     * Minden kardinalitás-kombináció parse-olása helyes `ErCardinality`-ra
     * `--` vs `..` kapcsolattípus helyes felismerése
     * Attribútum kulcs-jelölők: `PK`, `FK`, `UK`, kombinált (`PK,FK`)
     * Standalone entitás + reláció-felirat parsing
-* [ ] Integrációs teszt: B11 (100 node ER) teljes pipeline-on átmegy, SVG-ben crow's foot markerek jelen vannak
-* [ ] Teljesítmény-teszt: B11 force-directed elhelyezés elfogadható idő alatt konvergál (< 2 s)
+* [x] Integrációs teszt: B11 (100 node ER) teljes pipeline-on átmegy, SVG-ben crow's foot markerek jelen vannak
+* [x] Teljesítmény-teszt: B11 force-directed elhelyezés elfogadható idő alatt konvergál (< 2 s)
 
 ---
 

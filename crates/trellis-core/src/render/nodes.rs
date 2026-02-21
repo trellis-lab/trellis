@@ -283,19 +283,12 @@ pub fn render_node(node: &Node) -> String {
             // Push the label below the top ellipse so it stays readable.
             label_cy += 10.0;
         }
-        NodeShape::ClassBox => {
-            // ClassBox: rectangle with a header divider line (class diagram style)
+        // ClassBox and ErBox are rendered by dedicated renderers; fall back here.
+        NodeShape::ClassBox | NodeShape::ErBox => {
             svg.push_str(&format!(
                 "<rect x=\"{:.1}\" y=\"{:.1}\" width=\"{:.1}\" height=\"{:.1}\" \
-                 fill=\"#e8f4fd\" stroke=\"#4a90d9\" stroke-width=\"1.5\"/>\n",
+                 fill=\"#f5f5f5\" stroke=\"#555\" stroke-width=\"1.5\"/>\n",
                 left, top, w, h,
-            ));
-            // Header divider line at 1/4 height
-            let divider_y = top + h / 4.0;
-            svg.push_str(&format!(
-                "<line x1=\"{:.1}\" y1=\"{:.1}\" x2=\"{:.1}\" y2=\"{:.1}\" \
-                 stroke=\"#4a90d9\" stroke-width=\"1.5\"/>\n",
-                left, divider_y, left + w, divider_y,
             ));
         }
     }

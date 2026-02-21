@@ -7,6 +7,7 @@ use crate::placement::subgraph::VIRTUAL_PREFIX;
 use crate::render::class_shapes::{class_marker_defs, render_class_node};
 use crate::render::crossing::render_crossings;
 use crate::render::edges::{arrow_marker_defs, render_edge, render_fallback_edge};
+use crate::render::er_shapes::{er_marker_defs, render_er_node};
 use crate::render::grid::render_grid_dot;
 use crate::render::nodes::{render_node, render_nodes};
 use crate::render::subgraph::render_subgraph_backgrounds;
@@ -63,11 +64,15 @@ pub fn build_svg(
         }
     }
 
-    // Marker definitions (arrowheads + class diagram markers)
+    // Marker definitions (arrowheads + diagram-specific markers)
     svg.push_str(arrow_marker_defs());
     svg.push('\n');
     if graph.diagram_type == DiagramType::ClassDiagram {
         svg.push_str(class_marker_defs());
+        svg.push('\n');
+    }
+    if graph.diagram_type == DiagramType::ErDiagram {
+        svg.push_str(er_marker_defs());
         svg.push('\n');
     }
 
@@ -148,6 +153,20 @@ pub fn build_svg(
         for node in &visible_nodes {
             let node_svg = if node.shape == NodeShape::ClassBox {
                 render_class_node(node)
+            } else {
+                render_node(node)
+            };
+            for line in node_svg.lines() {
+                svg.push_str("  ");
+                svg.push_str(line);
+                svg.push('\n');
+            }
+        }
+    } else if graph.diagram_type == DiagramType::ErDiagram {
+        // ER diagram: use dedicated entity box renderer for ErBox nodes
+        for node in &visible_nodes {
+            let node_svg = if node.shape == NodeShape::ErBox {
+                render_er_node(node)
             } else {
                 render_node(node)
             };

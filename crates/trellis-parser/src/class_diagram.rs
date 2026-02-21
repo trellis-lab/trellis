@@ -132,6 +132,7 @@ pub fn parse_class_diagram(tokens: &[Token]) -> Result<Graph, crate::ParseError>
                         class_edge_type: Some(edge_type),
                         source_multiplicity: source_mult,
                         target_multiplicity: target_mult,
+                        ..Default::default()
                     });
                 }
             }

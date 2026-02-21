@@ -1,4 +1,6 @@
 pub mod class;
+pub mod er;
+pub mod force_directed;
 pub mod snap;
 pub mod subgraph;
 pub mod sugiyama;
@@ -39,8 +41,8 @@ pub fn place_nodes(
             trellis_parser::DiagramType::ClassDiagram => {
                 class::place_class_diagram(graph);
             }
-            _ => {
-                sugiyama::layout(graph);
+            trellis_parser::DiagramType::ErDiagram => {
+                er::place_er_diagram(graph);
             }
         }
         snap_node_positions_to_grid(graph, cell_size);

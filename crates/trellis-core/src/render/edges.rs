@@ -1,5 +1,6 @@
 use crate::grid::Grid;
 use crate::render::class_shapes::class_edge_markers;
+use crate::render::er_shapes::er_edge_markers;
 use crate::routing::astar::GridPoint;
 use trellis_parser::{ArrowHead, Edge, EdgeStyle};
 
@@ -173,9 +174,11 @@ pub fn render_edge(
 
     let stroke = stroke_attrs(edge.style);
 
-    // Use class-specific markers when available, otherwise use arrow_head marker
+    // Use diagram-specific markers when available, otherwise use arrow_head marker
     let (marker_start, marker_end) = if edge.class_edge_type.is_some() {
         class_edge_markers(edge)
+    } else if edge.er_source_card.is_some() || edge.er_target_card.is_some() {
+        er_edge_markers(edge)
     } else {
         (String::new(), marker_attr(edge.arrow_head).to_string())
     };

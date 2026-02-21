@@ -24,6 +24,8 @@ pub struct Node {
     pub stereotype: Option<String>,
     pub class_attributes: Vec<ClassAttribute>,
     pub class_methods: Vec<ClassMethod>,
+    // ER diagram specific fields
+    pub er_attributes: Vec<ErAttribute>,
 }
 
 /// An edge connecting two nodes
@@ -38,6 +40,10 @@ pub struct Edge {
     pub class_edge_type: Option<ClassEdgeType>,
     pub source_multiplicity: Option<String>,
     pub target_multiplicity: Option<String>,
+    // ER diagram specific fields
+    pub er_source_card: Option<ErCardinality>,
+    pub er_target_card: Option<ErCardinality>,
+    pub er_identifying: Option<bool>,
 }
 
 /// A subgraph containing nodes and edges
@@ -88,6 +94,8 @@ pub enum NodeShape {
     DoubleCircle,
     /// Class diagram box (three-compartment)
     ClassBox,
+    /// ER diagram entity box
+    ErBox,
 }
 
 /// Style of an edge
@@ -151,6 +159,34 @@ pub enum ClassEdgeType {
     Realization,  // <|.. or ..|>
     Dependency,   // ..> or <..
     Link,         // ..
+}
+
+// ── ER diagram types ──────────────────────────────────────────────────
+
+/// Key type for ER diagram attributes
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum KeyType {
+    PK, // Primary Key
+    FK, // Foreign Key
+    UK, // Unique Key
+}
+
+/// An attribute in an ER entity
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct ErAttribute {
+    pub attr_type: String,
+    pub name: String,
+    pub keys: Vec<KeyType>,
+    pub comment: Option<String>,
+}
+
+/// Cardinality notation for ER diagram relationships (crow's foot)
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum ErCardinality {
+    ExactlyOne,  // ||
+    ZeroOrOne,   // |o or o|
+    OneOrMore,   // }| or |{
+    ZeroOrMore,  // }o or o{
 }
 
 impl Graph {

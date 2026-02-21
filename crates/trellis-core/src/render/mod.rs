@@ -1,6 +1,7 @@
 pub mod class_shapes;
 pub mod crossing;
 pub mod edges;
+pub mod er_shapes;
 pub mod grid;
 pub mod nodes;
 pub mod png;
