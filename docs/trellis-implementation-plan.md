@@ -160,22 +160,148 @@
 
 ---
 
-## M10 – Class diagram + ER diagram parser és elhelyezés
+## M10 – Class diagram parser és elhelyezés
 
-> **Cél:** A három fókusz diagramtípus mindegyike működik.
-> **Smoke test:** B12 (class hierarchy) és B11 (100 node ER) renderelődik
+> **Cél:** A class diagram működik: osztályok metódusokkal/attribútumokkal, 7 relációtípus, hibrid Sugiyama+laterális elhelyezés.
+> **Smoke test:** `cargo run -p trellis-cli -- render b12.mmd -o b12.svg` → osztályhierarchia olvasható SVG-ként jelenik meg, öröklődési háromszögekkel és multiplicitás-jelölésekkel
 
-* [ ] Class diagram parser (`class_diagram.rs` – osztályok, metódusok, relációk: extends/implements/association)
-* [ ] Class diagram elhelyezés (`placement/class.rs` – hibrid: öröklődési fa Sugiyama + asszociáció laterális)
-* [ ] ER diagram parser (`er_diagram.rs` – entitások, attribútumok, relációk: 1:1, 1:N, N:M), nyílvégek
-* [ ] ER diagram elhelyezés (`placement/er.rs` – Fruchterman-Reingold force-directed)
-* [ ] `detectType` frissítés a tokenizer-ben (flowchart/classDiagram/erDiagram felismerés)
-* [ ] Pipeline routing: diagramtípus-függő elhelyezés-választás (`placeByDiagramType`)
-* [ ] Unit tesztek: B11 (ER), B12 (class) fixture-ök
+### Parsing
+
+* [ ] `detectType` frissítés a tokenizer-ben: `classDiagram` kulcsszó felismerése
+* [ ] Class diagram parser (`parser/class_diagram.rs`):
+    * Osztálydefiníció: `class ClassName { ... }` és önálló `ClassName` deklaráció
+    * Sztereotípa parsing: `<<interface>>`, `<<abstract>>`, `<<enumeration>>`, `<<service>>`
+    * Attribútum parsing: `visibility type name` (láthatóság: `+` public, `-` private, `#` protected, `~` package; `$` static, `*` abstract)
+    * Metódus parsing: `visibility returnType name(params)` – metódusok `()` végűek; `$` static, `*` abstract
+    * Megjegyzés: `note for ClassName "text"` és szabad `note "text"`
+    * Namespace blokkok (`namespace ns { ... }`) – opcionális
+* [ ] Reláció parsing (7 típus, mindkét irányban):
+    * Öröklődés: `ClassA <|-- ClassB` és `ClassA --|> ClassB`
+    * Kompozíció: `ClassA *-- ClassB` és `ClassA --* ClassB`
+    * Aggregáció: `ClassA o-- ClassB` és `ClassA --o ClassB`
+    * Asszociáció: `ClassA --> ClassB`, `ClassA <-- ClassB`, `ClassA -- ClassB`
+    * Realizáció: `ClassA <|.. ClassB` és `ClassA ..|> ClassB`
+    * Függőség: `ClassA ..> ClassB` és `ClassA <.. ClassB`
+    * Link: `ClassA .. ClassB`
+* [ ] Multiplicitás parsing mindkét végponton: `ClassA "1" --> "0..*" ClassB`
+* [ ] Reláció-felirat parsing: `ClassA --> ClassB : labelText`
+* [ ] AST bővítés (`ast.rs`):
+    * `Node.stereotype: Option<String>`
+    * `Node.class_attributes: Vec<ClassAttribute>` (`{ visibility, attr_type, name, is_static, is_abstract }`)
+    * `Node.class_methods: Vec<ClassMethod>` (`{ visibility, return_type, name, params, is_static, is_abstract }`)
+    * `Edge.class_edge_type: Option<ClassEdgeType>` (7 variáns: `Inheritance`, `Composition`, `Aggregation`, `Association`, `Realization`, `Dependency`, `Link`)
+    * `Edge.source_multiplicity: Option<String>` / `Edge.target_multiplicity: Option<String>`
+
+### Elhelyezés (placement)
+
+* [ ] `placement/class.rs` – `placeClassDiagram` hibrid algoritmus:
+    * Öröklődési + realizációs éleket kigyűjti → `inheritanceGraph`
+    * `inheritanceGraph`-on Sugiyama: `breakCycles` → `assignLayers` → `orderWithinLayers` → `assignCoordinates(direction: "TB")`
+    * Asszociáció/aggregáció/kompozíció/függőség: még nem elhelyezett csomópontokat a legtöbb éllel rendelkező elhelyezett szomszéd mellé teszi (laterálisan, `findMostConnectedPlacedNeighbor`)
+    * `resolveOverlaps`: átfedő csomópontok eltolása (spirális kereséssel, mint `snap.rs`-ben)
+* [ ] `pipeline.rs` bővítés: `placeByDiagramType` → `classDiagram` eset bekötése
+
+### Renderelés
+
+* [ ] `render/class_shapes.rs` – háromrészes osztálydoboz:
+    * Felső rész (name compartment): osztálynév bold + sztereotípa (`<<stereotype>>` dőlt, középre)
+    * Középső rész: attribútumok soronként (`+ type name`; abstract = dőlt, static = aláhúzott)
+    * Alsó rész: metódusok soronként (`+ returnType name(params)`; abstract = dőlt, static = aláhúzott)
+    * Üres compartment-nél is megjelenik az elválasztó vonal
+    * Doboz szélessége: `MAX(névhossz, leghosszabb attribútum, leghosszabb metódus) + PADDING`
+* [ ] Élvégjel renderelés – új SVG marker definitiók `render/svg.rs`-ben:
+    * Öröklődés: üres háromszög (hollow triangle) a célcsomóponton
+    * Realizáció: üres háromszög + szaggatott vonal
+    * Kompozíció: tömör rombusz a forráscsomóponton
+    * Aggregáció: üres rombusz a forráscsomóponton
+    * Asszociáció: nyíl (open arrowhead) a célcsomóponton
+    * Függőség: nyíl + szaggatott vonal (`stroke-dasharray`)
+    * Link: végjelölő nélkül
+* [ ] Multiplicitás-felirat renderelés: kis szöveg az él végpontjai közelében (csomóponttól 10–15 px-re)
+* [ ] Z-order: osztálydobozok → élek → multiplicitás-feliratok → reláció-feliratok
+
+### Tesztelés
+
+* [ ] Unit tesztek (`parser/class_diagram.rs` `#[cfg(test)]`):
+    * Minden relációtípus parse-olása helyes `ClassEdgeType`-ra
+    * Multiplicitás parsing: `"1"`, `"0..*"`, `"1..n"` és hasonlók
+    * Sztereotípa parsing: `<<interface>>`, `<<abstract>>`
+    * Attribútum/metódus láthatósági szimbólum helyes kiosztása
+* [ ] Integrációs teszt: B12 (class hierarchy) teljes pipeline-on átmegy, SVG-ben az öröklődési háromszög jelen van
 
 ---
 
-## M11 – C4 diagram parser és elhelyezés
+## M11 – Entity Relationship (ER) diagram parser és elhelyezés
+
+> **Cél:** Az ER diagram működik: entitások attribútumokkal, crow's foot jelölés mindkét végponton, Fruchterman-Reingold force-directed elhelyezés.
+> **Smoke test:** `cargo run -p trellis-cli -- render b11.mmd -o b11.svg` → 100 csomópontos ER diagram renderelődik, crow's foot nyílvégekkel és attribútum-sorokkal
+
+### Parsing
+
+* [ ] `detectType` frissítés a tokenizer-ben: `erDiagram` kulcsszó felismerése
+* [ ] ER diagram parser (`parser/er_diagram.rs`):
+    * Entitásdefiníció: `EntityName { type attrName PK, type attrName FK, ... }`
+    * Attribútum kulcs-jelölők: `PK` (primary key), `FK` (foreign key), `UK` (unique key) – kombinálhatók
+    * Attribútum megjegyzés: `type attrName PK "comment"`
+    * Standalone entitás-deklaráció (attribútum-blokk nélkül): `EntityName`
+* [ ] Reláció parsing – crow's foot jelölések mindkét oldalon:
+    * Bal oldali jelölők: `||` (pontosan egy), `|o` (nulla vagy egy), `}|` (egy vagy több), `}o` (nulla vagy több)
+    * Jobb oldali jelölők: `||`, `o|`, `|{`, `o{` (tükörszimmetrikus változatok)
+    * Kapcsolattípus: `--` (azonosító/identifying, solid vonal), `..` (nem azonosító/non-identifying, dashed vonal)
+    * Példák: `EntityA ||--|| EntityB : "label"`, `EntityA }|..|{ EntityB : "label"`
+* [ ] Reláció-felirat parsing: kötelező `"idézőjeles szöveg"` a `:` után
+* [ ] AST bővítés (`ast.rs`):
+    * `Node.er_attributes: Vec<ErAttribute>` (`{ attr_type, name, keys: Vec<KeyType>, comment: Option<String> }`)
+    * `Edge.er_source_card: Option<ErCardinality>` (4 variáns: `ZeroOrOne`, `ExactlyOne`, `ZeroOrMore`, `OneOrMore`)
+    * `Edge.er_target_card: Option<ErCardinality>`
+    * `Edge.er_identifying: Option<bool>` (true = solid, false = dashed)
+
+### Elhelyezés (placement)
+
+* [ ] `placement/force_directed.rs` – általános Fruchterman-Reingold algoritmus (ER-agnosztikus):
+    * `ForceDirectedConfig { area_factor: f64, cooling_rate: f64, max_iterations: u32 }`
+    * `force_directed_placement(nodes: &[VirtualNode], edges: &[&Edge], config: &ForceDirectedConfig) -> HashMap<NodeId, Point>`
+    * Taszítóerő minden csomópont-pár között: `K² / distance`; `K = sqrt(AREA / n)`
+    * Vonzóerő élek mentén: `distance² / K`
+    * Hőmérséklet-csökkentés: `temperature *= cooling_rate` iterációnként
+    * Határvédelem: csomópontok nem lépnek a terület határán kívülre
+* [ ] `placement/er.rs` – ER-specifikus mapping és utófeldolgozás:
+    * `placeErDiagram(graph: &Graph) -> HashMap<NodeId, Point>`
+    * ER csomópontok szélességét/magasságát attribútumok száma alapján számolja (`n_attrs * LINE_HEIGHT + HEADER_HEIGHT`)
+    * `force_directed_placement` hívása ER-specifikus konfigurációval (`cooling_rate: 0.95`, `max_iterations: 100`)
+    * `snapToGrid` hívása az eredményre (meglévő `snap.rs` újrafelhasználva)
+* [ ] `pipeline.rs` bővítés: `placeByDiagramType` → `erDiagram` eset bekötése
+
+### Renderelés
+
+* [ ] `render/er_shapes.rs` – ER entitásdoboz:
+    * Fejléc: entitásnév (bold, középre igazítva)
+    * Attribútum sorok: `[kulcs-ikon] típus neve` (PK = bold, FK = dőlt, UK = aláhúzott)
+    * Doboz szélessége: `MAX(névhossz, leghosszabb attribútum-sor) + PADDING`
+    * Doboz magassága: `HEADER_HEIGHT + n_attrs * LINE_HEIGHT + PADDING`
+* [ ] Crow's foot SVG marker definitiók (új markerek `render/svg.rs`-ben, mindkét végpontra alkalmazható):
+    * `ExactlyOne` (`||`): két párhuzamos vonal (double tick)
+    * `ZeroOrOne` (`|o`): egy vonal + kör
+    * `OneOrMore` (`|{`): egy vonal + három szétnyíló vonal (crow's foot)
+    * `ZeroOrMore` (`o{`): kör + három szétnyíló vonal
+    * Mindkét végpontra külön marker-ref: `sourceMarker` és `targetMarker`
+* [ ] Él stílusa: `er_identifying == true` → solid vonal; `false` → dashed (`stroke-dasharray`)
+* [ ] Reláció-felirat renderelés: az él közepén, háttér-téglalap + szöveg (meglévő `labels/placement.rs` újrafelhasználva)
+* [ ] Z-order: entitásdobozok → élek → crow's foot markerek → reláció-feliratok
+
+### Tesztelés
+
+* [ ] Unit tesztek (`parser/er_diagram.rs` `#[cfg(test)]`):
+    * Minden kardinalitás-kombináció parse-olása helyes `ErCardinality`-ra
+    * `--` vs `..` kapcsolattípus helyes felismerése
+    * Attribútum kulcs-jelölők: `PK`, `FK`, `UK`, kombinált (`PK,FK`)
+    * Standalone entitás + reláció-felirat parsing
+* [ ] Integrációs teszt: B11 (100 node ER) teljes pipeline-on átmegy, SVG-ben crow's foot markerek jelen vannak
+* [ ] Teljesítmény-teszt: B11 force-directed elhelyezés elfogadható idő alatt konvergál (< 2 s)
+
+---
+
+## M12 – C4 diagram parser és elhelyezés
 
 > **Cél:** Az öt C4 diagramszint (Context, Container, Component, Dynamic, Deployment) mindegyike parseolható és renderelhető.
 > **Smoke test:** `cargo run -p trellis-cli -- render c4_context.mmd -o c4_context.svg` → Enterprise_Boundary-ban Person, System, System_Ext elemek és Rel kapcsolatok megjelennek
@@ -223,7 +349,7 @@ A C4 elhelyezés **nem gráfalgoritmus-alapú** – sorfolyásos (row-flow) elre
 
 ---
 
-## M12 – Dekompozíció (Fázis 13)
+## M13 – Dekompozíció (Fázis 13)
 
 > **Cél:** Nagy gráfok (50+ node) kezelése klaszterezéssel.
 > **Smoke test:** B10 (50 node flowchart) és B11 (100 node ER) elfogadható idő alatt renderelődik
@@ -239,7 +365,7 @@ A C4 elhelyezés **nem gráfalgoritmus-alapú** – sorfolyásos (row-flow) elre
 
 ---
 
-## M13 – CLI teljes funkciókészlet
+## M14 – CLI teljes funkciókészlet
 
 > **Cél:** Az összes CLI parancs működik, beleértve batch módot, preprocessort, és licenckezelést.
 > **Smoke test:** `trellis preprocess doc.md -o out.md --image-dir img/` → Mermaid blokkok képekre cserélve
@@ -248,16 +374,14 @@ A C4 elhelyezés **nem gráfalgoritmus-alapú** – sorfolyásos (row-flow) elre
 * [ ] `render-batch` parancs (könyvtár bejárás, .mmd szűrés, párhuzamos renderelés)
 * [ ] `validate` parancs (parser + összesítő, szintaxis hibák kiírása)
 * [ ] `preprocess` parancs (markdown Mermaid blokkok → képhivatkozások)
-* [ ] `license --activate` / `--status` / `--deactivate` (Lemon Squeezy API kliens, `~/.trellis/license.json`)
-* [ ] Licenc ellenőrzés a `render` és `render-batch` parancsokban (10 node limit, PNG-only, vízjel)
 * [ ] `--metrics` JSON kimenet stderr-re (crossings, bends, render_ms, grid_utilization)
 * [ ] `--config` fájl betöltés (`~/.trellis/config.toml`)
 * [ ] Pandoc Lua filter (`filters/trellis-filter.lua`) megírása és tesztelése
-* [ ] Exit kódok: 0 = OK, 1 = parse hiba, 2 = render hiba, 3 = licenc hiba
+* [ ] Exit kódok: 0 = OK, 1 = parse hiba, 2 = render hiba (licenckezelés → Mc mérföldkő)
 
 ---
 
-## M14 – WASM build + VS Code extension
+## M15 – WASM build + VS Code extension
 
 > **Cél:** A VS Code extension működik: .mmd fájl megnyitás → preview panel → renderelt diagram.
 > **Smoke test:** VS Code-ban F5 → .mmd fájl megnyitva → preview panelen renderelt diagram
@@ -269,13 +393,12 @@ A C4 elhelyezés **nem gráfalgoritmus-alapú** – sorfolyásos (row-flow) elre
 * [ ] Preview panel (`preview.ts` – webview, SVG megjelenítés)
 * [ ] Preview webview template (`media/preview.html`)
 * [ ] Fájl mentés figyelés (`.mmd` fájl változáskor automatikus újra-render)
-* [ ] Freemium korlátok (`license.ts` – 10 node limit, vízjel, PNG-only export)
-* [ ] Export funkció (`export.ts` – PNG/SVG mentés)
+* [ ] Export funkció (`export.ts` – PNG/SVG mentés) (licenckorlátok → Mc mérföldkő)
 * [ ] `vsce package` → `.vsix` fájl előállítás
 
 ---
 
-## M15 – IntelliJ plugin
+## M16 – IntelliJ plugin
 
 > **Cél:** IntelliJ plugin működik: .mmd fájl → tool window → renderelt diagram.
 > **Smoke test:** IntelliJ-ben Run Plugin → .mmd fájl → preview
@@ -285,13 +408,12 @@ A C4 elhelyezés **nem gráfalgoritmus-alapú** – sorfolyásos (row-flow) elre
 * [ ] WASM bridge Chicory runtime-mal (`WasmBridge.kt`)
 * [ ] Preview tool window (`PreviewPanel.kt` – JCEF/SVG megjelenítés)
 * [ ] Fájl változás figyelés (IntelliJ VFS listener)
-* [ ] JetBrains Marketplace licencelés (`LicenseManager.kt` – `LicensingFacade`)
-* [ ] Export (`ExportAction.kt` – PNG/SVG)
+* [ ] Export (`ExportAction.kt` – PNG/SVG) (licenckorlátok → Mc mérföldkő)
 * [ ] `./gradlew buildPlugin` → `.zip` fájl
 
 ---
 
-## M16 – Docker + CI/CD
+## M17 – Docker + CI/CD
 
 > **Cél:** Docker image és GitHub Actions CI pipeline működik.
 > **Smoke test:** `docker run --rm -v $(pwd):/data ghcr.io/trellis/trellis:latest trellis render /data/test.mmd -o /data/test.svg`
@@ -306,7 +428,7 @@ A C4 elhelyezés **nem gráfalgoritmus-alapú** – sorfolyásos (row-flow) elre
 
 ---
 
-## M17 – Benchmark és finomhangolás
+## M18 – Benchmark és finomhangolás
 
 > **Cél:** A költségfüggvény konstansai optimalizálva, a teljesítmény mérve és dokumentálva.
 > **Smoke test:** `cargo bench` lefut, eredmények a `target/criterion/` alatt, minden benchmark elfogadható idő alatt renderelődik
@@ -324,27 +446,79 @@ A C4 elhelyezés **nem gráfalgoritmus-alapú** – sorfolyásos (row-flow) elre
 
 ---
 
+## M19 – Kereskedelmi funkciók (Commercialisation)
+
+> **Cél:** Licenckezelés és freemium korlátok implementálása a CLI-ben, VS Code extensionben és IntelliJ pluginban.
+> **Előfeltétel:** M14 (CLI teljes funkciókészlet), M15 (VS Code extension), M16 (IntelliJ plugin)
+> **Smoke test:** `trellis license --activate <kulcs>` → "OK, Premium aktiválva" | `trellis render b10.mmd` (free tier, 50 node) → "Free verzió: max 10 csomópont" hibaüzenet (exit 3)
+
+### CLI licenckezelés (`trellis-cli`)
+
+* [ ] `license --activate <kulcs>` / `--status` / `--deactivate` parancs implementálása (`commands/license.rs`)
+* [ ] Lemon Squeezy API kliens (`license/lemon.rs`):
+    * `activate(key, instance_id) -> LicenseResponse`
+    * `validate(key, instance_id) -> ValidationResult`
+    * `deactivate(key, instance_id) -> Result<()>`
+* [ ] Licencállapot tárolás (`license/state.rs`): `~/.trellis/license.json` – kulcs, tier, lejárat, instance_id, last_validated
+* [ ] Online revalidáció 30 napos grace period-dal: ha > 7 nap telt el az utolsó validáció óta → háttérben újraellenőrzés; offline esetén grace period-ig Premium marad
+* [ ] Licenc ellenőrzés a `render` parancsban:
+    * Free tier: max 10 csomópont (felette → stderr hibaüzenet, exit 3)
+    * Free tier: csak PNG kimenet (SVG kísérlet → stderr hibaüzenet, exit 3)
+    * Free tier: vízjel hozzáadása az SVG/PNG kimenethez (`add_watermark`)
+* [ ] Licenc ellenőrzés a `render-batch` parancsban (ugyanazok a korlátok)
+* [ ] Exit kód: 3 = licenc hiba (bekötés `main.rs`-ben)
+
+### VS Code Extension licenckezelés
+
+* [ ] `license.ts` – freemium korlátok:
+    * `applyLimits(source, state)` → max 10 csomópont Free tier-en
+    * `shouldAddWatermark(state) -> bool`
+    * `getAllowedExportFormats(state) -> string[]` (Free: `["png"]`, Premium: `["png", "svg"]`)
+* [ ] Licenckulcs tárolás VS Code `SecretStorage`-ban (nem plaintextben)
+* [ ] Premium aktiválási UI: `vscode.window.showInputBox` → kulcs bevitel → Lemon Squeezy validálás → visszajelzés
+* [ ] Státuszsor jelző: `$(key) Trellis Free` / `$(verified) Trellis Premium`
+
+### IntelliJ Plugin licenckezelés
+
+* [ ] `LicenseManager.kt` – JetBrains Marketplace licencelés (`LicensingFacade`):
+    * `LicensingFacade.getInstance()` → plugin licenc ellenőrzése
+    * Fallback: saját Lemon Squeezy licenckulcs (ha nem JetBrains Marketplace-en vásárolt)
+* [ ] Freemium korlátok IntelliJ-ben: 10 csomópont limit (Free), vízjel, PNG-only export
+* [ ] Premium aktiválás dialóg (`LicenseActivationDialog.kt`): kulcs input + validálás + visszajelzés
+
+### Tesztelés
+
+* [ ] CLI: Free tier limit tesztelése – 11 csomópontos diagram → exit 3
+* [ ] CLI: Premium aktiválás-deaktiválás flow (mock Lemon Squeezy API-val, `reqwest` mock)
+* [ ] CLI: Grace period tesztelése – last_validated > 30 nap → Free tier-re visszaesés
+* [ ] CLI: Vízjel megjelenése a kimenetben Free tier-en
+* [ ] VS Code: `applyLimits` unit tesztek (`license.test.ts`)
+
+---
+
 ## Mérföldkő → Spec fázis mapping
 
 | Mérföldkő | Spec fázis(ok) | Fő kimenet |
-|---|---|---|
-| **M1** | – | Leforduló monorepo, CLI skeleton |
-| **M2** | Fázis 1 | Flowchart parser |
-| **M3** | Fázis 2 | Sugiyama elhelyezés |
-| **M4** | Fázis 3-4 | Grid + portok |
-| **M5** | Fázis 5-6 | A* routing |
-| **M6** | Fázis 9 | SVG kimenet ← **első vizuális eredmény** |
-| **M7** | Fázis 7 | Zsákutca kezelés |
-| **M8** | Fázis 8 | Él címkék |
-| **M9** | Fázis 2 (subgraph) | Subgraph vizualizáció |
-| **M10** | Fázis 1-2 (class, ER) | Class + ER diagramtípusok |
-| **M11** | – | C4 diagramtípusok (Context/Container/Component/Dynamic/Deployment) |
-| **M12** | Fázis 13 | Dekompozíció |
-| **M13** | CLI | Teljes CLI + Pandoc filter |
-| **M14** | – | VS Code extension |
-| **M15** | – | IntelliJ plugin |
-| **M16** | – | Docker + CI/CD |
-| **M17** | – | Benchmark + optimalizáció |
+|-----------|---|---|
+| **M1**    | – | Leforduló monorepo, CLI skeleton |
+| **M2**    | Fázis 1 | Flowchart parser |
+| **M3**    | Fázis 2 | Sugiyama elhelyezés |
+| **M4**    | Fázis 3-4 | Grid + portok |
+| **M5**    | Fázis 5-6 | A* routing |
+| **M6**    | Fázis 9 | SVG kimenet ← **első vizuális eredmény** |
+| **M7**    | Fázis 7 | Zsákutca kezelés |
+| **M8**    | Fázis 8 | Él címkék |
+| **M9**    | Fázis 2 (subgraph) | Subgraph vizualizáció |
+| **M10**   | Fázis 1-2 (class) | Class diagram (hibrid Sugiyama+laterális) |
+| **M11**   | Fázis 1-2 (ER) | ER diagram (force-directed, crow's foot) |
+| **M12**   | – | C4 diagramtípusok (Context/Container/Component/Dynamic/Deployment) |
+| **M13**   | Fázis 13 | Dekompozíció |
+| **M14**   | CLI | Teljes CLI + Pandoc filter |
+| **M15**   | – | VS Code extension |
+| **M16**   | – | IntelliJ plugin |
+| **M17**   | – | Docker + CI/CD |
+| **M18**   | – | Benchmark + optimalizáció |
+| **M19**   | – | Kereskedelmi funkciók (licenckezelés, freemium korlátok) |
 
 ---
 
@@ -355,19 +529,21 @@ M1 → M2 → M3 → M4 → M5 → M6 (első vizuális eredmény)
                                   │
                                   ├→ M7 → M8 → M9 (render minőség)
                                   │
-                                  ├→ M10 (class + ER)
+                                  ├→ M10 (class diagram)
                                   │
-                                  ├→ M11 (C4 diagram)
+                                  ├→ M11 (ER diagram)
                                   │
-                                  ├→ M12 (dekompozíció)
+                                  ├→ M12 (C4 diagram)
                                   │
-                                  ├→ M13 (CLI teljes) → M16 (Docker/CI)
+                                  ├→ M13 (dekompozíció)
                                   │
-                                  └→ M14 (VS Code) ──┐
-                                                      ├→ Release
-                                  └→ M15 (IntelliJ) ──┘
+                                  ├→ M14 (CLI teljes) → M17 (Docker/CI)
+                                  │
+                                  ├→ M15 (VS Code) ──┐
+                                  │                   ├→ M18 (benchmark) → Mc (commercialisation) → Release
+                                  └→ M16 (IntelliJ) ──┘
 
-M17 (benchmark) bármikor futtatható M6 után
+M18 (benchmark) bármikor futtatható M6 után; Mc az összes többi mérföldkő után
 ```
 
 A **legfontosabb mérföldkő az M6** – itt lesz először vizuálisan értékelhető kimenet. Minden ami utána jön, finomítás és platform-terjesztés.
