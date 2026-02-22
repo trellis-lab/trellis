@@ -21,10 +21,6 @@ const FONT_SIZE_TYPE: f64 = 11.0;
 const FONT_SIZE_DESC: f64 = 10.0;
 /// Line height for description rows
 const LINE_HEIGHT: f64 = 14.0;
-/// Extra vertical space for Person head above the box
-const HEAD_RADIUS: f64 = 16.0;
-/// Shoulder half-width
-const SHOULDER_W: f64 = 28.0;
 /// Ellipse cap height for cylinder
 const CYLINDER_CAP: f64 = 14.0;
 /// Corner radius for the main box
@@ -34,11 +30,16 @@ const BOX_PADDING_X: f64 = 16.0;
 /// Approximate character width for description/technology text at FONT_SIZE_DESC.
 /// Must match RENDER_CHAR_WIDTH_DESC in c4_diagram.rs.
 const CHAR_WIDTH_DESC: f64 = 5.5;
+/// Maximum lines per text block for Person nodes.
+/// Spec: "No text can have more than 5 lines."
+/// Must match `PERSON_MAX_LINES` in `c4_diagram.rs`.
+const MAX_TEXT_LINES: usize = 5;
 
 // ── Colours ───────────────────────────────────────────────────────────────────
 
-const COLOUR_PERSON_FILL: &str = "#08427b";
-const COLOUR_PERSON_TEXT: &str = "#ffffff";
+/// Stroke / text colour for Person elements (C4 v4: white fill, coloured stroke).
+const COLOUR_PERSON_STROKE: &str = "#08427b";
+const COLOUR_EXT_STROKE: &str = "#999999";
 const COLOUR_SYSTEM_FILL: &str = "#1168bd";
 const COLOUR_SYSTEM_TEXT: &str = "#ffffff";
 const COLOUR_CONTAINER_FILL: &str = "#438dd5";
@@ -49,6 +50,11 @@ const COLOUR_EXT_FILL: &str = "#999999";
 const COLOUR_EXT_TEXT: &str = "#ffffff";
 const COLOUR_DEPLOYMENT_FILL: &str = "#ffffff";
 const COLOUR_DEPLOYMENT_TEXT: &str = "#000000";
+
+// ── Stroke settings────────────────────────────────────────────────────────────
+
+const SVG_STROKE_WIDTH: f64 = 4.0;
+const SVG_STROKE_WIDTH_NARROW: f64 = 1.0;
 
 // ── Public API ────────────────────────────────────────────────────────────────
 
@@ -101,100 +107,136 @@ pub fn c4_edge_markers(edge: &trellis_parser::Edge) -> (String, String) {
 
 // ── Shape renderers ───────────────────────────────────────────────────────────
 
-/// Render a Person element: head circle + shoulder arc + label box.
+/// Render a Person element per C4 v4 standard:
+/// - White fill with `#08427b` stroke/text
+/// - Head ellipse with diameter = width/2, overlapping the box top by 10 px
+/// - Rounded rectangle body (corner radius = box_h / 3)
+/// - Two vertical leg lines at the bottom
+/// - Text order: Caption (bold, +2), Type (italic, −1), Description (default)
 fn render_person(node: &Node, c4_type: C4NodeType) -> String {
     let x = node.x;
     let y = node.y;
     let w = node.width;
     let h = node.height;
 
-    let (fill, text_colour, stroke) = person_colours(c4_type);
+    let stroke = if c4_type.is_external() {
+        COLOUR_EXT_STROKE
+    } else {
+        COLOUR_PERSON_STROKE
+    }; // #08427b
+    let fill = "#ffffff";
+    let text_colour = stroke;
+
     let dashed = if c4_type.is_external() {
         " stroke-dasharray=\"6,3\""
     } else {
         ""
     };
 
-    // Head sits above the box
+    // Head: diameter = width/2 → radius = width/4
+    let head_r = w / 4.0;
     let head_cx = x + w / 2.0;
-    let head_cy = y + HEAD_RADIUS;
+    // Head top is at node top (y); center is one radius below.
+    let head_cy = y + head_r;
 
-    // Shoulder arc below the head
-    let shoulder_y = head_cy + HEAD_RADIUS + 4.0;
-    let left_x = head_cx - SHOULDER_W;
-    let right_x = head_cx + SHOULDER_W;
-
-    // The box body starts below the shoulder
-    let box_y = shoulder_y + 10.0;
+    // Box starts where the head overlaps it by 10 px:
+    //   head bottom = head_cy + head_r = box_y + 10  →  box_y = y + 2*head_r − 10
+    let box_y = y + 2.0 * head_r - 10.0;
     let box_h = h - (box_y - y);
+
+    // Rounded corners proportional to box height (matches the spec example).
+    let person_rx = (box_h / 3.0).min(w / 2.0);
+
+    // Leg lines: at 20 % and 80 % of width, from ~44 % down the box to the bottom.
+    let leg_left_x = x + w * 0.2;
+    let leg_right_x = x + w * 0.8;
+    let leg_y_top = box_y + box_h * 0.44;
+    let leg_y_bottom = box_y + box_h;
 
     let mut svg = String::with_capacity(512);
 
-    // Box body
+    // 1. Rounded rectangle body
     svg.push_str(&format!(
         "<rect x=\"{:.1}\" y=\"{:.1}\" width=\"{:.1}\" height=\"{:.1}\" \
-         fill=\"{}\" stroke=\"{}\" stroke-width=\"1.5\"{} rx=\"{}\"/>\n",
-        x, box_y, w, box_h, fill, stroke, dashed, BOX_RADIUS
+         fill=\"{}\" stroke=\"{}\" stroke-width=\"{}\"{} rx=\"{:.1}\"/>\n",
+        x, box_y, w, box_h, fill, stroke, SVG_STROKE_WIDTH, dashed, person_rx
     ));
 
-    // Head circle
+    // 2. Leg lines (drawn over the rectangle border)
     svg.push_str(&format!(
-        "<circle cx=\"{:.1}\" cy=\"{:.1}\" r=\"{:.1}\" \
-         fill=\"{}\" stroke=\"{}\" stroke-width=\"1.5\"{}/>\n",
-        head_cx, head_cy, HEAD_RADIUS, fill, stroke, dashed
+        "<line x1=\"{:.1}\" y1=\"{:.1}\" x2=\"{:.1}\" y2=\"{:.1}\" \
+         stroke=\"{}\" opacity=\"0.3\" stroke-width=\"{}\"{}/>\n",
+        leg_left_x, leg_y_bottom, leg_left_x, leg_y_top, stroke, SVG_STROKE_WIDTH_NARROW, dashed
     ));
-
-    // Shoulder arc (simplified as a line for cleanliness)
     svg.push_str(&format!(
-        "<path d=\"M {:.1} {:.1} Q {:.1} {:.1} {:.1} {:.1}\" \
-         fill=\"none\" stroke=\"{}\" stroke-width=\"1.5\"{}/>\n",
-        left_x, box_y, head_cx, shoulder_y, right_x, box_y, stroke, dashed
+        "<line x1=\"{:.1}\" y1=\"{:.1}\" x2=\"{:.1}\" y2=\"{:.1}\" \
+         stroke=\"{}\" opacity=\"0.3\" stroke-width=\"{}\"{}/>\n",
+        leg_right_x, leg_y_bottom, leg_right_x, leg_y_top, stroke, SVG_STROKE_WIDTH_NARROW, dashed
     ));
 
-    // Type label
+    // 3. Head ellipse (drawn last so it sits on top of the box border)
+    svg.push_str(&format!(
+        "<ellipse cx=\"{:.1}\" cy=\"{:.1}\" rx=\"{:.1}\" ry=\"{:.1}\" \
+         fill=\"{}\" stroke=\"{}\" stroke-width=\"{}\"{}/>\n",
+        head_cx, head_cy, head_r, head_r, fill, stroke, SVG_STROKE_WIDTH, dashed
+    ));
+
+    // ── Text labels ──────────────────────────────────────────────────────────
+    // Order (C4 v4 generic spec): Caption → Type → Description, with 4 px gaps.
+    // 10 px visual gap above the first line and below the last line.
+    // The bottom gap is enforced by the placement code sizing the box height;
+    // the top gap is achieved by computing the baseline from the cap-height:
+    //   text_y = box_y + 10 + caption_size * 0.75  (cap-height ≈ 75 % of font size)
+    let cx = x + w / 2.0;
+    // Caption (name) — bold, default + 2
+    let caption_size = FONT_SIZE_LABEL + 2.0;
+    // Baseline positioned so the visual top of the caption is 10 px below box_y.
+    let mut text_y = box_y + 20.0 + caption_size * 0.75;
+    for line in wrap_text_truncated(&node.label, w) {
+        svg.push_str(&format!(
+            "<text x=\"{:.1}\" y=\"{:.1}\" text-anchor=\"middle\" \
+             font-family=\"Arial, Helvetica, sans-serif\" \
+             font-size=\"{:.0}\" font-weight=\"bold\" fill=\"{}\">{}</text>\n",
+            cx,
+            text_y,
+            caption_size,
+            text_colour,
+            escape_xml(&line)
+        ));
+        text_y += LINE_HEIGHT;
+    }
+    text_y += 4.0; // 4 px gap
+
+    // Type descriptor — italic, default − 1
     let type_label = if c4_type.is_external() {
         "[Person, External]"
     } else {
         "[Person]"
     };
-    let type_y = box_y + 14.0;
+    let type_size = FONT_SIZE_LABEL - 1.0;
     svg.push_str(&format!(
         "<text x=\"{:.1}\" y=\"{:.1}\" text-anchor=\"middle\" \
          font-family=\"Arial, Helvetica, sans-serif\" \
          font-size=\"{:.0}\" font-style=\"italic\" fill=\"{}\">{}</text>\n",
-        x + w / 2.0,
-        type_y,
-        FONT_SIZE_TYPE,
-        text_colour,
-        type_label
+        cx, text_y, type_size, text_colour, type_label
     ));
+    text_y += LINE_HEIGHT + 4.0; // 4 px gap
 
-    // Name label (bold)
-    let name_y = type_y + LINE_HEIGHT + 2.0;
-    svg.push_str(&format!(
-        "<text x=\"{:.1}\" y=\"{:.1}\" text-anchor=\"middle\" \
-         font-family=\"Arial, Helvetica, sans-serif\" \
-         font-size=\"{:.0}\" font-weight=\"bold\" fill=\"{}\">{}</text>\n",
-        x + w / 2.0,
-        name_y,
-        FONT_SIZE_LABEL,
-        text_colour,
-        escape_xml(&node.label)
-    ));
-
-    // Description (if present)
+    // Description — default size, word-wrapped and truncated to MAX_TEXT_LINES
     if let Some(desc) = &node.c4_description {
-        let desc_y = name_y + LINE_HEIGHT;
-        svg.push_str(&format!(
-            "<text x=\"{:.1}\" y=\"{:.1}\" text-anchor=\"middle\" \
-             font-family=\"Arial, Helvetica, sans-serif\" \
-             font-size=\"{:.0}\" fill=\"{}\">{}</text>\n",
-            x + w / 2.0,
-            desc_y,
-            FONT_SIZE_DESC,
-            text_colour,
-            escape_xml(desc)
-        ));
+        for line in wrap_text_truncated(desc, w) {
+            svg.push_str(&format!(
+                "<text x=\"{:.1}\" y=\"{:.1}\" text-anchor=\"middle\" \
+                 font-family=\"Arial, Helvetica, sans-serif\" \
+                 font-size=\"{:.0}\" fill=\"{}\">{}</text>\n",
+                cx,
+                text_y,
+                FONT_SIZE_LABEL,
+                text_colour,
+                escape_xml(&line)
+            ));
+            text_y += LINE_HEIGHT;
+        }
     }
 
     svg
@@ -446,15 +488,6 @@ fn c4_type_label(t: C4NodeType) -> &'static str {
 
 // ── Colour helpers ────────────────────────────────────────────────────────────
 
-/// Return (fill, text_colour, stroke) for Person elements.
-fn person_colours(c4_type: C4NodeType) -> (&'static str, &'static str, &'static str) {
-    if c4_type.is_external() {
-        (COLOUR_EXT_FILL, COLOUR_EXT_TEXT, COLOUR_EXT_FILL)
-    } else {
-        (COLOUR_PERSON_FILL, COLOUR_PERSON_TEXT, COLOUR_PERSON_FILL)
-    }
-}
-
 /// Return (fill, text_colour, stroke) for box/cylinder/queue elements.
 fn box_colours(c4_type: C4NodeType) -> (&'static str, &'static str, &'static str) {
     if c4_type.is_external() {
@@ -536,6 +569,19 @@ fn wrap_text(text: &str, box_w: f64) -> Vec<String> {
     lines
 }
 
+/// Word-wrap `text` to fit `box_w`, then truncate to [`MAX_TEXT_LINES`] lines.
+///
+/// If wrapping produces more than the limit, the last kept line is replaced with
+/// `"…"` so the rendered block never exceeds 5 lines (spec requirement).
+fn wrap_text_truncated(text: &str, box_w: f64) -> Vec<String> {
+    let mut lines = wrap_text(text, box_w);
+    if lines.len() > MAX_TEXT_LINES {
+        lines.truncate(MAX_TEXT_LINES - 1);
+        lines.push("\u{2026}".to_string()); // U+2026 HORIZONTAL ELLIPSIS
+    }
+    lines
+}
+
 fn escape_xml(s: &str) -> String {
     s.replace('&', "&amp;")
         .replace('<', "&lt;")
@@ -568,9 +614,18 @@ mod tests {
     fn test_render_person() {
         let node = make_c4_node("alice", C4NodeType::Person);
         let svg = render_c4_node(&node);
-        assert!(svg.contains("<circle"));
-        assert!(svg.contains("[Person]"));
-        assert!(svg.contains("alice"));
+        // New C4 v4 shape: ellipse head, rect body, two leg lines
+        assert!(svg.contains("<ellipse"), "missing head ellipse");
+        assert!(svg.contains("<rect"), "missing body rect");
+        assert!(svg.contains("<line"), "missing leg lines");
+        // No old shoulder arc
+        assert!(!svg.contains("<path"), "unexpected path (old shoulder arc)");
+        // Correct colours: white fill, #08427b stroke and text
+        assert!(svg.contains("#ffffff"), "missing white fill");
+        assert!(svg.contains("#08427b"), "missing stroke colour");
+        // Text labels
+        assert!(svg.contains("[Person]"), "missing type label");
+        assert!(svg.contains("alice"), "missing name label");
     }
 
     #[test]

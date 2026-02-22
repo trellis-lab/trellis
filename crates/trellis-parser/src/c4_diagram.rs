@@ -35,12 +35,30 @@ const LINE_HEIGHT: f64 = 18.0;
 /// Horizontal padding inside the box
 const PADDING_X: f64 = 16.0;
 /// Minimum element width
-const MIN_WIDTH: f64 = 150.0;
+const MIN_WIDTH: f64 = 200.0;
+/// Minimum person node height
+const MIN_PERSON_HEIGHT: f64 = 200.0;
+/// Minimum default element height
+const MIN_DEFAULT_HEIGHT: f64 = 100.0;
 /// Approximate character width for description/technology text at the renderer's
 /// FONT_SIZE_DESC (10 px Arial).  Must match CHAR_WIDTH_DESC in c4_shapes.rs.
 const RENDER_CHAR_WIDTH_DESC: f64 = 5.5;
-/// Extra height for Person shape (head circle + shoulder area above the box)
-const PERSON_EXTRA_HEIGHT: f64 = 40.0;
+/// Renderer line height used inside the Person box.
+/// Must match `LINE_HEIGHT` in `c4_shapes.rs`.
+const PERSON_RENDERER_LH: f64 = 14.0;
+/// Maximum text lines per text block (caption or description) in a Person node.
+/// Spec: "No text can have more than 5 lines."
+const PERSON_MAX_LINES: usize = 5;
+/// Base box height for a Person node with no description and a single-line caption.
+///
+/// Derived from the C4 v4 `render_person` text layout (20 px visual top gap):
+///   top_offset(31) + caption_line(14) + gap(4) + type_visual_bottom(3) + bottom_gap(10) = 62
+///   → rounded up to 63 for a comfortable fit.
+///
+/// - top_offset = 20 px visual gap + cap-height of 15 pt caption (15 × 0.75 ≈ 11)
+/// - type_visual_bottom = 12 pt × 0.25 ≈ 3 px
+/// - bottom_gap = 10 px (spec requirement)
+const PERSON_BASE_BOX_H: f64 = 63.0;
 
 // ── Public entry point ────────────────────────────────────────────────────────
 
@@ -298,35 +316,64 @@ fn try_parse_relation(line: &str, line_no: usize) -> Result<Option<Edge>, ParseE
 
 /// Calculate the pixel size of a C4 element node.
 ///
-/// Width is driven by the label only so all nodes have a uniform PADDING_X
-/// margin on each side of the name text.  Description and technology are
-/// rendered word-wrapped inside that width (see `render_c4_labels` in
-/// `c4_shapes.rs`), so the height expands to fit them.
+/// **Person** nodes have a fixed width (`MIN_WIDTH`) per the C4 v4 spec
+/// ("The width of the elements are constant").  Caption and description are
+/// word-wrapped into that width and both capped at `PERSON_MAX_LINES`.
+///
+/// **All other** C4 elements have a label-driven width (minimum `MIN_WIDTH`).
 fn size_c4_node(
     c4_type: C4NodeType,
     label: &str,
     description: &Option<String>,
     technology: &Option<String>,
 ) -> (f64, f64) {
-    // Width: only the label drives horizontal size → consistent label padding.
+    // Person: constant width.  Everyone else: label-driven, minimum MIN_WIDTH.
     let label_width = label.len() as f64 * CHAR_WIDTH + PADDING_X * 2.0;
-    let width = label_width.max(MIN_WIDTH);
+    let width = if c4_type.is_person() {
+        MIN_WIDTH
+    } else {
+        label_width.max(MIN_WIDTH)
+    };
 
-    // Height: header + optional tech row + word-wrapped description rows.
-    let mut height = HEADER_HEIGHT;
-    if technology.is_some() {
-        height += LINE_HEIGHT;
-    }
-    if let Some(desc) = description {
+    let height = if c4_type.is_person() {
+        // ── Person geometry (C4 v4) ──────────────────────────────────────────
+        // Head: radius = width/4.  The head overlaps the box top by 10 px, so
+        //   head_space = 2×(width/4) − 10 = width/2 − 10
+        let head_space = width / 2.0 - 10.0;
+
+        // chars_per_line is shared between caption and description.
         let chars_per_line = ((width - PADDING_X * 2.0) / RENDER_CHAR_WIDTH_DESC).max(5.0) as usize;
-        let lines = word_wrap_line_count(desc, chars_per_line);
-        height += LINE_HEIGHT * lines as f64;
-    }
 
-    // Person shapes get extra vertical space for the head+shoulders above the box.
-    if c4_type.is_person() {
-        height += PERSON_EXTRA_HEIGHT;
-    }
+        // Caption word-wrap, capped at PERSON_MAX_LINES.
+        // PERSON_BASE_BOX_H already reserves one caption line; each extra line
+        // adds PERSON_RENDERER_LH (14 px).
+        let caption_lines = word_wrap_line_count(label, chars_per_line).min(PERSON_MAX_LINES);
+        let caption_extra = caption_lines.saturating_sub(1) as f64 * PERSON_RENDERER_LH;
+
+        // Description word-wrap (4 px type→desc gap + lines × 14 px).
+        let desc_extra = if let Some(desc) = description {
+            let desc_lines = word_wrap_line_count(desc, chars_per_line).min(PERSON_MAX_LINES);
+            4.0 + PERSON_RENDERER_LH * desc_lines as f64
+        } else {
+            0.0
+        };
+
+        (head_space + PERSON_BASE_BOX_H + caption_extra + desc_extra).max(MIN_PERSON_HEIGHT)
+    } else {
+        // ── All other C4 elements ─────────────────────────────────────────────
+        // Height: header + optional tech row + word-wrapped description rows.
+        let mut h = HEADER_HEIGHT;
+        if technology.is_some() {
+            h += LINE_HEIGHT;
+        }
+        if let Some(desc) = description {
+            let chars_per_line =
+                ((width - PADDING_X * 2.0) / RENDER_CHAR_WIDTH_DESC).max(5.0) as usize;
+            let lines = word_wrap_line_count(desc, chars_per_line);
+            h += LINE_HEIGHT * lines as f64;
+        }
+        h.max(MIN_DEFAULT_HEIGHT)
+    };
 
     (width, height)
 }
