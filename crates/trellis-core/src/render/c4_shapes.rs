@@ -21,8 +21,12 @@ const FONT_SIZE_TYPE: f64 = 11.0;
 const FONT_SIZE_DESC: f64 = 10.0;
 /// Line height for description rows
 const LINE_HEIGHT: f64 = 14.0;
-/// Ellipse cap height for cylinder
-const CYLINDER_CAP: f64 = 14.0;
+/// Ratio of the cylinder ellipse's vertical radius to its horizontal radius.
+/// Derived from the C4 v4 reference SVG (ry=22.2, rx=225.5 → ≈ 0.0985).
+/// Keeping this ratio constant satisfies "the ellipse curve is always the same".
+const CYLINDER_RY_RATIO: f64 = 22.2 / 225.5;
+/// Cubic-bezier kappa for a quarter-ellipse approximation (4/3 · tan(π/8) ≈ 0.5523).
+const KAPPA: f64 = 0.5523;
 /// Corner radius for the main box
 const BOX_RADIUS: f64 = 4.0;
 /// Horizontal padding inside the box (must match PADDING_X in c4_diagram.rs)
@@ -40,6 +44,8 @@ const MAX_TEXT_LINES: usize = 5;
 /// Stroke / text colour for Person elements (C4 v4: white fill, coloured stroke).
 const COLOUR_PERSON_STROKE: &str = "#08427b";
 const COLOUR_EXT_STROKE: &str = "#999999";
+/// Stroke / text colour for Database elements (C4 v4: white fill, coloured stroke).
+const COLOUR_DB_STROKE: &str = "#438dd5";
 const COLOUR_SYSTEM_FILL: &str = "#1168bd";
 const COLOUR_SYSTEM_TEXT: &str = "#ffffff";
 const COLOUR_CONTAINER_FILL: &str = "#438dd5";
@@ -133,8 +139,8 @@ fn render_person(node: &Node, c4_type: C4NodeType) -> String {
         ""
     };
 
-    // Head: diameter = width/2 → radius = width/4
-    let head_r = w / 4.0;
+    // Head: diameter = 80% of width/2 → radius = width/4
+    let head_r = w * 0.8 / 4.0;
     let head_cx = x + w / 2.0;
     // Head top is at node top (y); center is one radius below.
     let head_cy = y + head_r;
@@ -242,60 +248,137 @@ fn render_person(node: &Node, c4_type: C4NodeType) -> String {
     svg
 }
 
-/// Render a Database (cylinder) element.
+/// Render a Database (cylinder) element per C4 v4:
+/// - White fill with `#438dd5` stroke and text (all DB variants)
+/// - Two SVG `<path>` elements matching the C4 v4 reference SVG shape:
+///     1. **Body** – closed outline: top half-ellipse arc + straight sides + bottom half-ellipse arc
+///     2. **Lid**  – bottom arc of the top ellipse (visible interior rim)
+/// - Ellipse ry = rx × CYLINDER_RY_RATIO, so "the ellipse curve is always the same"
+/// - Top padding = ry*2 + 10 px (spec: top padding = cap height + 10 px)
 fn render_cylinder(node: &Node, c4_type: C4NodeType) -> String {
     let x = node.x;
     let y = node.y;
     let w = node.width;
     let h = node.height;
 
-    let (fill, text_colour, stroke) = box_colours(c4_type);
+    // C4 v4: white fill, #438dd5 stroke and text for all database shapes.
+    let fill = "#ffffff";
+    let stroke = COLOUR_DB_STROKE;
+    let text_colour = COLOUR_DB_STROKE;
+
     let dashed = if c4_type.is_external() {
         " stroke-dasharray=\"6,3\""
     } else {
         ""
     };
+
+    // Geometry: rx proportional to width; ry keeps a fixed ratio (always the same curve).
     let cx = x + w / 2.0;
     let rx = w / 2.0;
-    let ry = CYLINDER_CAP / 2.0;
+    let ry = rx * CYLINDER_RY_RATIO;
+    let x1 = x + w; // right edge
+    let yh = y + h; // bottom edge
+    let top_cy = y + ry; // centre of top ellipse
+    let bot_cy = yh - ry; // centre of bottom ellipse
 
-    let mut svg = String::with_capacity(512);
+    // Pre-compute bezier control-point offsets (kappa × radius).
+    let rxk = rx * KAPPA;
+    let ryk = ry * KAPPA;
 
-    // Cylinder body (rectangle)
-    let rect_y = y + ry;
-    let rect_h = h - ry;
+    let mut svg = String::with_capacity(768);
+
+    // ── Path 1: Body (closed outline) ────────────────────────────────────────
+    //
+    //  Start at left of top ellipse → quarter-arc to top-centre →
+    //  quarter-arc to right of top ellipse → straight down right side →
+    //  quarter-arc to bottom-centre → quarter-arc to left of bottom ellipse → close.
+    //
+    //  Matches the body <path> in the C4 v4 reference SVG (two kappa-based
+    //  cubic beziers per half-ellipse).
     svg.push_str(&format!(
-        "<rect x=\"{:.1}\" y=\"{:.1}\" width=\"{:.1}\" height=\"{:.1}\" \
-         fill=\"{}\" stroke=\"{}\" stroke-width=\"1.5\"{}/>\n",
-        x, rect_y, w, rect_h, fill, stroke, dashed
-    ));
-
-    // Bottom ellipse cap
-    let bottom_cy = y + h - ry;
-    svg.push_str(&format!(
-        "<ellipse cx=\"{:.1}\" cy=\"{:.1}\" rx=\"{:.1}\" ry=\"{:.1}\" \
-         fill=\"{}\" stroke=\"{}\" stroke-width=\"1.5\"{}/>\n",
-        cx, bottom_cy, rx, ry, fill, stroke, dashed
-    ));
-
-    // Top ellipse cap (drawn last so it overlaps body)
-    let top_cy = y + ry;
-    svg.push_str(&format!(
-        "<ellipse cx=\"{:.1}\" cy=\"{:.1}\" rx=\"{:.1}\" ry=\"{:.1}\" \
-         fill=\"{}\" stroke=\"{}\" stroke-width=\"1.5\"{}/>\n",
-        cx, top_cy, rx, ry, fill, stroke, dashed
-    ));
-
-    // Type label
-    render_c4_labels(
-        &mut svg,
-        node,
-        c4_type,
+        "<path d=\"\
+         M {:.1} {:.1} \
+         C {:.1} {:.1} {:.1} {:.1} {:.1} {:.1} \
+         C {:.1} {:.1} {:.1} {:.1} {:.1} {:.1} \
+         L {:.1} {:.1} \
+         C {:.1} {:.1} {:.1} {:.1} {:.1} {:.1} \
+         C {:.1} {:.1} {:.1} {:.1} {:.1} {:.1} Z\" \
+         fill=\"{}\" stroke=\"{}\" stroke-width=\"{}\"{}/>\n",
+        // Start: left of top ellipse
         x,
-        y + ry * 2.0 + 6.0,
-        w,
-        text_colour,
-    );
+        top_cy,
+        // Q1: left → top-centre  (kappa above centre)
+        x,
+        top_cy - ryk,
+        cx - rxk,
+        y,
+        cx,
+        y,
+        // Q2: top-centre → right  (kappa above centre)
+        cx + rxk,
+        y,
+        x1,
+        top_cy - ryk,
+        x1,
+        top_cy,
+        // Straight down right side
+        x1,
+        bot_cy,
+        // Q3: right → bottom-centre  (kappa below centre)
+        x1,
+        bot_cy + ryk,
+        cx + rxk,
+        yh,
+        cx,
+        yh,
+        // Q4: bottom-centre → left  (kappa below centre)
+        cx - rxk,
+        yh,
+        x,
+        bot_cy + ryk,
+        x,
+        bot_cy,
+        fill,
+        stroke,
+        SVG_STROKE_WIDTH,
+        dashed,
+    ));
+
+    // ── Path 2: Lid (bottom arc of top ellipse — visible interior rim) ────────
+    //
+    //  Starts at right of top ellipse → arc to bottom-centre → arc to left.
+    //  fill="none" so only the stroke is visible (matches the reference SVG).
+    let y2ry = y + 2.0 * ry; // bottom of the top ellipse
+    svg.push_str(&format!(
+        "<path d=\"\
+         M {:.1} {:.1} \
+         C {:.1} {:.1} {:.1} {:.1} {:.1} {:.1} \
+         C {:.1} {:.1} {:.1} {:.1} {:.1} {:.1}\" \
+         fill=\"none\" stroke=\"{}\" stroke-width=\"{}\"{}/>\n",
+        // Start: right of top ellipse
+        x1,
+        top_cy,
+        // Arc right → bottom-centre  (kappa below centre)
+        x1,
+        top_cy + ryk,
+        cx + rxk,
+        y2ry,
+        cx,
+        y2ry,
+        // Arc bottom-centre → left  (kappa below centre)
+        cx - rxk,
+        y2ry,
+        x,
+        top_cy + ryk,
+        x,
+        top_cy,
+        stroke,
+        SVG_STROKE_WIDTH,
+        dashed,
+    ));
+
+    // Text starts below the top cap with a 10 px gap (spec: top padding = cap height + 10 px).
+    render_c4_labels(&mut svg, node, c4_type, x, y + ry * 2.0, w, text_colour);
 
     svg
 }
@@ -350,21 +433,15 @@ fn render_c4_box(node: &Node, c4_type: C4NodeType) -> String {
     let h = node.height;
 
     let (fill, text_colour, stroke) = box_colours(c4_type);
-    let dashed = if c4_type.is_external() {
-        " stroke-dasharray=\"6,3\""
-    } else {
-        ""
-    };
-
     let mut svg = String::with_capacity(512);
 
     svg.push_str(&format!(
         "<rect x=\"{:.1}\" y=\"{:.1}\" width=\"{:.1}\" height=\"{:.1}\" \
-         fill=\"{}\" stroke=\"{}\" stroke-width=\"1.5\"{} rx=\"{}\"/>\n",
-        x, y, w, h, fill, stroke, dashed, BOX_RADIUS
+         fill=\"{}\" stroke=\"{}\" stroke-width=\"{}\" rx=\"{}\"/>\n",
+        x, y, w, h, fill, stroke, SVG_STROKE_WIDTH, BOX_RADIUS
     ));
 
-    render_c4_labels(&mut svg, node, c4_type, x, y, w, text_colour);
+    render_c4_labels(&mut svg, node, c4_type, x, y + 10.0, w, text_colour);
 
     svg
 }
@@ -380,7 +457,7 @@ fn render_c4_default_box(node: &Node) -> String {
 
     format!(
         "<rect x=\"{:.1}\" y=\"{:.1}\" width=\"{:.1}\" height=\"{:.1}\" \
-         fill=\"#f5f5f5\" stroke=\"#999\" stroke-width=\"1.5\" rx=\"{}\"/>\n\
+         fill=\"#f5f5f5\" stroke=\"#999\" stroke-width=\"{}\" rx=\"{}\"/>\n\
          <text x=\"{:.1}\" y=\"{:.1}\" text-anchor=\"middle\" dominant-baseline=\"central\" \
          font-family=\"Arial, Helvetica, sans-serif\" font-size=\"13\" fill=\"#333\">{}</text>\n",
         x,
@@ -388,6 +465,7 @@ fn render_c4_default_box(node: &Node) -> String {
         w,
         h,
         BOX_RADIUS,
+        SVG_STROKE_WIDTH,
         cx,
         cy,
         escape_xml(&node.label)
@@ -400,7 +478,7 @@ fn render_c4_default_box(node: &Node) -> String {
 fn render_c4_labels(
     svg: &mut String,
     node: &Node,
-    c4_type: C4NodeType,
+    _c4_type: C4NodeType,
     box_x: f64,
     box_y: f64,
     box_w: f64,
@@ -408,16 +486,6 @@ fn render_c4_labels(
 ) {
     let cx = box_x + box_w / 2.0;
     let mut text_y = box_y + 16.0;
-
-    // Type descriptor (italic)
-    let type_label = c4_type_label(c4_type);
-    svg.push_str(&format!(
-        "<text x=\"{:.1}\" y=\"{:.1}\" text-anchor=\"middle\" \
-         font-family=\"Arial, Helvetica, sans-serif\" \
-         font-size=\"{:.0}\" font-style=\"italic\" fill=\"{}\">{}</text>\n",
-        cx, text_y, FONT_SIZE_TYPE, text_colour, type_label
-    ));
-    text_y += LINE_HEIGHT + 2.0;
 
     // Element name (bold)
     svg.push_str(&format!(
@@ -431,6 +499,16 @@ fn render_c4_labels(
         escape_xml(&node.label)
     ));
     text_y += LINE_HEIGHT + 1.0;
+
+    // Type descriptor (italic)
+    /*     let type_label = c4_type_label(c4_type);
+    svg.push_str(&format!(
+        "<text x=\"{:.1}\" y=\"{:.1}\" text-anchor=\"middle\" \
+         font-family=\"Arial, Helvetica, sans-serif\" \
+         font-size=\"{:.0}\" font-style=\"italic\" fill=\"{}\">{}</text>\n",
+        cx, text_y, FONT_SIZE_TYPE, text_colour, type_label
+    ));
+    text_y += LINE_HEIGHT + 2.0; */
 
     // Technology (in brackets, smaller)
     if let Some(tech) = &node.c4_technology {
@@ -491,7 +569,7 @@ fn c4_type_label(t: C4NodeType) -> &'static str {
 /// Return (fill, text_colour, stroke) for box/cylinder/queue elements.
 fn box_colours(c4_type: C4NodeType) -> (&'static str, &'static str, &'static str) {
     if c4_type.is_external() {
-        return (COLOUR_EXT_FILL, COLOUR_EXT_TEXT, COLOUR_EXT_FILL);
+        return (COLOUR_EXT_TEXT, COLOUR_EXT_FILL, COLOUR_EXT_FILL);
     }
     match c4_type {
         C4NodeType::System
@@ -500,7 +578,7 @@ fn box_colours(c4_type: C4NodeType) -> (&'static str, &'static str, &'static str
         | C4NodeType::SystemExt
         | C4NodeType::SystemDbExt
         | C4NodeType::SystemQueueExt => {
-            (COLOUR_SYSTEM_FILL, COLOUR_SYSTEM_TEXT, COLOUR_SYSTEM_FILL)
+            (COLOUR_SYSTEM_TEXT, COLOUR_SYSTEM_FILL, COLOUR_SYSTEM_FILL)
         }
 
         C4NodeType::Container
@@ -509,8 +587,8 @@ fn box_colours(c4_type: C4NodeType) -> (&'static str, &'static str, &'static str
         | C4NodeType::ContainerExt
         | C4NodeType::ContainerDbExt
         | C4NodeType::ContainerQueueExt => (
-            COLOUR_CONTAINER_FILL,
             COLOUR_CONTAINER_TEXT,
+            COLOUR_CONTAINER_FILL,
             COLOUR_CONTAINER_FILL,
         ),
 
@@ -520,8 +598,8 @@ fn box_colours(c4_type: C4NodeType) -> (&'static str, &'static str, &'static str
         | C4NodeType::ComponentExt
         | C4NodeType::ComponentDbExt
         | C4NodeType::ComponentQueueExt => (
-            COLOUR_COMPONENT_FILL,
             COLOUR_COMPONENT_TEXT,
+            COLOUR_COMPONENT_FILL,
             COLOUR_COMPONENT_FILL,
         ),
 
@@ -640,7 +718,27 @@ mod tests {
     fn test_render_system_db() {
         let node = make_c4_node("db", C4NodeType::SystemDb);
         let svg = render_c4_node(&node);
-        assert!(svg.contains("<ellipse"));
+        // C4 v4: two <path> elements (body + lid), no rect or ellipse
+        assert_eq!(svg.matches("<path").count(), 2, "expected body + lid paths");
+        assert!(
+            !svg.contains("<ellipse"),
+            "cylinder must not use ellipse elements"
+        );
+        assert!(
+            !svg.contains("<rect"),
+            "cylinder must not use rect elements"
+        );
+        // Correct colours: white fill, #438dd5 stroke/text
+        assert!(svg.contains("#ffffff"), "missing white fill");
+        assert!(
+            svg.contains(COLOUR_DB_STROKE),
+            "missing #438dd5 stroke colour"
+        );
+        // Lid path must have fill="none"
+        assert!(
+            svg.contains("fill=\"none\""),
+            "lid path must have fill=none"
+        );
         assert!(svg.contains("[Software System, DB]"));
     }
 

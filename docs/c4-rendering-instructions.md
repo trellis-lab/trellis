@@ -26,7 +26,10 @@ Read the instructions and adapt to the trellis svg rendering in C4 Diagrams.
     2. Container type: 
         * size = default size - 1
         * single lined
-    3. Descriptions:
+    3. Technologies:
+        * size = default size - 1
+        * single lined0
+    4. Descriptions:
         * default size
         * text wrapped
 * There is a 4 px gap between Caption - Container Type - Description.
@@ -36,9 +39,10 @@ Read the instructions and adapt to the trellis svg rendering in C4 Diagrams.
 ```
 +---------------------------------+
 |                                 |  
-|        Caption line 1           |
-|        Caption line 2           |
-|   [Container: ContainerTypes]   |
+|         Caption line 1          |
+|         Caption line 2          |
+|        [ContainerTypes]         |
+|         [Technologies]          |
 |       Description line 1        |
 |       Description line 2        |
 |       Description line 3        |
@@ -66,3 +70,20 @@ Example shape definition:
 * The top circle overlaps the top edge by 10 px
 * Only the rounded rectangle can grow vertically according to the text.
 * The two vertical lines moved to the bottom of the node.
+
+## Database
+
+Example shape definition:
+
+```svg
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg xmlns="http://www.w3.org/2000/svg" style="background: transparent; background-color: transparent; color-scheme: light dark;" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1" width="457px" height="306px" viewBox="0 0 457 306"><defs/><g><g data-cell-id="0"><g data-cell-id="ztPbCkVsUMvpaBotz4ge-11"><g data-cell-id="ztPbCkVsUMvpaBotz4ge-15"><g><path d="M 3 24.2 C 3 11.94 103.96 2 228.5 2 C 288.31 2 345.66 4.34 387.95 8.5 C 430.24 12.67 454 18.31 454 24.2 L 454 279.8 C 454 292.06 353.04 302 228.5 302 C 103.96 302 3 292.06 3 279.8 Z" fill="#ffffff" stroke="#000000" stroke-width="6" stroke-miterlimit="10" pointer-events="all" style="fill: light-dark(#ffffff, var(--ge-dark-color, #121212)); stroke: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));"/><path d="M 454 24.2 C 454 36.46 353.04 46.4 228.5 46.4 C 103.96 46.4 3 36.46 3 24.2" fill="none" stroke="#000000" stroke-width="6" stroke-miterlimit="10" pointer-events="all" style="stroke: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));"/></g></g></g></g></g></svg>
+```
+
+### Instructions
+
+* Use stroke color #438dd5
+* The ellipse curve is always the same
+* The height of the node can grow according to the text
+* The top padding is the height of the top ellipse + 10px
