@@ -87,3 +87,17 @@ Example shape definition:
 * The ellipse curve is always the same
 * The height of the node can grow according to the text
 * The top padding is the height of the top ellipse + 10px
+
+## Queue
+
+```svg
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg xmlns="http://www.w3.org/2000/svg" style="background: transparent; background-color: transparent; color-scheme: light dark;" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1" width="457px" height="302px" viewBox="0 0 457 302"><defs/><g><g data-cell-id="0"><g data-cell-id="1"><g data-cell-id="ztPbCkVsUMvpaBotz4ge-1"/><g data-cell-id="ztPbCkVsUMvpaBotz4ge-22"/><g data-cell-id="ztPbCkVsUMvpaBotz4ge-23"><g><path d="M 80 -50.81 C 80 -64.17 146.04 -75 227.5 -75 C 266.62 -75 304.14 -72.45 331.8 -67.91 C 359.46 -63.38 375 -57.22 375 -50.81 L 375 350.81 C 375 364.17 308.96 375 227.5 375 C 146.04 375 80 364.17 80 350.81 Z" fill="#ffffff" stroke="#000000" stroke-width="6" stroke-miterlimit="10" transform="rotate(-90,227.5,150)" pointer-events="all" style="fill: light-dark(#ffffff, var(--ge-dark-color, #121212)); stroke: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));"/><path d="M 375 -50.81 C 375 -37.45 308.96 -26.62 227.5 -26.62 C 146.04 -26.62 80 -37.45 80 -50.81" fill="none" stroke="#000000" stroke-width="6" stroke-miterlimit="10" transform="rotate(-90,227.5,150)" pointer-events="all" style="stroke: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));"/></g></g></g><g data-cell-id="ztPbCkVsUMvpaBotz4ge-11"><g data-cell-id="ztPbCkVsUMvpaBotz4ge-15"/><g data-cell-id="ztPbCkVsUMvpaBotz4ge-16"/><g data-cell-id="ztPbCkVsUMvpaBotz4ge-17"/><g data-cell-id="ztPbCkVsUMvpaBotz4ge-18"/><g data-cell-id="ztPbCkVsUMvpaBotz4ge-19"/><g data-cell-id="ztPbCkVsUMvpaBotz4ge-20"/><g data-cell-id="ztPbCkVsUMvpaBotz4ge-21"/></g></g></g></svg>
+```
+
+* Use stroke color #438dd5
+* The ellipse curve is always the same
+* The height of the node can grow according to the text
+* The left padding is the height of the left ellipse + 10px
+* Use the bezier curves of the example svg
