@@ -4,7 +4,7 @@
 //! - **Person / Person_Ext** – circle head + shoulder arc above a rounded box
 //! - **SystemDb / ContainerDb / ComponentDb** – cylinder shape
 //! - **SystemQueue / ContainerQueue / ComponentQueue** – double-frame rectangle
-//! - **_Ext variants** – same as above but with dashed border
+//! - **_Ext variants** – same as above but greyed
 //! - **All others** – standard rounded rectangle
 //!
 //! The boundary renderer is in `c4_boundary.rs`.
@@ -42,20 +42,18 @@ const MAX_TEXT_LINES: usize = 5;
 // ── Colours ───────────────────────────────────────────────────────────────────
 
 /// Stroke / text colour for Person elements (C4 v4: white fill, coloured stroke).
+const COLOUR_PERSON_FILL: &str = "#ffffff";
 const COLOUR_PERSON_STROKE: &str = "#08427b";
+const COLOUR_SYSTEM_FILL: &str = "#ffffff";
+const COLOUR_SYSTEM_STROKE: &str = "#1168bd";
+const COLOUR_CONTAINER_FILL: &str = "#ffffff";
+const COLOUR_CONTAINER_STROKE: &str = "#438dd5";
+const COLOUR_COMPONENT_FILL: &str = "#ffffff";
+const COLOUR_COMPONENT_STROKE: &str = "#85bbf0";
+const COLOUR_EXT_FILL: &str = "#ffffff";
 const COLOUR_EXT_STROKE: &str = "#999999";
-/// Stroke / text colour for Database elements (C4 v4: white fill, coloured stroke).
-const COLOUR_DB_STROKE: &str = "#438dd5";
-const COLOUR_SYSTEM_FILL: &str = "#1168bd";
-const COLOUR_SYSTEM_TEXT: &str = "#ffffff";
-const COLOUR_CONTAINER_FILL: &str = "#438dd5";
-const COLOUR_CONTAINER_TEXT: &str = "#ffffff";
-const COLOUR_COMPONENT_FILL: &str = "#85bbf0";
-const COLOUR_COMPONENT_TEXT: &str = "#000000";
-const COLOUR_EXT_FILL: &str = "#999999";
-const COLOUR_EXT_TEXT: &str = "#ffffff";
 const COLOUR_DEPLOYMENT_FILL: &str = "#ffffff";
-const COLOUR_DEPLOYMENT_TEXT: &str = "#000000";
+const COLOUR_DEPLOYMENT_STROKE: &str = "#1c1c1c";
 
 // ── Stroke settings────────────────────────────────────────────────────────────
 
@@ -127,12 +125,6 @@ fn render_person(node: &Node, c4_type: C4NodeType) -> String {
 
     let (fill, text_colour, stroke) = box_colours(c4_type);
 
-    let dashed = if c4_type.is_external() {
-        " stroke-dasharray=\"6,3\""
-    } else {
-        ""
-    };
-
     // Head: diameter = 80% of width/2 → radius = width/4
     let head_r = w * 0.8 / 4.0;
     let head_cx = x + w / 2.0;
@@ -158,27 +150,27 @@ fn render_person(node: &Node, c4_type: C4NodeType) -> String {
     // 1. Rounded rectangle body
     svg.push_str(&format!(
         "<rect x=\"{:.1}\" y=\"{:.1}\" width=\"{:.1}\" height=\"{:.1}\" \
-         fill=\"{}\" stroke=\"{}\" stroke-width=\"{}\"{} rx=\"{:.1}\"/>\n",
-        x, box_y, w, box_h, fill, stroke, SVG_STROKE_WIDTH, dashed, person_rx
+         fill=\"{}\" stroke=\"{}\" stroke-width=\"{}\" rx=\"{:.1}\"/>\n",
+        x, box_y, w, box_h, fill, stroke, SVG_STROKE_WIDTH, person_rx
     ));
 
     // 2. Leg lines (drawn over the rectangle border)
     svg.push_str(&format!(
         "<line x1=\"{:.1}\" y1=\"{:.1}\" x2=\"{:.1}\" y2=\"{:.1}\" \
-         stroke=\"{}\" opacity=\"0.3\" stroke-width=\"{}\"{}/>\n",
-        leg_left_x, leg_y_bottom, leg_left_x, leg_y_top, stroke, SVG_STROKE_WIDTH_NARROW, dashed
+         stroke=\"{}\" opacity=\"0.3\" stroke-width=\"{}\"/>\n",
+        leg_left_x, leg_y_bottom, leg_left_x, leg_y_top, stroke, SVG_STROKE_WIDTH_NARROW
     ));
     svg.push_str(&format!(
         "<line x1=\"{:.1}\" y1=\"{:.1}\" x2=\"{:.1}\" y2=\"{:.1}\" \
-         stroke=\"{}\" opacity=\"0.3\" stroke-width=\"{}\"{}/>\n",
-        leg_right_x, leg_y_bottom, leg_right_x, leg_y_top, stroke, SVG_STROKE_WIDTH_NARROW, dashed
+         stroke=\"{}\" opacity=\"0.3\" stroke-width=\"{}\"/>\n",
+        leg_right_x, leg_y_bottom, leg_right_x, leg_y_top, stroke, SVG_STROKE_WIDTH_NARROW
     ));
 
     // 3. Head ellipse (drawn last so it sits on top of the box border)
     svg.push_str(&format!(
         "<ellipse cx=\"{:.1}\" cy=\"{:.1}\" rx=\"{:.1}\" ry=\"{:.1}\" \
-         fill=\"{}\" stroke=\"{}\" stroke-width=\"{}\"{}/>\n",
-        head_cx, head_cy, head_r, head_r, fill, stroke, SVG_STROKE_WIDTH, dashed
+         fill=\"{}\" stroke=\"{}\" stroke-width=\"{}\"/>\n",
+        head_cx, head_cy, head_r, head_r, fill, stroke, SVG_STROKE_WIDTH
     ));
 
     // ── Text labels ──────────────────────────────────────────────────────────
@@ -258,12 +250,6 @@ fn render_cylinder(node: &Node, c4_type: C4NodeType) -> String {
     // C4 v4: white fill, #438dd5 stroke and text for all database shapes.
     let (fill, text_colour, stroke) = box_colours(c4_type);
 
-    let dashed = if c4_type.is_external() {
-        " stroke-dasharray=\"6,3\""
-    } else {
-        ""
-    };
-
     // Geometry: rx proportional to width; ry keeps a fixed ratio (always the same curve).
     let cx = x + w / 2.0;
     let rx = w / 2.0;
@@ -295,7 +281,7 @@ fn render_cylinder(node: &Node, c4_type: C4NodeType) -> String {
          L {:.1} {:.1} \
          C {:.1} {:.1} {:.1} {:.1} {:.1} {:.1} \
          C {:.1} {:.1} {:.1} {:.1} {:.1} {:.1} Z\" \
-         fill=\"{}\" stroke=\"{}\" stroke-width=\"{}\"{}/>\n",
+         fill=\"{}\" stroke=\"{}\" stroke-width=\"{}\"/>\n",
         // Start: left of top ellipse
         x,
         top_cy,
@@ -333,7 +319,6 @@ fn render_cylinder(node: &Node, c4_type: C4NodeType) -> String {
         fill,
         stroke,
         SVG_STROKE_WIDTH,
-        dashed,
     ));
 
     // ── Path 2: Lid (bottom arc of top ellipse — visible interior rim) ────────
@@ -346,7 +331,7 @@ fn render_cylinder(node: &Node, c4_type: C4NodeType) -> String {
          M {:.1} {:.1} \
          C {:.1} {:.1} {:.1} {:.1} {:.1} {:.1} \
          C {:.1} {:.1} {:.1} {:.1} {:.1} {:.1}\" \
-         fill=\"none\" stroke=\"{}\" stroke-width=\"{}\"{}/>\n",
+         fill=\"none\" stroke=\"{}\" stroke-width=\"{}\"/>\n",
         // Start: right of top ellipse
         x1,
         top_cy,
@@ -366,7 +351,6 @@ fn render_cylinder(node: &Node, c4_type: C4NodeType) -> String {
         top_cy,
         stroke,
         SVG_STROKE_WIDTH,
-        dashed,
     ));
 
     // Text starts below the top cap with a 10 px gap (spec: top padding = cap height + 10 px).
@@ -390,15 +374,7 @@ fn render_queue(node: &Node, c4_type: C4NodeType) -> String {
     let h = node.height;
 
     // C4 v4: white fill, #438dd5 stroke and text for all queue shapes.
-    let fill = "#ffffff";
-    let stroke = COLOUR_DB_STROKE;
-    let text_colour = COLOUR_DB_STROKE;
-
-    let dashed = if c4_type.is_external() {
-        " stroke-dasharray=\"6,3\""
-    } else {
-        ""
-    };
+    let (fill, text_colour, stroke) = box_colours(c4_type);
 
     let cy = y + h / 2.0;
 
@@ -432,7 +408,7 @@ fn render_queue(node: &Node, c4_type: C4NodeType) -> String {
          L {:.1} {:.1} \
          C {:.1} {:.1} {:.1} {:.1} {:.1} {:.1} \
          C {:.1} {:.1} {:.1} {:.1} {:.1} {:.1} Z\" \
-         fill=\"{}\" stroke=\"{}\" stroke-width=\"{}\"{}/>\n",
+         fill=\"{}\" stroke=\"{}\" stroke-width=\"{}\"/>\n",
         // Start: top tangent of left cap
         x_lc,
         y,
@@ -473,7 +449,6 @@ fn render_queue(node: &Node, c4_type: C4NodeType) -> String {
         fill,
         stroke,
         SVG_STROKE_WIDTH,
-        dashed,
     ));
 
     // ── Path 2: Rim (right half of left cap — visible interior arc) ──────────
@@ -486,7 +461,7 @@ fn render_queue(node: &Node, c4_type: C4NodeType) -> String {
          M {:.1} {:.1} \
          C {:.1} {:.1} {:.1} {:.1} {:.1} {:.1} \
          C {:.1} {:.1} {:.1} {:.1} {:.1} {:.1}\" \
-         fill=\"none\" stroke=\"{}\" stroke-width=\"{}\"{}/>\n",
+         fill=\"none\" stroke=\"{}\" stroke-width=\"{}\"/>\n",
         // Start: top tangent of left cap
         x_lc,
         y,
@@ -506,7 +481,6 @@ fn render_queue(node: &Node, c4_type: C4NodeType) -> String {
         y + h,
         stroke,
         SVG_STROKE_WIDTH,
-        dashed,
     ));
 
     // Text is centred in the body area to the right of the left cap.
@@ -534,17 +508,12 @@ fn render_c4_box(node: &Node, c4_type: C4NodeType) -> String {
     let h = node.height;
 
     let (fill, text_colour, stroke) = box_colours(c4_type);
-    let dashed = if c4_type.is_external() {
-        " stroke-dasharray=\"6,3\""
-    } else {
-        ""
-    };
     let mut svg = String::with_capacity(512);
 
     svg.push_str(&format!(
         "<rect x=\"{:.1}\" y=\"{:.1}\" width=\"{:.1}\" height=\"{:.1}\" \
-         fill=\"{}\" stroke=\"{}\" stroke-width=\"{}\"{}  rx=\"{}\"/>\n",
-        x, y, w, h, fill, stroke, SVG_STROKE_WIDTH, dashed, BOX_RADIUS
+         fill=\"{}\" stroke=\"{}\" stroke-width=\"{}\"  rx=\"{}\"/>\n",
+        x, y, w, h, fill, stroke, SVG_STROKE_WIDTH, BOX_RADIUS
     ));
 
     render_c4_labels(&mut svg, node, c4_type, x, y + 10.0, w, text_colour);
@@ -675,47 +644,53 @@ fn c4_type_label(t: C4NodeType) -> &'static str {
 /// Return (fill, text_colour, stroke) for box/cylinder/queue elements.
 fn box_colours(c4_type: C4NodeType) -> (&'static str, &'static str, &'static str) {
     if c4_type.is_external() {
-        return (COLOUR_EXT_TEXT, COLOUR_EXT_FILL, COLOUR_EXT_FILL);
+        return (COLOUR_EXT_FILL, COLOUR_EXT_STROKE, COLOUR_EXT_STROKE);
     }
     match c4_type {
-        // Person — C4 v4: white fill, #08427b stroke/text
-        C4NodeType::Person | C4NodeType::PersonExt => {
-            ("#ffffff", COLOUR_PERSON_STROKE, COLOUR_PERSON_STROKE)
-        }
-
-        // Database shapes — C4 v4: white fill, #438dd5 stroke/text regardless of level
-        C4NodeType::SystemDb
+        C4NodeType::System
+        | C4NodeType::SystemDb
+        | C4NodeType::SystemQueue
+        | C4NodeType::SystemExt
         | C4NodeType::SystemDbExt
+        | C4NodeType::SystemQueueExt => (
+            COLOUR_SYSTEM_FILL,
+            COLOUR_SYSTEM_STROKE,
+            COLOUR_SYSTEM_STROKE,
+        ),
+
+        C4NodeType::Container
         | C4NodeType::ContainerDb
-        | C4NodeType::ContainerDbExt
-        | C4NodeType::ComponentDb
-        | C4NodeType::ComponentDbExt => ("#ffffff", COLOUR_DB_STROKE, COLOUR_DB_STROKE),
-
-        // Queue shapes — C4 v4: white fill, #438dd5 stroke/text regardless of level
-        C4NodeType::SystemQueue
-        | C4NodeType::SystemQueueExt
         | C4NodeType::ContainerQueue
-        | C4NodeType::ContainerQueueExt
+        | C4NodeType::ContainerExt
+        | C4NodeType::ContainerDbExt
+        | C4NodeType::ContainerQueueExt => (
+            COLOUR_CONTAINER_FILL,
+            COLOUR_CONTAINER_STROKE,
+            COLOUR_CONTAINER_STROKE,
+        ),
+
+        C4NodeType::Component
+        | C4NodeType::ComponentDb
         | C4NodeType::ComponentQueue
-        | C4NodeType::ComponentQueueExt => ("#ffffff", COLOUR_DB_STROKE, COLOUR_DB_STROKE),
-
-        C4NodeType::System | C4NodeType::SystemExt => {
-            (COLOUR_SYSTEM_TEXT, COLOUR_SYSTEM_FILL, COLOUR_SYSTEM_FILL)
-        }
-
-        C4NodeType::Container | C4NodeType::ContainerExt => (
-            COLOUR_CONTAINER_TEXT,
-            COLOUR_CONTAINER_FILL,
-            COLOUR_CONTAINER_FILL,
+        | C4NodeType::ComponentExt
+        | C4NodeType::ComponentDbExt
+        | C4NodeType::ComponentQueueExt => (
+            COLOUR_COMPONENT_FILL,
+            COLOUR_COMPONENT_STROKE,
+            COLOUR_COMPONENT_STROKE,
         ),
 
-        C4NodeType::Component | C4NodeType::ComponentExt => (
-            COLOUR_COMPONENT_TEXT,
-            COLOUR_COMPONENT_FILL,
-            COLOUR_COMPONENT_FILL,
+        C4NodeType::DeploymentNode => (
+            COLOUR_DEPLOYMENT_FILL,
+            COLOUR_DEPLOYMENT_STROKE,
+            COLOUR_DEPLOYMENT_STROKE,
         ),
 
-        C4NodeType::DeploymentNode => (COLOUR_DEPLOYMENT_FILL, COLOUR_DEPLOYMENT_TEXT, "#555555"),
+        C4NodeType::Person => (
+            COLOUR_PERSON_FILL,
+            COLOUR_PERSON_STROKE,
+            COLOUR_PERSON_STROKE,
+        ),
 
         // Boundaries handled separately
         _ => ("#f5f5f5", "#333333", "#999999"),
@@ -840,12 +815,7 @@ mod tests {
             !svg.contains("<rect"),
             "cylinder must not use rect elements"
         );
-        // Correct colours: white fill, #438dd5 stroke/text
         assert!(svg.contains("#ffffff"), "missing white fill");
-        assert!(
-            svg.contains(COLOUR_DB_STROKE),
-            "missing #438dd5 stroke colour"
-        );
         // Lid path must have fill="none"
         assert!(
             svg.contains("fill=\"none\""),
@@ -863,22 +833,11 @@ mod tests {
         assert!(!svg.contains("<rect"), "queue must not use rect elements");
         // Correct colours: white fill, #438dd5 stroke/text
         assert!(svg.contains("#ffffff"), "missing white fill");
-        assert!(
-            svg.contains(COLOUR_DB_STROKE),
-            "missing #438dd5 stroke colour"
-        );
         // Rim path must have fill="none"
         assert!(
             svg.contains("fill=\"none\""),
             "rim path must have fill=none"
         );
-    }
-
-    #[test]
-    fn test_render_ext_uses_dashed() {
-        let node = make_c4_node("ext", C4NodeType::SystemExt);
-        let svg = render_c4_node(&node);
-        assert!(svg.contains("stroke-dasharray"));
     }
 
     #[test]

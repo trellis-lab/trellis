@@ -34,6 +34,8 @@ const HEADER_HEIGHT: f64 = 32.0;
 const LINE_HEIGHT: f64 = 18.0;
 /// Horizontal padding inside the box
 const PADDING_X: f64 = 16.0;
+/// Vertical padding inside the box
+const PADDING_Y: f64 = 10.0;
 /// Minimum element width
 const MIN_WIDTH: f64 = 200.0;
 /// Minimum person node height
@@ -372,7 +374,7 @@ fn size_c4_node(
             let lines = word_wrap_line_count(desc, chars_per_line);
             h += LINE_HEIGHT * lines as f64;
         }
-        h.max(MIN_DEFAULT_HEIGHT)
+        h.max(MIN_DEFAULT_HEIGHT + PADDING_Y)
     };
 
     (width, height)

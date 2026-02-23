@@ -272,7 +272,11 @@ fn compute_bbox_recursive(
 }
 
 /// Compute the maximum height of each row for a slice of node indices.
-fn compute_row_heights(nodes: &[trellis_parser::Node], indices: &[usize], shapes_per_row: usize) -> Vec<f64> {
+fn compute_row_heights(
+    nodes: &[trellis_parser::Node],
+    indices: &[usize],
+    shapes_per_row: usize,
+) -> Vec<f64> {
     let mut row_heights: Vec<f64> = Vec::new();
     let mut max_h = 0.0_f64;
 
@@ -413,10 +417,15 @@ mod tests {
         // Tree should contain ROOT and sb
         assert!(tree.nodes.contains_key("ROOT"));
         assert!(tree.nodes.contains_key("sb"));
-        assert!(tree.nodes["sb"].direct_node_ids.contains(&"api".to_string()));
+        assert!(tree.nodes["sb"]
+            .direct_node_ids
+            .contains(&"api".to_string()));
 
         // BoundingBox should be computed for sb
-        assert!(boxes.contains_key("sb"), "bbox should exist for boundary 'sb'");
+        assert!(
+            boxes.contains_key("sb"),
+            "bbox should exist for boundary 'sb'"
+        );
         let bbox = &boxes["sb"];
         assert!(bbox.width > 0.0);
         assert!(bbox.height > 0.0);

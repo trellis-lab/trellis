@@ -101,20 +101,20 @@ pub fn build_svg(
                 svg.push_str("</g>\n");
             }
         }
-    }
-
-    // --- Subgraph backgrounds (below everything) ---
-    if let Some((tree, boxes)) = subgraph_data {
-        let sg_svg = render_subgraph_backgrounds(tree, boxes);
-        if !sg_svg.is_empty() {
-            svg.push_str("<!-- Subgraph Backgrounds -->\n");
-            svg.push_str("<g class=\"subgraphs\">\n");
-            for line in sg_svg.lines() {
-                svg.push_str("  ");
-                svg.push_str(line);
-                svg.push('\n');
+    } else {
+        // --- Subgraph backgrounds (below everything) ---
+        if let Some((tree, boxes)) = subgraph_data {
+            let sg_svg = render_subgraph_backgrounds(tree, boxes);
+            if !sg_svg.is_empty() {
+                svg.push_str("<!-- Subgraph Backgrounds -->\n");
+                svg.push_str("<g class=\"subgraphs\">\n");
+                for line in sg_svg.lines() {
+                    svg.push_str("  ");
+                    svg.push_str(line);
+                    svg.push('\n');
+                }
+                svg.push_str("</g>\n");
             }
-            svg.push_str("</g>\n");
         }
     }
 
@@ -227,9 +227,10 @@ pub fn build_svg(
 
     // --- Multiplicity labels for class diagram edges ---
     if graph.diagram_type == DiagramType::ClassDiagram {
-        let has_mult = graph.edges.iter().any(|e| {
-            e.source_multiplicity.is_some() || e.target_multiplicity.is_some()
-        });
+        let has_mult = graph
+            .edges
+            .iter()
+            .any(|e| e.source_multiplicity.is_some() || e.target_multiplicity.is_some());
         if has_mult {
             svg.push_str("<!-- Multiplicity Labels -->\n");
             svg.push_str("<g class=\"multiplicity-labels\">\n");

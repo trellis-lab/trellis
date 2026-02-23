@@ -21,14 +21,16 @@ const FONT_SIZE: f64 = 12.0;
 const LABEL_HEIGHT: f64 = 20.0;
 
 // ── Colours by boundary type ──────────────────────────────────────────────────
-const COLOUR_ENTERPRISE_BG: &str = "#fffde7";
+const COLOUR_ENTERPRISE_BG: &str = "#ffffff";
 const COLOUR_ENTERPRISE_STROKE: &str = "#f9a825";
-const COLOUR_SYSTEM_BG: &str = "#e8f5e9";
+const COLOUR_SYSTEM_BG: &str = "#ffffff";
 const COLOUR_SYSTEM_STROKE: &str = "#388e3c";
-const COLOUR_CONTAINER_BG: &str = "#e3f2fd";
+const COLOUR_CONTAINER_BG: &str = "#ffffff";
 const COLOUR_CONTAINER_STROKE: &str = "#1565c0";
-const COLOUR_DEPLOYMENT_BG: &str = "#f5f5f5";
+const COLOUR_DEPLOYMENT_BG: &str = "#ffffff";
 const COLOUR_DEPLOYMENT_STROKE: &str = "#616161";
+
+const SVG_BOUNDARY_STROKE_WIDTH: f64 = 2.0;
 
 // ── Public API ────────────────────────────────────────────────────────────────
 
@@ -64,14 +66,21 @@ pub fn render_c4_boundaries(graph: &Graph, boxes: &HashMap<String, BoundingBox>)
         // Background / border rectangle
         svg.push_str(&format!(
             "<rect x=\"{:.1}\" y=\"{:.1}\" width=\"{:.1}\" height=\"{:.1}\" \
-             fill=\"{}\" stroke=\"{}\" stroke-width=\"1.5\" \
-             stroke-dasharray=\"8,4\" rx=\"{}\"/>\n",
-            bbox.x, bbox.y, bbox.width, bbox.height, bg, stroke, CORNER_R
+             fill=\"{}\" stroke=\"{}\" stroke-width=\"{}\" \
+             rx=\"{}\"/>\n",
+            bbox.x,
+            bbox.y,
+            bbox.width,
+            bbox.height,
+            bg,
+            stroke,
+            SVG_BOUNDARY_STROKE_WIDTH,
+            CORNER_R
         ));
 
         // Label in the top-left corner of the boundary strip
         let label_x = bbox.x + 10.0;
-        let label_y = bbox.y + LABEL_HEIGHT / 2.0 + FONT_SIZE / 2.0;
+        let label_y = bbox.y + bbox.height - LABEL_HEIGHT / 2.0;
         svg.push_str(&format!(
             "<text x=\"{:.1}\" y=\"{:.1}\" \
              font-family=\"Arial, Helvetica, sans-serif\" \
@@ -95,7 +104,7 @@ fn boundary_colours(c4_type: Option<C4NodeType>) -> (&'static str, &'static str)
         Some(C4NodeType::SystemBoundary) => (COLOUR_SYSTEM_BG, COLOUR_SYSTEM_STROKE),
         Some(C4NodeType::ContainerBoundary) => (COLOUR_CONTAINER_BG, COLOUR_CONTAINER_STROKE),
         Some(C4NodeType::DeploymentNode) => (COLOUR_DEPLOYMENT_BG, COLOUR_DEPLOYMENT_STROKE),
-        _ => ("#f5f5f5", "#999999"),
+        _ => ("#ffffff", "#999999"),
     }
 }
 
@@ -123,7 +132,12 @@ mod tests {
     }
 
     fn make_bbox(x: f64, y: f64, w: f64, h: f64) -> BoundingBox {
-        BoundingBox { x, y, width: w, height: h }
+        BoundingBox {
+            x,
+            y,
+            width: w,
+            height: h,
+        }
     }
 
     #[test]
@@ -142,7 +156,9 @@ mod tests {
     #[test]
     fn test_boundary_rendered() {
         let mut graph = Graph::new();
-        graph.nodes.push(make_boundary("eb", C4NodeType::EnterpriseBoundary));
+        graph
+            .nodes
+            .push(make_boundary("eb", C4NodeType::EnterpriseBoundary));
         let mut boxes = HashMap::new();
         boxes.insert("eb".to_string(), make_bbox(16.0, -4.0, 200.0, 150.0));
         let svg = render_c4_boundaries(&graph, &boxes);
@@ -153,7 +169,9 @@ mod tests {
     #[test]
     fn test_boundary_skipped_when_no_bbox() {
         let mut graph = Graph::new();
-        graph.nodes.push(make_boundary("sb", C4NodeType::SystemBoundary));
+        graph
+            .nodes
+            .push(make_boundary("sb", C4NodeType::SystemBoundary));
         let boxes = HashMap::new(); // no entry for "sb"
         let svg = render_c4_boundaries(&graph, &boxes);
         // Should be empty because no contained elements were placed
@@ -163,7 +181,9 @@ mod tests {
     #[test]
     fn test_boundary_uses_correct_colours() {
         let mut graph = Graph::new();
-        graph.nodes.push(make_boundary("cb", C4NodeType::ContainerBoundary));
+        graph
+            .nodes
+            .push(make_boundary("cb", C4NodeType::ContainerBoundary));
         let mut boxes = HashMap::new();
         boxes.insert("cb".to_string(), make_bbox(0.0, 0.0, 100.0, 80.0));
         let svg = render_c4_boundaries(&graph, &boxes);
