@@ -336,32 +336,33 @@ A C4 elhelyezés **nem gráfalgoritmus-alapú** – sorfolyásos (row-flow) elre
     * `SystemDb` / `ContainerDb` / `ComponentDb` és `_Ext` variánsaik: henger (cylinder)
     * `SystemQueue` / `ContainerQueue` / `ComponentQueue` és `_Ext` variánsaik: sor-ikon (dupla keret)
     * `_Ext` variánsok: szaggatott körvonal (stroke-dasharray)
-* [x] Boundary renderelés: `render/c4_boundary.rs` – finom szaggatott keret, háttérszín mélység szerint, bal felső sarokba felirat
+* [x] Boundary renderelés: `render/c4_boundary.rs` – vékony, folytonos keret, a felirat és a boundary típusa baloldalt alul legyen
 * [x] Kapcsolat renderelés: technológia-felirat az élcímke második soraként; `BiRel` → kétirányú nyíl
 * [ ] `UpdateElementStyle` directive feldolgozása (egyedi szín/stílus felülírás) – nem implementált
 * [ ] `UpdateRelStyle` directive feldolgozása – nem implementált
-* [x] Z-order: boundary háttér → élek → elemek → elemcímkék → élcímkék
+* [x] Z-order: boundary háttér → elemek → élek → elemcímkék → élcímkék
 
 ### Tesztelés
 
 * [x] Unit tesztek: C4Context (Person + System + Enterprise_Boundary + Rel), C4Container (Container + System_Boundary), C4Deployment (Deployment_Node fa) fixture-ök
-* [ ] `UpdateLayoutConfig` tesztelése: 2 shape/sor, 1 boundary/sor → elhelyezés ellenőrzés
+* [x] `UpdateLayoutConfig` tesztelése: 2 shape/sor, 1 boundary/sor → elhelyezés ellenőrzés
 
 ---
 
-## M13 – Dekompozíció (Fázis 13)
+## M13 – Benchmark és finomhangolás
 
-> **Cél:** Nagy gráfok (50+ node) kezelése klaszterezéssel.
-> **Smoke test:** B10 (50 node flowchart) és B11 (100 node ER) elfogadható idő alatt renderelődik
+> **Cél:** A költségfüggvény konstansai optimalizálva, a teljesítmény mérve és dokumentálva.
+> **Smoke test:** `cargo bench` lefut, eredmények a `target/criterion/` alatt, minden benchmark elfogadható idő alatt renderelődik
 
-* [ ] `TrellisConfig` dekompozíciós mezők: `decomposition`, `decompositionThreshold`
-* [ ] Louvain közösségdetektálás (`decomposition/clustering.rs` – modularitás-alapú klaszterezés)
-* [ ] Hibrid klaszterezés (subgraph-ok tisztelete + Louvain a maradékra)
-* [ ] SINGLE mód (`decomposition/single.rs` – klaszterenkénti belső routing + globális rács + klaszterek közti routing)
-* [ ] MULTI mód (`decomposition/multi.rs` – összesítő diagram + klaszterenkénti részletek, `DiagramSet` kimenet)
-* [ ] Pipeline elágazás (`renderDiagram` – NONE/SINGLE/MULTI mód-választás)
-* [ ] CLI `--decomposition` és `--decomposition-threshold` kapcsolók bekötése
-* [ ] Integrációs tesztek: B10, B11 fixture-ök mindhárom módban
+* [ ] Criterion benchmark runner (`tests/benchmarks/src/bench.rs`) – B01-B12 fixture-ök
+* [ ] Invariáns tesztek (`tests/integration/invariants.rs`):
+    * [ ] Fedésmentesség: nincs két él ugyanazon a rácsponton
+    * [ ] Blokkolás: nincs él csomóponton átmenő rácsponton
+    * [ ] Ortogonalitás: minden él csak vízszintes/függőleges szegmensekből áll
+    * [ ] Összefüggőség: minden él összefüggő útvonal a portok között
+    * [ ] Port egyediség: nincs két él ugyanazon a porton
+* [ ] Költségfüggvény finomhangolás: `BEND_COST`, `ADJACENT_COST`, `CROSSING_COST` értékek empirikus tesztelése a B01-B12 fixture-ökön
+* [ ] Eredmények dokumentálása (render idő, crossing count, bend count fixture-önként)
 
 ---
 
@@ -419,6 +420,7 @@ A C4 elhelyezés **nem gráfalgoritmus-alapú** – sorfolyásos (row-flow) elre
 > **Smoke test:** `docker run --rm -v $(pwd):/data ghcr.io/trellis/trellis:latest trellis render /data/test.mmd -o /data/test.svg`
 
 * [ ] `docker/Dockerfile` – multi-stage build (builder + slim runtime)
+* [ ] Pandoc Dockerfile felépítése a teljes markdown rendereléshez
 * [ ] `scripts/build-docker.sh` – image build + tag
 * [ ] `scripts/build-cli.sh` – cross-compile: Linux x86_64, macOS x86_64/ARM, Windows
 * [ ] GitHub Actions CI workflow: `cargo test` → `cargo bench` → WASM build → CLI build → Docker build
@@ -428,21 +430,20 @@ A C4 elhelyezés **nem gráfalgoritmus-alapú** – sorfolyásos (row-flow) elre
 
 ---
 
-## M18 – Benchmark és finomhangolás
+## M18 – Dekompozíció (Fázis 13)
 
-> **Cél:** A költségfüggvény konstansai optimalizálva, a teljesítmény mérve és dokumentálva.
-> **Smoke test:** `cargo bench` lefut, eredmények a `target/criterion/` alatt, minden benchmark elfogadható idő alatt renderelődik
+> **Cél:** Nagy gráfok (50+ node) kezelése klaszterezéssel.
+> **Smoke test:** B10 (50 node flowchart) és B11 (100 node ER) elfogadható idő alatt renderelődik
 
-* [ ] Criterion benchmark runner (`tests/benchmarks/src/bench.rs`) – B01-B12 fixture-ök
-* [ ] Invariáns tesztek (`tests/integration/invariants.rs`):
-    * [ ] Fedésmentesség: nincs két él ugyanazon a rácsponton
-    * [ ] Blokkolás: nincs él csomóponton átmenő rácsponton
-    * [ ] Ortogonalitás: minden él csak vízszintes/függőleges szegmensekből áll
-    * [ ] Összefüggőség: minden él összefüggő útvonal a portok között
-    * [ ] Port egyediség: nincs két él ugyanazon a porton
-* [ ] Költségfüggvény finomhangolás: `BEND_COST`, `ADJACENT_COST`, `CROSSING_COST` értékek empirikus tesztelése a B01-B12 fixture-ökön
+* [ ] `TrellisConfig` dekompozíciós mezők: `decomposition`, `decompositionThreshold`
+* [ ] Louvain közösségdetektálás (`decomposition/clustering.rs` – modularitás-alapú klaszterezés)
+* [ ] Hibrid klaszterezés (subgraph-ok tisztelete + Louvain a maradékra)
+* [ ] SINGLE mód (`decomposition/single.rs` – klaszterenkénti belső routing + globális rács + klaszterek közti routing)
+* [ ] MULTI mód (`decomposition/multi.rs` – összesítő diagram + klaszterenkénti részletek, `DiagramSet` kimenet)
+* [ ] Pipeline elágazás (`renderDiagram` – NONE/SINGLE/MULTI mód-választás)
+* [ ] CLI `--decomposition` és `--decomposition-threshold` kapcsolók bekötése
+* [ ] Integrációs tesztek: B10, B11 fixture-ök mindhárom módban
 * [ ] Teljesítmény-profiling nagy gráfokon (B10, B11)
-* [ ] Eredmények dokumentálása (render idő, crossing count, bend count fixture-önként)
 
 ---
 

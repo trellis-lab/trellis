@@ -315,25 +315,58 @@ fn label_offset_point(ax: f64, ay: f64, bx: f64, by_: f64, offset: f64) -> (f64,
     (ax + nx * offset - ny * 6.0, ay + ny * offset + nx * 6.0)
 }
 
+/// Line height used when rendering multi-line edge labels.
+/// Must match `LABEL_LINE_HEIGHT` in `labels/placement.rs` so sizing is consistent.
+const LABEL_LINE_HEIGHT_PX: f64 = 14.0;
+
 /// Render a single edge label as SVG: background rectangle + text.
+///
+/// `label.text` may contain `\n` for multi-line labels (e.g. C4 edges that
+/// combine the relation label with a technology annotation).  Each line is
+/// emitted as a `<tspan>` element so the text wraps correctly in SVG.
 fn render_label(label: &LabelPlacement) -> String {
     let padding = 3.0;
     let bg_x = label.x;
     let bg_y = label.y;
     let bg_w = label.width + 2.0 * padding;
     let bg_h = label.height + 2.0 * padding;
-
     let text_x = label.x + label.width / 2.0 + padding;
-    let text_y = label.y + label.height / 2.0 + padding;
 
-    let escaped = escape_xml(&label.text);
+    let lines: Vec<&str> = label.text.lines().collect();
+    let line_count = lines.len().max(1);
+
+    // Vertically centre the text block inside the background rect.
+    let total_text_h = line_count as f64 * LABEL_LINE_HEIGHT_PX;
+    let first_baseline_y =
+        label.y + padding + (label.height - total_text_h) / 2.0 + LABEL_LINE_HEIGHT_PX * 0.8;
+
+    let mut text_svg = String::from(
+        "<text text-anchor=\"middle\" \
+         font-family=\"Arial, Helvetica, sans-serif\" font-size=\"12\" fill=\"#333\">",
+    );
+    for (i, line) in lines.iter().enumerate() {
+        if i == 0 {
+            text_svg.push_str(&format!(
+                "<tspan x=\"{:.1}\" y=\"{:.1}\">{}</tspan>",
+                text_x,
+                first_baseline_y,
+                escape_xml(line)
+            ));
+        } else {
+            text_svg.push_str(&format!(
+                "<tspan x=\"{:.1}\" dy=\"{:.1}\">{}</tspan>",
+                text_x,
+                LABEL_LINE_HEIGHT_PX,
+                escape_xml(line)
+            ));
+        }
+    }
+    text_svg.push_str("</text>");
 
     format!(
         "<rect x=\"{:.1}\" y=\"{:.1}\" width=\"{:.1}\" height=\"{:.1}\" \
-         fill=\"white\" stroke=\"#ccc\" stroke-width=\"0.5\" rx=\"2\"/>\
-         <text x=\"{:.1}\" y=\"{:.1}\" text-anchor=\"middle\" dominant-baseline=\"central\" \
-         font-family=\"Arial, Helvetica, sans-serif\" font-size=\"12\" fill=\"#333\">{}</text>",
-        bg_x, bg_y, bg_w, bg_h, text_x, text_y, escaped
+         fill=\"white\" stroke=\"#ccc\" stroke-width=\"0.5\" rx=\"2\"/>{}",
+        bg_x, bg_y, bg_w, bg_h, text_svg
     )
 }
 

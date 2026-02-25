@@ -15,10 +15,15 @@ use crate::types::BoundingBox;
 
 /// Corner radius for the boundary rectangle
 const CORNER_R: f64 = 8.0;
-/// Font size for the boundary label
-const FONT_SIZE: f64 = 12.0;
-/// Vertical offset to centre the label text inside the label strip
-const LABEL_HEIGHT: f64 = 20.0;
+/// Font size for the boundary name line
+const FONT_SIZE_NAME: f64 = 12.0;
+/// Font size for the boundary type line (e.g. "[Enterprise Boundary]")
+const FONT_SIZE_TYPE: f64 = 11.0;
+/// Height reserved for the two-line label strip at the bottom of the frame.
+/// Must match `LABEL_HEIGHT` in `placement/c4.rs` → `compute_bboxes`.
+const LABEL_STRIP_HEIGHT: f64 = 36.0;
+/// Vertical distance between the two label baselines.
+const LABEL_LINE_GAP: f64 = 16.0;
 
 // ── Colours by boundary type ──────────────────────────────────────────────────
 const COLOUR_ENTERPRISE_BG: &str = "#ffffff";
@@ -78,18 +83,36 @@ pub fn render_c4_boundaries(graph: &Graph, boxes: &HashMap<String, BoundingBox>)
             CORNER_R
         ));
 
-        // Label in the top-left corner of the boundary strip
+        // Two-line label at the bottom-left of the boundary frame:
+        //   Line 1 (bold)  — boundary name
+        //   Line 2 (italic) — boundary type, e.g. "[Enterprise Boundary]"
         let label_x = bbox.x + 10.0;
-        let label_y = bbox.y + bbox.height - LABEL_HEIGHT / 2.0;
+        let bottom = bbox.y + bbox.height;
+        // Place lines inside the LABEL_STRIP_HEIGHT area reserved at the frame bottom.
+        let line1_y = bottom - LABEL_STRIP_HEIGHT + LABEL_LINE_GAP;  // = bottom − 20
+        let line2_y = line1_y + LABEL_LINE_GAP - 2.0;               // = bottom − 6
+
         svg.push_str(&format!(
             "<text x=\"{:.1}\" y=\"{:.1}\" \
              font-family=\"Arial, Helvetica, sans-serif\" \
              font-size=\"{:.0}\" font-weight=\"bold\" fill=\"{}\">{}</text>\n",
             label_x,
-            label_y,
-            FONT_SIZE,
+            line1_y,
+            FONT_SIZE_NAME,
             stroke,
             escape_xml(&boundary.label),
+        ));
+
+        let type_label = boundary_type_label(boundary.c4_type);
+        svg.push_str(&format!(
+            "<text x=\"{:.1}\" y=\"{:.1}\" \
+             font-family=\"Arial, Helvetica, sans-serif\" \
+             font-size=\"{:.0}\" font-style=\"italic\" fill=\"{}\">{}</text>\n",
+            label_x,
+            line2_y,
+            FONT_SIZE_TYPE,
+            stroke,
+            type_label,
         ));
     }
 
@@ -97,6 +120,17 @@ pub fn render_c4_boundaries(graph: &Graph, boxes: &HashMap<String, BoundingBox>)
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
+
+/// Return the bracketed type label string for a boundary node.
+fn boundary_type_label(c4_type: Option<C4NodeType>) -> &'static str {
+    match c4_type {
+        Some(C4NodeType::EnterpriseBoundary) => "[Enterprise Boundary]",
+        Some(C4NodeType::SystemBoundary) => "[System Boundary]",
+        Some(C4NodeType::ContainerBoundary) => "[Container Boundary]",
+        Some(C4NodeType::DeploymentNode) => "[Deployment Node]",
+        _ => "[Boundary]",
+    }
+}
 
 fn boundary_colours(c4_type: Option<C4NodeType>) -> (&'static str, &'static str) {
     match c4_type {
@@ -176,6 +210,28 @@ mod tests {
         let svg = render_c4_boundaries(&graph, &boxes);
         // Should be empty because no contained elements were placed
         assert!(svg.is_empty(), "empty boundary should produce no SVG");
+    }
+
+    #[test]
+    fn test_boundary_renders_type_label() {
+        let mut graph = Graph::new();
+        graph
+            .nodes
+            .push(make_boundary("eb", C4NodeType::EnterpriseBoundary));
+        let mut boxes = HashMap::new();
+        boxes.insert("eb".to_string(), make_bbox(0.0, 0.0, 200.0, 150.0));
+        let svg = render_c4_boundaries(&graph, &boxes);
+        // Both name and type label must appear
+        assert!(svg.contains("eb"), "boundary name must be rendered");
+        assert!(
+            svg.contains("[Enterprise Boundary]"),
+            "boundary type label must be rendered"
+        );
+        // Type line must be italic
+        assert!(
+            svg.contains("font-style=\"italic\""),
+            "type label must use italic style"
+        );
     }
 
     #[test]

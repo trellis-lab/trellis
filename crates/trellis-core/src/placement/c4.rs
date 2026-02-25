@@ -27,8 +27,6 @@ const MARGIN_X: f64 = 40.0;
 const MARGIN_Y: f64 = 40.0;
 /// Padding inside a boundary frame (matches c4_boundary.rs PADDING)
 const BOUNDARY_PADDING: f64 = 24.0;
-/// Extra height for the boundary label at the top of the frame
-const BOUNDARY_LABEL_HEIGHT: f64 = 20.0;
 
 // ── Public entry points ───────────────────────────────────────────────────────
 
@@ -94,8 +92,8 @@ pub fn place_c4_diagram(graph: &mut Graph) {
             _ => continue,
         };
 
-        // Space for the boundary label and top padding
-        current_y += BOUNDARY_LABEL_HEIGHT + BOUNDARY_PADDING;
+        // Top padding only — the label strip is at the bottom of the frame.
+        current_y += BOUNDARY_PADDING;
 
         let row_heights = compute_row_heights(&graph.nodes, &contained, shapes_per_row);
         current_y = place_in_rows(
@@ -206,7 +204,9 @@ fn flatten_subgraph(sg: &Subgraph, tree: &mut SubgraphTree) {
 /// exactly matches the viewBox extension.
 fn compute_bboxes(graph: &Graph) -> HashMap<String, BoundingBox> {
     const PADDING: f64 = 24.0;
-    const LABEL_HEIGHT: f64 = 20.0;
+    // Two-line bottom label: name (bold) + type (italic) at ~14 px each + gap.
+    // Must match the rendering constants in `render/c4_boundary.rs`.
+    const LABEL_HEIGHT: f64 = 36.0;
 
     let mut boxes = HashMap::new();
 
@@ -259,11 +259,13 @@ fn compute_bbox_recursive(
     }
 
     if min_x.is_finite() {
+        // Top: just padding above the topmost element.
+        // Bottom: padding + label_height for the two-line label strip.
         boxes.insert(
             sg.id.clone(),
             BoundingBox {
                 x: min_x - padding,
-                y: min_y - padding - label_height,
+                y: min_y - padding,
                 width: (max_x - min_x) + 2.0 * padding,
                 height: (max_y - min_y) + 2.0 * padding + label_height,
             },
@@ -399,6 +401,39 @@ mod tests {
             "boundary-contained 'api' (y={}) should be below top-level 'customer' (y={})",
             api.y,
             customer.y
+        );
+    }
+
+    /// `UpdateLayoutConfig` is currently silently ignored by the parser.
+    /// This test verifies that its presence does not crash the pipeline and
+    /// that the default 4-shapes-per-row layout is used.
+    #[test]
+    fn test_update_layout_config_is_ignored() {
+        let src = "C4Context\n\
+                   UpdateLayoutConfig($c4ShapeInRow=\"2\", $c4BoundaryInRow=\"1\")\n\
+                   Person(a, \"A\")\n\
+                   System(b, \"B\")\n\
+                   System(c, \"C\")\n\
+                   System(d, \"D\")\n\
+                   System(e, \"E\")\n";
+
+        let mut graph = parse(src).expect("parse must succeed even with UpdateLayoutConfig");
+        place_c4_diagram(&mut graph);
+
+        // With the default 4-per-row layout all first four nodes share the same y.
+        let y_a = graph.nodes.iter().find(|n| n.id == "a").unwrap().y;
+        let y_d = graph.nodes.iter().find(|n| n.id == "d").unwrap().y;
+        let y_e = graph.nodes.iter().find(|n| n.id == "e").unwrap().y;
+
+        assert_eq!(
+            y_a, y_d,
+            "nodes a..d should all be in the same (first) row with the default 4-per-row layout"
+        );
+        assert!(
+            y_e > y_a,
+            "node e should be in the second row (y={}) below node a (y={})",
+            y_e,
+            y_a
         );
     }
 

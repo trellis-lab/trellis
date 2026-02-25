@@ -4,7 +4,7 @@ use crate::grid::Grid;
 use crate::labels::collision::collides;
 use crate::labels::slide::slide_label_along_segment;
 use crate::routing::astar::RoutedPath;
-use trellis_parser::Graph;
+use trellis_parser::{DiagramType, Graph};
 
 /// Padding around label text in pixels.
 const LABEL_PADDING: f64 = 4.0;
@@ -221,10 +221,22 @@ pub fn place_all_labels(
         .collect();
 
     for (edge_idx, edge) in graph.edges.iter().enumerate() {
-        let label = match &edge.label {
-            Some(l) if !l.is_empty() => l,
+        let base_label = match &edge.label {
+            Some(l) if !l.is_empty() => l.as_str(),
             _ => continue,
         };
+
+        // For C4 edges: append technology as a second label line "[Tech]".
+        let display_text: String =
+            if graph.diagram_type == DiagramType::C4Diagram {
+                if let Some(tech) = &edge.c4_technology {
+                    format!("{}\n[{}]", base_label, tech)
+                } else {
+                    base_label.to_string()
+                }
+            } else {
+                base_label.to_string()
+            };
 
         let path = match routing_result.get(&edge_idx) {
             Some(p) => p,
@@ -236,6 +248,7 @@ pub fn place_all_labels(
             continue;
         }
 
+        let label = &display_text;
         let label_width = measure_label_width(label);
         let label_height = measure_label_height(label);
 

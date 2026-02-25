@@ -42,9 +42,15 @@ const MIN_WIDTH: f64 = 200.0;
 const MIN_PERSON_HEIGHT: f64 = 200.0;
 /// Minimum default element height
 const MIN_DEFAULT_HEIGHT: f64 = 100.0;
-/// Approximate character width for description/technology text at the renderer's
-/// FONT_SIZE_DESC (10 px Arial).  Must match CHAR_WIDTH_DESC in c4_shapes.rs.
+/// Approximate character width for description/technology text at 10 px (FONT_SIZE_DESC).
+/// Must match CHAR_WIDTH_DESC in c4_shapes.rs.
 const RENDER_CHAR_WIDTH_DESC: f64 = 5.5;
+/// Approximate character width for 13 px label text (Person description).
+/// Must match CHAR_WIDTH_LABEL in c4_shapes.rs.
+const RENDER_CHAR_WIDTH_LABEL: f64 = 7.0;
+/// Approximate character width for the Person caption (15 px bold).
+/// Must match CHAR_WIDTH_CAPTION in c4_shapes.rs.
+const RENDER_CHAR_WIDTH_CAPTION: f64 = 8.5;
 /// Renderer line height used inside the Person box.
 /// Must match `LINE_HEIGHT` in `c4_shapes.rs`.
 const PERSON_RENDERER_LH: f64 = 14.0;
@@ -343,18 +349,20 @@ fn size_c4_node(
         //   head_space = 2×(width/4) − 10 = width/2 − 10
         let head_space = width / 2.0 - 10.0;
 
-        // chars_per_line is shared between caption and description.
-        let chars_per_line = ((width - PADDING_X * 2.0) / RENDER_CHAR_WIDTH_DESC).max(5.0) as usize;
-
-        // Caption word-wrap, capped at PERSON_MAX_LINES.
+        // Caption (15 px bold) — use the caption-specific char width.
+        let caption_cpl =
+            ((width - PADDING_X * 2.0) / RENDER_CHAR_WIDTH_CAPTION).max(5.0) as usize;
         // PERSON_BASE_BOX_H already reserves one caption line; each extra line
         // adds PERSON_RENDERER_LH (14 px).
-        let caption_lines = word_wrap_line_count(label, chars_per_line).min(PERSON_MAX_LINES);
+        let caption_lines = word_wrap_line_count(label, caption_cpl).min(PERSON_MAX_LINES);
         let caption_extra = caption_lines.saturating_sub(1) as f64 * PERSON_RENDERER_LH;
 
+        // Description (13 px) — use the label char width.
+        let desc_cpl =
+            ((width - PADDING_X * 2.0) / RENDER_CHAR_WIDTH_LABEL).max(5.0) as usize;
         // Description word-wrap (4 px type→desc gap + lines × 14 px).
         let desc_extra = if let Some(desc) = description {
-            let desc_lines = word_wrap_line_count(desc, chars_per_line).min(PERSON_MAX_LINES);
+            let desc_lines = word_wrap_line_count(desc, desc_cpl).min(PERSON_MAX_LINES);
             4.0 + PERSON_RENDERER_LH * desc_lines as f64
         } else {
             0.0

@@ -31,9 +31,12 @@ const KAPPA: f64 = 0.5523;
 const BOX_RADIUS: f64 = 4.0;
 /// Horizontal padding inside the box (must match PADDING_X in c4_diagram.rs)
 const BOX_PADDING_X: f64 = 16.0;
-/// Approximate character width for description/technology text at FONT_SIZE_DESC.
+/// Approximate character width for description/technology text at FONT_SIZE_DESC (10 px).
 /// Must match RENDER_CHAR_WIDTH_DESC in c4_diagram.rs.
 const CHAR_WIDTH_DESC: f64 = 5.5;
+/// Approximate character width for the Person caption (15 px bold).
+/// Must match RENDER_CHAR_WIDTH_CAPTION in c4_diagram.rs.
+const CHAR_WIDTH_CAPTION: f64 = 8.5;
 /// Maximum lines per text block for Person nodes.
 /// Spec: "No text can have more than 5 lines."
 /// Must match `PERSON_MAX_LINES` in `c4_diagram.rs`.
@@ -91,7 +94,7 @@ pub fn c4_marker_defs() -> &'static str {
     "<defs>\
      <marker id=\"c4-arrow\" viewBox=\"0 0 10 10\" refX=\"9\" refY=\"5\" \
      markerWidth=\"5\" markerHeight=\"5\" orient=\"auto-start-reverse\">\
-     <path d=\"M 0 2 L 9 5 L 0 8\" fill=\"none\" stroke=\"#555\" stroke-width=\"1.5\"/>\
+     <path d=\"M 0 2 L 9 5 L 0 8\" fill=\"none\" stroke=\"#555\" stroke-width=\"3.0\"/>\
      </marker>\
      </defs>"
 }
@@ -184,7 +187,7 @@ fn render_person(node: &Node, c4_type: C4NodeType) -> String {
     let caption_size = FONT_SIZE_LABEL + 2.0;
     // Baseline positioned so the visual top of the caption is 10 px below box_y.
     let mut text_y = box_y + 20.0 + caption_size * 0.75;
-    for line in wrap_text_truncated(&node.label, w) {
+    for line in wrap_text_truncated(&node.label, w, CHAR_WIDTH_CAPTION) {
         svg.push_str(&format!(
             "<text x=\"{:.1}\" y=\"{:.1}\" text-anchor=\"middle\" \
              font-family=\"Arial, Helvetica, sans-serif\" \
@@ -214,9 +217,9 @@ fn render_person(node: &Node, c4_type: C4NodeType) -> String {
     ));
     text_y += LINE_HEIGHT + 4.0; // 4 px gap
 
-    // Description — default size, word-wrapped and truncated to MAX_TEXT_LINES
+    // Description — 13 px text, word-wrapped and truncated to MAX_TEXT_LINES
     if let Some(desc) = &node.c4_description {
-        for line in wrap_text_truncated(desc, w) {
+        for line in wrap_text_truncated(desc, w, CHAR_WIDTH_DESC) {
             svg.push_str(&format!(
                 "<text x=\"{:.1}\" y=\"{:.1}\" text-anchor=\"middle\" \
                  font-family=\"Arial, Helvetica, sans-serif\" \
@@ -600,9 +603,9 @@ fn render_c4_labels(
         text_y += LINE_HEIGHT;
     }
 
-    // Description (regular, smaller) — word-wrapped to fit inside the box.
+    // Description (regular, smaller, 10 px) — word-wrapped to fit inside the box.
     if let Some(desc) = &node.c4_description {
-        for line in wrap_text(desc, box_w) {
+        for line in wrap_text(desc, box_w, CHAR_WIDTH_DESC) {
             svg.push_str(&format!(
                 "<text x=\"{:.1}\" y=\"{:.1}\" text-anchor=\"middle\" \
                  font-family=\"Arial, Helvetica, sans-serif\" \
@@ -699,13 +702,17 @@ fn box_colours(c4_type: C4NodeType) -> (&'static str, &'static str, &'static str
 
 // ── Utility ───────────────────────────────────────────────────────────────────
 
-/// Word-wrap `text` so each line fits within `box_w` pixels at FONT_SIZE_DESC.
+/// Word-wrap `text` so each line fits within `box_w` pixels.
+///
+/// `char_width` is the estimated pixel width of one character at the target
+/// font size.  Use `CHAR_WIDTH_CAPTION`, `CHAR_WIDTH_LABEL`, or
+/// `CHAR_WIDTH_DESC` depending on the font being rendered.
 ///
 /// Uses the same algorithm as `word_wrap_line_count` in the parser so the
 /// renderer produces exactly as many lines as the parser reserved height for.
-fn wrap_text(text: &str, box_w: f64) -> Vec<String> {
+fn wrap_text(text: &str, box_w: f64, char_width: f64) -> Vec<String> {
     let inner_w = (box_w - BOX_PADDING_X * 2.0).max(40.0);
-    let chars_per_line = (inner_w / CHAR_WIDTH_DESC).max(5.0) as usize;
+    let chars_per_line = (inner_w / char_width).max(5.0) as usize;
 
     let mut lines: Vec<String> = Vec::new();
     let mut current = String::new();
@@ -734,12 +741,13 @@ fn wrap_text(text: &str, box_w: f64) -> Vec<String> {
     lines
 }
 
-/// Word-wrap `text` to fit `box_w`, then truncate to [`MAX_TEXT_LINES`] lines.
+/// Word-wrap `text` to fit `box_w` using `char_width`, then truncate to
+/// [`MAX_TEXT_LINES`] lines.
 ///
 /// If wrapping produces more than the limit, the last kept line is replaced with
 /// `"…"` so the rendered block never exceeds 5 lines (spec requirement).
-fn wrap_text_truncated(text: &str, box_w: f64) -> Vec<String> {
-    let mut lines = wrap_text(text, box_w);
+fn wrap_text_truncated(text: &str, box_w: f64, char_width: f64) -> Vec<String> {
+    let mut lines = wrap_text(text, box_w, char_width);
     if lines.len() > MAX_TEXT_LINES {
         lines.truncate(MAX_TEXT_LINES - 1);
         lines.push("\u{2026}".to_string()); // U+2026 HORIZONTAL ELLIPSIS
