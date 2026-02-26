@@ -60,4 +60,22 @@ pub struct RenderMetrics {
     pub grid_cols: usize,
     pub cell_size: i32,
     pub port_count: usize,
+    /// Total routed path length in grid steps (sum across all edges)
+    pub total_edge_length: usize,
+    /// Sum of A* routing costs across all routed edges
+    pub total_routing_cost: f64,
+    /// Average routed path length per edge (0.0 if no edges)
+    pub avg_edge_length: f64,
+    /// Average A* routing cost per edge (0.0 if no edges)
+    pub avg_routing_cost: f64,
+    /// Longest single routed path in grid steps
+    pub max_edge_length: usize,
+    /// Largest bend count on any single routed edge
+    pub max_bends_per_edge: usize,
+    /// Average detour factor: avg(actual_steps / manhattan_distance) per edge.
+    /// 1.0 = theoretically shortest path; higher values indicate detour due to
+    /// congestion or obstacles.  0.0 when all edges have zero manhattan distance.
+    pub avg_detour_factor: f64,
+    /// Number of edges that required the 3-level deadlock recovery handler
+    pub deadlock_recoveries: usize,
 }

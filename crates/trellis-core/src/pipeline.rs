@@ -45,6 +45,24 @@ pub fn render(graph: &Graph, config: &TrellisConfig, format: OutputFormat) -> Re
     let elapsed = start.elapsed();
 
     // Collect metrics
+    let routed_count = routing_result.paths.len();
+    let avg_edge_length = if routed_count > 0 {
+        routing_result.total_path_length as f64 / routed_count as f64
+    } else {
+        0.0
+    };
+    let avg_routing_cost = if routed_count > 0 {
+        routing_result.total_routing_cost / routed_count as f64
+    } else {
+        0.0
+    };
+    // avg_detour_factor = total actual steps / total manhattan steps.
+    // Using totals (not per-edge average) avoids division-by-zero on zero-length edges.
+    let avg_detour_factor = if routing_result.sum_manhattan_distance > 0 {
+        routing_result.total_path_length as f64 / routing_result.sum_manhattan_distance as f64
+    } else {
+        0.0
+    };
     let metrics = RenderMetrics {
         nodes: graph.nodes.len(),
         edges: graph.edges.len(),
@@ -57,6 +75,14 @@ pub fn render(graph: &Graph, config: &TrellisConfig, format: OutputFormat) -> Re
         grid_cols: grid.cols,
         cell_size,
         port_count: port_assignments.len() * 2, // source + target for each edge
+        total_edge_length: routing_result.total_path_length,
+        total_routing_cost: routing_result.total_routing_cost,
+        avg_edge_length,
+        avg_routing_cost,
+        max_edge_length: routing_result.max_path_length,
+        max_bends_per_edge: routing_result.max_bends_per_edge,
+        avg_detour_factor,
+        deadlock_recoveries: routing_result.deadlock_recoveries,
     };
 
     // Phase 8: Edge label placement

@@ -450,6 +450,12 @@ mod tests {
             crossings: 0,
             total_bends: 0,
             failed_routes: 0,
+            total_path_length: 0,
+            total_routing_cost: 0.0,
+            max_path_length: 0,
+            max_bends_per_edge: 0,
+            sum_manhattan_distance: 0,
+            deadlock_recoveries: 0,
         };
         let config = TrellisConfig::default();
 

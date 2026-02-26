@@ -128,6 +128,11 @@ impl Grid {
         self.cells.iter().filter(|c| c.state == CellState::Blocked).count()
     }
 
+    /// Count the number of cells flagged as crossings (two routed paths share a cell)
+    pub fn count_crossings(&self) -> usize {
+        self.cells.iter().filter(|c| c.crossing).count()
+    }
+
     /// Calculate grid utilization (fraction of non-free cells)
     pub fn utilization(&self) -> f64 {
         if self.cells.is_empty() {

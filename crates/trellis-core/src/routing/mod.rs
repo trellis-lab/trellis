@@ -21,12 +21,25 @@ use trellis_parser::Graph;
 pub struct RoutingResult {
     /// Routed paths indexed by edge index
     pub paths: HashMap<usize, RoutedPath>,
-    /// Total number of crossings detected
+    /// Total number of crossing points (grid cells shared by two distinct paths)
     pub crossings: usize,
     /// Total number of bends across all paths
     pub total_bends: usize,
     /// Number of edges that could not be routed
     pub failed_routes: usize,
+    /// Total length of all routed paths in grid steps
+    pub total_path_length: usize,
+    /// Sum of A* routing costs across all routed paths
+    pub total_routing_cost: f64,
+    /// Longest single routed path in grid steps
+    pub max_path_length: usize,
+    /// Largest bend count on any single routed path
+    pub max_bends_per_edge: usize,
+    /// Sum of source→target Manhattan distances for all routed edges
+    /// (denominator for the average detour factor)
+    pub sum_manhattan_distance: usize,
+    /// Number of edges that required the 3-level deadlock recovery handler
+    pub deadlock_recoveries: usize,
 }
 
 /// Route all edges in the graph using A* pathfinding.
@@ -66,6 +79,12 @@ fn route_all_edges_inner(
         crossings: 0,
         total_bends: 0,
         failed_routes: 0,
+        total_path_length: 0,
+        total_routing_cost: 0.0,
+        max_path_length: 0,
+        max_bends_per_edge: 0,
+        sum_manhattan_distance: 0,
+        deadlock_recoveries: 0,
     };
 
     if graph.edges.is_empty() {
@@ -119,6 +138,25 @@ fn route_all_edges_inner(
         }
     }
 
+    // Post-routing: derive per-path stats from the final committed paths.
+    // Using the final result.paths (rather than incremental tracking) avoids
+    // double-counting during rip-up-and-reroute rollbacks.
+    for (&edge_idx, path) in &result.paths {
+        let path_len = path.points.len().saturating_sub(1);
+        result.max_path_length = result.max_path_length.max(path_len);
+        result.max_bends_per_edge = result.max_bends_per_edge.max(path.bend_count);
+
+        if let Some(ports) = port_assignments.get(&edge_idx) {
+            let manhattan = ((ports.source_port.grid_row - ports.target_port.grid_row).abs()
+                + (ports.source_port.grid_col - ports.target_port.grid_col).abs())
+                as usize;
+            result.sum_manhattan_distance += manhattan;
+        }
+    }
+
+    // Count crossing points from the committed grid state
+    result.crossings = grid.count_crossings();
+
     result
 }
 
@@ -158,6 +196,8 @@ fn route_single_edge(
     match route_edge(grid, source, target, &config.routing_costs) {
         Some(path) => {
             result.total_bends += path.bend_count;
+            result.total_path_length += path.points.len().saturating_sub(1);
+            result.total_routing_cost += path.total_cost;
             let edge_id = format!("edge_{}", edge_idx);
             commit_path(grid, &path.points, &edge_id, &config.routing_costs);
             result.paths.insert(edge_idx, path);
@@ -173,6 +213,10 @@ fn route_single_edge(
                     graph, grid, edge_idx, port_assignments, config, result,
                 ) {
                     Some(path) => {
+                        result.deadlock_recoveries += 1;
+                        result.total_bends += path.bend_count;
+                        result.total_path_length += path.points.len().saturating_sub(1);
+                        result.total_routing_cost += path.total_cost;
                         result.paths.insert(edge_idx, path);
                     }
                     None => {
