@@ -1,0 +1,9 @@
+[package]
+name = "trellis-integration"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+trellis-core = { path = "../../crates/trellis-core" }
+trellis-parser = { path = "../../crates/trellis-parser" }

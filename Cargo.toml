@@ -5,6 +5,8 @@ members = [
     "crates/trellis-core",
     "crates/trellis-wasm",
     "crates/trellis-cli",
+    "tests/benchmarks",
+    "tests/integration",
 ]
 
 [workspace.package]

@@ -18,10 +18,13 @@ pub fn commit_path(grid: &mut Grid, path: &[GridPoint], edge_id: &str, costs: &R
         let col = point.col as usize;
 
         if let Some(cell) = grid.get_mut(row, col) {
-            // Only mark free cells as occupied (don't overwrite blocked cells)
             if cell.state == CellState::Free {
                 cell.state = CellState::Occupied;
                 cell.owner = Some(edge_id.to_string());
+            } else if cell.state == CellState::Occupied {
+                // Two paths share this cell – mark it as a crossing so the
+                // renderer draws a bridge and the invariant check accepts it.
+                cell.crossing = true;
             }
         }
 

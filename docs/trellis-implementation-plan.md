@@ -354,15 +354,15 @@ A C4 elhelyezés **nem gráfalgoritmus-alapú** – sorfolyásos (row-flow) elre
 > **Cél:** A költségfüggvény konstansai optimalizálva, a teljesítmény mérve és dokumentálva.
 > **Smoke test:** `cargo bench` lefut, eredmények a `target/criterion/` alatt, minden benchmark elfogadható idő alatt renderelődik
 
-* [ ] Criterion benchmark runner (`tests/benchmarks/src/bench.rs`) – B01-B12 fixture-ök
-* [ ] Invariáns tesztek (`tests/integration/invariants.rs`):
-    * [ ] Fedésmentesség: nincs két él ugyanazon a rácsponton
-    * [ ] Blokkolás: nincs él csomóponton átmenő rácsponton
-    * [ ] Ortogonalitás: minden él csak vízszintes/függőleges szegmensekből áll
-    * [ ] Összefüggőség: minden él összefüggő útvonal a portok között
-    * [ ] Port egyediség: nincs két él ugyanazon a porton
-* [ ] Költségfüggvény finomhangolás: `BEND_COST`, `ADJACENT_COST`, `CROSSING_COST` értékek empirikus tesztelése a B01-B12 fixture-ökön
-* [ ] Eredmények dokumentálása (render idő, crossing count, bend count fixture-önként)
+* [x] Criterion benchmark runner (`tests/benchmarks/src/bench.rs`) – B01-B12 fixture-ök
+* [x] Invariáns tesztek (`tests/integration/invariants.rs`):
+    * [x] Fedésmentesség: nincs két él ugyanazon a rácsponton
+    * [x] Blokkolás: nincs él csomóponton átmenő rácsponton
+    * [x] Ortogonalitás: minden él csak vízszintes/függőleges szegmensekből áll
+    * [x] Összefüggőség: minden él összefüggő útvonal a portok között
+    * [x] Port egyediség: nincs két él ugyanazon a porton
+* [x] Költségfüggvény finomhangolás: `BEND_COST`, `ADJACENT_COST`, `CROSSING_COST` értékek empirikus tesztelése a B01-B12 fixture-ökön
+* [x] Eredmények dokumentálása (render idő, crossing count, bend count fixture-önként)
 
 ---
 
