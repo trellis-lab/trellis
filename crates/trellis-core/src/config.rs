@@ -26,6 +26,12 @@ pub struct TrellisConfig {
 
     /// Enable/disable rendering line jumps
     pub render_crossings: bool,
+
+    /// Enable/disable rendering of the grid system
+    pub show_grid: bool,
+
+    /// Enable/disable displaying edge captions
+    pub show_edge_labels: bool,
 }
 
 /// A* routing cost constants
@@ -60,6 +66,8 @@ impl Default for TrellisConfig {
             decomposition_threshold: 50,
             corner_radius: 8.0,
             render_crossings: false,
+            show_grid: true,
+            show_edge_labels: false,
         }
     }
 }

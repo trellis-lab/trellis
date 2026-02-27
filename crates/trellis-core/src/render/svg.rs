@@ -246,7 +246,7 @@ pub fn build_svg(
     }
 
     // --- Edge labels (on top of everything) ---
-    if !label_placements.is_empty() {
+    if config.show_edge_labels && !label_placements.is_empty() {
         svg.push_str("<!-- Edge Labels -->\n");
         svg.push_str("<g class=\"edge-labels\">\n");
         for label in label_placements {
