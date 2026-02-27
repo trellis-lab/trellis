@@ -23,6 +23,9 @@ pub struct TrellisConfig {
 
     /// Corner radius for rounded edges (in pixels)
     pub corner_radius: f64,
+
+    /// Enable/disable rendering line jumps
+    pub render_crossings: bool,
 }
 
 /// A* routing cost constants
@@ -56,6 +59,7 @@ impl Default for TrellisConfig {
             decomposition: DecompositionMode::None,
             decomposition_threshold: 50,
             corner_radius: 8.0,
+            render_crossings: false,
         }
     }
 }
