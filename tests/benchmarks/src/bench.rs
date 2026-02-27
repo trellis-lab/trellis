@@ -95,6 +95,9 @@ criterion_group!(timing_benches, bench_render_pipeline, bench_parse_only);
 //   dl_rec    – edges that needed the deadlock recovery handler
 // ---------------------------------------------------------------------------
 fn print_routing_quality_table() {
+    let out_dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../target/tmp");
+    std::fs::create_dir_all(&out_dir).expect("failed to create target/tmp");
+
     eprintln!();
     eprintln!(
         "=== Routing Quality Metrics ===\n\
@@ -113,6 +116,10 @@ fn print_routing_quality_table() {
         let graph = parse(&source).expect("parse failed");
         let config = TrellisConfig::default();
         let result = render(&graph, &config, OutputFormat::Svg).expect("render failed");
+
+        let svg_path = out_dir.join(format!("{}.svg", name));
+        std::fs::write(&svg_path, &result.data).expect("failed to write SVG");
+
         let m = &result.metrics;
 
         eprintln!(
