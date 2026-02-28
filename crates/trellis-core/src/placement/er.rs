@@ -1,6 +1,7 @@
 use trellis_parser::Graph;
 
-use super::force_directed::{force_directed_placement, ForceDirectedConfig};
+use super::algorithm::LayoutAlgorithm;
+use super::force_directed::{ForceDirectedConfig, ForceDirectedLayout};
 use super::snap::snap_nodes_to_grid;
 
 /// Line height for ER attribute rows (pixels)
@@ -27,29 +28,15 @@ pub fn place_er_diagram(graph: &mut Graph) {
         size_er_node(node);
     }
 
-    // Collect node IDs and edges for the force-directed algorithm
-    let node_ids: Vec<String> = graph.nodes.iter().map(|n| n.id.clone()).collect();
-    let edges: Vec<(String, String)> = graph
-        .edges
-        .iter()
-        .map(|e| (e.from.clone(), e.to.clone()))
-        .collect();
-
-    let config = ForceDirectedConfig {
-        area_factor: 80_000.0,
-        cooling_rate: 0.95,
-        max_iterations: 100,
+    // Run force-directed layout via the LayoutAlgorithm interface
+    let algorithm = ForceDirectedLayout {
+        config: ForceDirectedConfig {
+            area_factor: 80_000.0,
+            cooling_rate: 0.95,
+            max_iterations: 100,
+        },
     };
-
-    let positions = force_directed_placement(&node_ids, &edges, &config);
-
-    // Apply positions back to graph nodes
-    for node in &mut graph.nodes {
-        if let Some(&(x, y)) = positions.get(&node.id) {
-            node.x = x;
-            node.y = y;
-        }
-    }
+    algorithm.layout(graph);
 
     // Snap positions to grid
     let grid_size = 10.0;

@@ -1,10 +1,15 @@
+pub mod algorithm;
 pub mod c4;
 pub mod class;
 pub mod er;
 pub mod force_directed;
+pub mod overlap;
+pub mod row_flow;
 pub mod snap;
 pub mod subgraph;
 pub mod sugiyama;
+
+pub use algorithm::LayoutAlgorithm;
 
 use std::collections::HashMap;
 use trellis_parser::{Graph, NodeShape};

@@ -3,7 +3,8 @@ use trellis_parser::{Edge, Graph, Node, NodeShape};
 
 use crate::types::{BoundingBox, SubgraphTree, SubgraphTreeNode};
 
-use super::sugiyama;
+use super::algorithm::LayoutAlgorithm;
+use super::sugiyama::SugiyamaLayout;
 
 /// Height reserved for the subgraph label (pixels), only added when a label exists
 pub const LABEL_HEIGHT: f64 = 25.0;
@@ -230,7 +231,7 @@ fn place_subgraph_recursive(
 
     // Snap local node dimensions to grid before layout
     super::snap_node_dimensions_to_grid(&mut local_graph, cell_size);
-    sugiyama::layout(&mut local_graph);
+    SugiyamaLayout.layout(&mut local_graph);
 
     // 4. Apply padding offset for non-ROOT subtrees
     let padding_x = if subtree_id == "ROOT" { 0.0 } else { padding };

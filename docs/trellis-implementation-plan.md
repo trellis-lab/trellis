@@ -366,6 +366,21 @@ A C4 elhelyezés **nem gráfalgoritmus-alapú** – sorfolyásos (row-flow) elre
 
 ---
 
+## Mref – Placement algoritmus / diagram szétválasztás refaktorálás
+
+> **Cél:** A placement modul szerkezete következetes legyen: minden algoritmus saját fájlban él, a diagram-specifikus orchestráció külön fájlban hívja azt – ugyanúgy, ahogy a flowchart/Sugiyama (`sugiyama.rs` + `subgraph.rs`) és az ER/force-directed (`force_directed.rs` + `er.rs`) már elkülönül.
+> **Smoke test:** `cargo test --workspace` zöld; `cargo clippy --workspace` hiba nélkül; minden diagramtípus SVG kimenettel renderelődik
+
+* [x] `placement/row_flow.rs` létrehozása: `place_in_rows` és `compute_row_heights` generikus, diagram-agnosztikus row-flow függvények kiemelése a `c4.rs`-ből
+* [x] `placement/c4.rs` frissítése: a kiemelten algoritmus-függvények helyett a `row_flow` modul hívása; C4-specifikus logika (boundary osztályozás, containment map, subgraph adat) marad `c4.rs`-ben
+* [x] `placement/overlap.rs` létrehozása: `overlaps_any` és `find_free_position` generikus ütközésvizsgáló / spirális kereső függvények kiemelése a `class.rs`-ből
+* [x] `placement/class.rs` frissítése: a kiemelten algoritmus-függvények helyett az `overlap` modul hívása; class-specifikus logika (öröklődési gráf kiemelés, laterális elhelyezés) marad `class.rs`-ben
+* [x] `placement/mod.rs` kiegészítése: `pub mod overlap;` és `pub mod row_flow;` deklaráció hozzáadása
+* [x] `cargo test --workspace` – minden teszt zöld
+* [x] `cargo clippy --workspace` – nincsenek új hibák
+
+---
+
 ## M14 – CLI teljes funkciókészlet
 
 > **Cél:** Az összes CLI parancs működik, beleértve batch módot, preprocessort, és licenckezelést.

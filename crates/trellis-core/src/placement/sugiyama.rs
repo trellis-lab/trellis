@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use trellis_parser::{Direction, Graph};
 
+use super::algorithm::LayoutAlgorithm;
 use super::NODE_SPACING;
 
 /// Maximum iterations for barycenter ordering
@@ -707,5 +708,16 @@ mod tests {
             b.x,
             c.x
         );
+    }
+}
+
+/// Zero-configuration handle for the Sugiyama hierarchical layout algorithm.
+///
+/// Construct once and pass as `&dyn LayoutAlgorithm` or `Box<dyn LayoutAlgorithm>`.
+pub struct SugiyamaLayout;
+
+impl LayoutAlgorithm for SugiyamaLayout {
+    fn layout(&self, graph: &mut Graph) {
+        layout(graph);
     }
 }

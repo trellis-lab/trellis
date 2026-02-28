@@ -1,5 +1,7 @@
 use std::collections::HashMap;
 
+use super::algorithm::LayoutAlgorithm;
+
 /// Configuration for the Fruchterman-Reingold force-directed layout.
 pub struct ForceDirectedConfig {
     /// Scale factor for the layout area: area = area_factor * node_count
@@ -169,5 +171,31 @@ mod tests {
         let result =
             force_directed_placement(&ids, &edges, &ForceDirectedConfig::default());
         assert_eq!(result.len(), n);
+    }
+}
+
+/// Handle for the Fruchterman-Reingold force-directed layout algorithm.
+///
+/// Construct with an explicit [`ForceDirectedConfig`] or use
+/// `ForceDirectedLayout { config: ForceDirectedConfig::default() }`.
+pub struct ForceDirectedLayout {
+    pub config: ForceDirectedConfig,
+}
+
+impl LayoutAlgorithm for ForceDirectedLayout {
+    fn layout(&self, graph: &mut trellis_parser::Graph) {
+        let node_ids: Vec<String> = graph.nodes.iter().map(|n| n.id.clone()).collect();
+        let edges: Vec<(String, String)> = graph
+            .edges
+            .iter()
+            .map(|e| (e.from.clone(), e.to.clone()))
+            .collect();
+        let positions = force_directed_placement(&node_ids, &edges, &self.config);
+        for node in &mut graph.nodes {
+            if let Some(&(x, y)) = positions.get(&node.id) {
+                node.x = x;
+                node.y = y;
+            }
+        }
     }
 }

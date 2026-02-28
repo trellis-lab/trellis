@@ -9,16 +9,16 @@
 //! into the generic `(SubgraphTree, HashMap<String, BoundingBox>)` format so
 //! that the viewBox calculation and boundary rendering can reuse common
 //! infrastructure.
+//!
+//! The row-flow layout algorithm itself lives in [`super::row_flow`].
 
 use std::collections::HashMap;
 use trellis_parser::{Graph, Subgraph};
 
 use crate::types::{BoundingBox, SubgraphTree, SubgraphTreeNode};
 
-/// Horizontal gap between elements (pixels)
-const ELEM_GAP_X: f64 = 40.0;
-/// Vertical gap between rows (pixels)
-const ELEM_GAP_Y: f64 = 60.0;
+use super::row_flow;
+
 /// Elements per row (default)
 const DEFAULT_SHAPES_PER_ROW: usize = 4;
 /// Left margin
@@ -73,8 +73,8 @@ pub fn place_c4_diagram(graph: &mut Graph) {
     let mut current_y = MARGIN_Y;
 
     if !top_level.is_empty() {
-        let row_heights = compute_row_heights(&graph.nodes, &top_level, shapes_per_row);
-        current_y = place_in_rows(
+        let row_heights = row_flow::compute_row_heights(&graph.nodes, &top_level, shapes_per_row);
+        current_y = row_flow::place_in_rows(
             graph,
             &top_level,
             MARGIN_X,
@@ -82,7 +82,7 @@ pub fn place_c4_diagram(graph: &mut Graph) {
             shapes_per_row,
             &row_heights,
         );
-        current_y += ELEM_GAP_Y;
+        current_y += row_flow::ELEM_GAP_Y;
     }
 
     // ── Place each boundary group below the top-level elements ───────────────
@@ -95,8 +95,9 @@ pub fn place_c4_diagram(graph: &mut Graph) {
         // Top padding only — the label strip is at the bottom of the frame.
         current_y += BOUNDARY_PADDING;
 
-        let row_heights = compute_row_heights(&graph.nodes, &contained, shapes_per_row);
-        current_y = place_in_rows(
+        let row_heights =
+            row_flow::compute_row_heights(&graph.nodes, &contained, shapes_per_row);
+        current_y = row_flow::place_in_rows(
             graph,
             &contained,
             MARGIN_X + BOUNDARY_PADDING,
@@ -106,7 +107,7 @@ pub fn place_c4_diagram(graph: &mut Graph) {
         );
 
         // Bottom padding before the next group (or end of diagram)
-        current_y += BOUNDARY_PADDING + ELEM_GAP_Y;
+        current_y += BOUNDARY_PADDING + row_flow::ELEM_GAP_Y;
     }
 }
 
@@ -271,66 +272,6 @@ fn compute_bbox_recursive(
             },
         );
     }
-}
-
-/// Compute the maximum height of each row for a slice of node indices.
-fn compute_row_heights(
-    nodes: &[trellis_parser::Node],
-    indices: &[usize],
-    shapes_per_row: usize,
-) -> Vec<f64> {
-    let mut row_heights: Vec<f64> = Vec::new();
-    let mut max_h = 0.0_f64;
-
-    for (slot, &idx) in indices.iter().enumerate() {
-        max_h = max_h.max(nodes[idx].height);
-        if (slot + 1) % shapes_per_row == 0 || slot + 1 == indices.len() {
-            row_heights.push(max_h);
-            max_h = 0.0;
-        }
-    }
-
-    row_heights
-}
-
-/// Place nodes in row-flow order. Returns the y coordinate after the last row.
-fn place_in_rows(
-    graph: &mut Graph,
-    indices: &[usize],
-    start_x: f64,
-    start_y: f64,
-    shapes_per_row: usize,
-    row_heights: &[f64],
-) -> f64 {
-    if indices.is_empty() {
-        return start_y;
-    }
-
-    let mut row_start_y = start_y;
-    let mut x_cursor = start_x;
-    let mut last_row_idx = 0;
-
-    for (slot, &idx) in indices.iter().enumerate() {
-        let row_idx = slot / shapes_per_row;
-        let col_idx = slot % shapes_per_row;
-        last_row_idx = row_idx;
-
-        if col_idx == 0 {
-            x_cursor = start_x;
-        }
-
-        graph.nodes[idx].x = x_cursor;
-        graph.nodes[idx].y = row_start_y;
-
-        x_cursor += graph.nodes[idx].width + ELEM_GAP_X;
-
-        // Advance to the next row when this row is full and more nodes follow
-        if col_idx + 1 == shapes_per_row && slot + 1 < indices.len() {
-            row_start_y += row_heights.get(row_idx).copied().unwrap_or(0.0) + ELEM_GAP_Y;
-        }
-    }
-
-    row_start_y + row_heights.get(last_row_idx).copied().unwrap_or(0.0)
 }
 
 // ── Tests ─────────────────────────────────────────────────────────────────────

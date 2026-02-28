@@ -1,8 +1,9 @@
 use std::collections::{HashMap, HashSet};
 use trellis_parser::{ClassEdgeType, Graph};
 
-use super::{LAYER_SPACING, NODE_SPACING};
-use crate::placement::sugiyama;
+use super::algorithm::LayoutAlgorithm;
+use super::sugiyama::SugiyamaLayout;
+use super::{overlap, LAYER_SPACING, NODE_SPACING};
 
 /// Place all nodes in a class diagram using a hybrid algorithm:
 ///
@@ -43,7 +44,7 @@ pub fn place_class_diagram(graph: &mut Graph) {
                 Some(ClassEdgeType::Inheritance) | Some(ClassEdgeType::Realization)
             )
         });
-        sugiyama::layout(graph);
+        SugiyamaLayout.layout(graph);
         graph.edges = original_edges;
     }
 
@@ -91,7 +92,7 @@ pub fn place_class_diagram(graph: &mut Graph) {
                 let candidate_x = bx + bw / 2.0 + NODE_SPACING + my_w / 2.0;
                 let candidate_y = by;
 
-                let pos = find_free_position(
+                let pos = overlap::find_free_position(
                     candidate_x,
                     candidate_y,
                     my_w,
@@ -117,7 +118,7 @@ pub fn place_class_diagram(graph: &mut Graph) {
             let candidate_x = x_cursor + my_w / 2.0;
             let candidate_y = base_y + my_h / 2.0;
 
-            let pos = find_free_position(
+            let pos = overlap::find_free_position(
                 candidate_x,
                 candidate_y,
                 my_w,
@@ -161,66 +162,6 @@ fn find_most_connected_placed_neighbour(
                 .unwrap_or(0)
         })
         .cloned()
-}
-
-/// Check whether a node centred at (cx, cy) with dimensions (w, h) overlaps
-/// any node in `coords`/`sizes` (all centre-based).
-fn overlaps_any(
-    cx: f64,
-    cy: f64,
-    w: f64,
-    h: f64,
-    coords: &HashMap<String, (f64, f64)>,
-    sizes: &HashMap<String, (f64, f64)>,
-) -> bool {
-    let gap = 10.0_f64;
-    for (id, (ox, oy)) in coords {
-        let (ow, oh) = sizes[id];
-        let dx = (cx - ox).abs();
-        let dy = (cy - oy).abs();
-        if dx < (w + ow) / 2.0 + gap && dy < (h + oh) / 2.0 + gap {
-            return true;
-        }
-    }
-    false
-}
-
-/// Find a non-overlapping position near (cx, cy) using a ring-based spiral search.
-/// All coordinates are centre-based.
-fn find_free_position(
-    cx: f64,
-    cy: f64,
-    w: f64,
-    h: f64,
-    coords: &HashMap<String, (f64, f64)>,
-    sizes: &HashMap<String, (f64, f64)>,
-) -> (f64, f64) {
-    if !overlaps_any(cx, cy, w, h, coords, sizes) {
-        return (cx, cy);
-    }
-
-    let step = (w.max(h) / 2.0 + NODE_SPACING).max(NODE_SPACING);
-    for radius in 1i32..=40 {
-        let r = radius as f64 * step;
-        let candidates = [
-            (cx + r, cy),
-            (cx - r, cy),
-            (cx, cy + r),
-            (cx, cy - r),
-            (cx + r, cy + r),
-            (cx - r, cy - r),
-            (cx + r, cy - r),
-            (cx - r, cy + r),
-        ];
-        for (tx, ty) in candidates {
-            if !overlaps_any(tx, ty, w, h, coords, sizes) {
-                return (tx, ty);
-            }
-        }
-    }
-    // Fallback: place far to the right
-    let max_x = coords.values().map(|(x, _)| *x).fold(cx, f64::max);
-    (max_x + w + NODE_SPACING, cy)
 }
 
 #[cfg(test)]
