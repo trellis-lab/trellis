@@ -1,6 +1,10 @@
 use criterion::{criterion_group, BenchmarkId, Criterion};
 use std::path::Path;
-use trellis_core::{config::TrellisConfig, pipeline::render, types::OutputFormat};
+use trellis_core::{
+    config::{configuration_factory, ConfigurationType, TrellisConfig},
+    pipeline::render,
+    types::OutputFormat,
+};
 use trellis_parser::parse;
 
 /// All benchmark fixtures (name, file)
@@ -17,11 +21,19 @@ const FIXTURES: &[(&str, &str)] = &[
     ("b10_50node_flowchart", "b10.mmd"),
     ("b11_100node_er", "b11.mmd"),
     ("b12_class_hierarchy", "b12.mmd"),
+    ("b13_graph_edge_labels", "b13.mmd"),
+    ("b14_all_flowchart_shapes", "b14.mmd"),
+    ("b15_class_edges", "b15.mmd"),
+    ("b16_all_er_edges", "b16.mmd"),
+    ("b17_c4_long_texts", "b17.mmd"),
     ("b18_c4_support", "b18.mmd"),
+    ("b19_c4_deployments", "b19.mmd"),
 ];
 
 fn fixture_path(file: &str) -> std::path::PathBuf {
-    Path::new(env!("CARGO_MANIFEST_DIR")).join("fixtures").join(file)
+    Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("fixtures")
+        .join(file)
 }
 
 // ---------------------------------------------------------------------------
@@ -44,7 +56,7 @@ fn bench_render_pipeline(c: &mut Criterion) {
         group.bench_with_input(BenchmarkId::new("render", name), &source, |b, src| {
             b.iter(|| {
                 let graph = parse(src).expect("parse failed");
-                let config = TrellisConfig::default();
+                let config = configuration_factory(ConfigurationType::Benchmark);
                 render(&graph, &config, OutputFormat::Svg).expect("render failed")
             });
         });
@@ -102,8 +114,16 @@ fn print_routing_quality_table() {
     eprintln!(
         "=== Routing Quality Metrics ===\n\
          {:<30} {:>5} {:>8} {:>8} {:>6} {:>8} {:>8} {:>9} {:>8} {:>6}",
-        "fixture", "edges", "avg_len", "max_len", "dtour",
-        "avg_cost", "bends", "crossings", "max_bnds", "dl_rec"
+        "fixture",
+        "edges",
+        "avg_len",
+        "max_len",
+        "dtour",
+        "avg_cost",
+        "bends",
+        "crossings",
+        "max_bnds",
+        "dl_rec"
     );
     eprintln!("{}", "-".repeat(102));
 

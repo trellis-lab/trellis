@@ -84,3 +84,26 @@ impl Default for RoutingCosts {
         }
     }
 }
+
+pub enum ConfigurationType {
+    Basic,
+    Benchmark,
+}
+
+pub fn configuration_factory(config_type: ConfigurationType) -> TrellisConfig {
+    match config_type {
+        ConfigurationType::Basic => TrellisConfig::default(),
+        ConfigurationType::Benchmark => TrellisConfig {
+            cell_size: 10,
+            density_factor: 1.5,
+            safety_multiplier: 1.2,
+            routing_costs: RoutingCosts::default(),
+            decomposition: DecompositionMode::None,
+            decomposition_threshold: 50,
+            corner_radius: 8.0,
+            render_crossings: true,
+            show_grid: false,
+            show_edge_labels: true,
+        },
+    }
+}
