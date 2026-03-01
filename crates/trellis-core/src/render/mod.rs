@@ -6,6 +6,7 @@ pub mod edges;
 pub mod er_shapes;
 pub mod grid;
 pub mod nodes;
+#[cfg(feature = "png")]
 pub mod png;
 pub mod subgraph;
 pub mod svg;

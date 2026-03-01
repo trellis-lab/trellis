@@ -402,14 +402,14 @@ A C4 elhelyezés **nem gráfalgoritmus-alapú** – sorfolyásos (row-flow) elre
 > **Cél:** A VS Code extension működik: .mmd fájl megnyitás → preview panel → renderelt diagram.
 > **Smoke test:** VS Code-ban F5 → .mmd fájl megnyitva → preview panelen renderelt diagram
 
-* [ ] `trellis-wasm` crate: `render()` és `render_with_metrics()` wasm-bindgen API
-* [ ] `scripts/build-wasm.sh` – wasm-pack build (web target)
-* [ ] VS Code extension váz (`package.json`, `tsconfig.json`, `extension.ts`)
-* [ ] WASM bridge (`wasm-bridge.ts` – WASM betöltés, `render()` hívás)
-* [ ] Preview panel (`preview.ts` – webview, SVG megjelenítés)
-* [ ] Preview webview template (`media/preview.html`)
-* [ ] Fájl mentés figyelés (`.mmd` fájl változáskor automatikus újra-render)
-* [ ] Export funkció (`export.ts` – PNG/SVG mentés) (licenckorlátok → Mc mérföldkő)
+* [x] `trellis-wasm` crate: `render()` és `render_with_metrics()` wasm-bindgen API
+* [x] `scripts/build-wasm.sh` – wasm-pack build (web target)
+* [x] VS Code extension váz (`package.json`, `tsconfig.json`, `extension.ts`)
+* [x] WASM bridge (`wasm-bridge.ts` – WASM betöltés, `render()` hívás)
+* [x] Preview panel (`preview.ts` – webview, SVG megjelenítés)
+* [x] Preview webview template (`media/preview.html`)
+* [x] Fájl mentés figyelés (`.mmd` fájl változáskor automatikus újra-render)
+* [x] Export funkció (`export.ts` – PNG/SVG mentés) (licenckorlátok → Mc mérföldkő)
 * [ ] `vsce package` → `.vsix` fájl előállítás
 
 ---

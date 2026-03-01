@@ -1,0 +1,118 @@
+{
+  "name": "trellis-preview",
+  "displayName": "Trellis Mermaid Preview",
+  "description": "High-quality Mermaid diagram preview powered by the Trellis renderer (VLSI-grade orthogonal routing).",
+  "version": "0.1.0",
+  "publisher": "trellis",
+  "license": "SEE LICENSE IN LICENSE",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/trellis/trellis"
+  },
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Visualization",
+    "Other"
+  ],
+  "keywords": [
+    "mermaid",
+    "diagram",
+    "preview",
+    "flowchart",
+    "UML"
+  ],
+  "icon": "media/icon.png",
+  "activationEvents": [
+    "onLanguage:mermaid"
+  ],
+  "main": "./out/extension",
+  "contributes": {
+    "languages": [
+      {
+        "id": "mermaid",
+        "aliases": [
+          "Mermaid",
+          "mermaid"
+        ],
+        "extensions": [
+          ".mmd",
+          ".mermaid"
+        ]
+      }
+    ],
+    "commands": [
+      {
+        "command": "trellis.openPreview",
+        "title": "Trellis: Open Preview",
+        "icon": "$(open-preview)"
+      },
+      {
+        "command": "trellis.openPreviewToSide",
+        "title": "Trellis: Open Preview to the Side",
+        "icon": "$(open-preview)"
+      }
+    ],
+    "menus": {
+      "editor/title": [
+        {
+          "command": "trellis.openPreviewToSide",
+          "when": "resourceExtname == .mmd || resourceExtname == .mermaid",
+          "group": "navigation"
+        }
+      ],
+      "editor/context": [
+        {
+          "command": "trellis.openPreview",
+          "when": "resourceExtname == .mmd || resourceExtname == .mermaid",
+          "group": "navigation"
+        }
+      ]
+    },
+    "keybindings": [
+      {
+        "command": "trellis.openPreviewToSide",
+        "key": "ctrl+shift+v",
+        "mac": "cmd+shift+v",
+        "when": "editorLangId == mermaid"
+      }
+    ],
+    "configuration": {
+      "title": "Trellis",
+      "properties": {
+        "trellis.autoPreview": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically update the preview when the diagram source changes."
+        },
+        "trellis.cellSize": {
+          "type": "number",
+          "default": 10,
+          "description": "Grid cell size in pixels used by the routing algorithm."
+        },
+        "trellis.showEdgeLabels": {
+          "type": "boolean",
+          "default": true,
+          "description": "Display edge labels in the preview."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "lint": "eslint src --ext ts",
+    "package": "vsce package --no-dependencies",
+    "build-wasm": "cd ../.. && ./scripts/build-wasm.sh"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.85.0",
+    "@types/node": "^20.0.0",
+    "typescript": "^5.3.0",
+    "@vscode/vsce": "^2.22.0",
+    "@typescript-eslint/parser": "^6.0.0",
+    "@typescript-eslint/eslint-plugin": "^6.0.0",
+    "eslint": "^8.0.0"
+  }
+}

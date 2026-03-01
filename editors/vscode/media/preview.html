@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<!--
+  media/preview.html
+  Template file for the Trellis Preview webview.
+
+  NOTE: This file is a design reference.  The actual HTML served to the
+  webview is generated dynamically in `src/preview.ts` (function
+  `getPreviewHtml`) so that VS Code's Content-Security-Policy nonces and
+  webview-safe URIs can be injected at runtime.
+
+  This standalone file can be opened in a browser for design/layout
+  iteration without the VS Code extension host running.
+-->
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Trellis Preview (design mock)</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #1e1e1e;
+      color: #d4d4d4;
+      font-family: system-ui, sans-serif;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    #toolbar {
+      padding: 4px 8px;
+      background: #252526;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      border-bottom: 1px solid #444;
+    }
+    #status { flex: 1; opacity: 0.7; }
+    #diagram-container {
+      flex: 1;
+      overflow: auto;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      padding: 16px;
+    }
+    #diagram-container svg {
+      max-width: 100%;
+      height: auto;
+      background: white;
+      border-radius: 4px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+    }
+    #error-box {
+      display: none;
+      margin: 16px;
+      padding: 12px 16px;
+      background: #5a1d1d;
+      border: 1px solid #be1100;
+      border-radius: 4px;
+      font-family: monospace;
+      font-size: 13px;
+      white-space: pre-wrap;
+    }
+    .placeholder {
+      color: #666;
+      font-size: 14px;
+      text-align: center;
+      margin: auto;
+    }
+  </style>
+</head>
+<body>
+  <div id="toolbar">
+    <span id="status">Trellis Preview</span>
+  </div>
+  <div id="error-box"></div>
+  <div id="diagram-container">
+    <p class="placeholder">Open a .mmd file and run <strong>Trellis: Open Preview</strong> (Ctrl+Shift+V)</p>
+  </div>
+</body>
+</html>

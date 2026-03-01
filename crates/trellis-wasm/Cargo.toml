@@ -11,7 +11,8 @@ crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 trellis-parser = { path = "../trellis-parser" }
-trellis-core = { path = "../trellis-core" }
+# Disable the `png` feature: resvg does not compile for wasm32-unknown-unknown
+trellis-core = { path = "../trellis-core", default-features = false }
 wasm-bindgen = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }

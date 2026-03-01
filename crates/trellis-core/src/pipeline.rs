@@ -8,13 +8,27 @@ use crate::{
     types::*,
 };
 use trellis_parser::{DiagramType, Graph};
-use std::time::Instant;
+
+/// Returns elapsed milliseconds since `start`. In WASM builds, always returns 0
+/// because `std::time::Instant` is unavailable on `wasm32-unknown-unknown`.
+#[cfg(not(target_arch = "wasm32"))]
+fn elapsed_ms(start: std::time::Instant) -> u64 {
+    start.elapsed().as_millis() as u64
+}
+
+#[cfg(target_arch = "wasm32")]
+fn elapsed_ms(_start: ()) -> u64 {
+    0
+}
 
 /// Main rendering pipeline
 ///
 /// Runs the full pipeline: placement → grid → ports → routing → SVG/PNG.
 pub fn render(graph: &Graph, config: &TrellisConfig, format: OutputFormat) -> Result<RenderResult, RenderError> {
-    let start = Instant::now();
+    #[cfg(not(target_arch = "wasm32"))]
+    let start = std::time::Instant::now();
+    #[cfg(target_arch = "wasm32")]
+    let start = ();
 
     // Clone the graph so we can mutate it during placement
     let mut graph = graph.clone();
@@ -42,7 +56,7 @@ pub fn render(graph: &Graph, config: &TrellisConfig, format: OutputFormat) -> Re
     // Phase 5-6: Edge routing (A* pathfinding)
     let routing_result = routing::route_all_edges(&graph, &mut grid, &port_assignments, config);
 
-    let elapsed = start.elapsed();
+    let render_ms = elapsed_ms(start);
 
     // Collect metrics
     let routed_count = routing_result.paths.len();
@@ -69,7 +83,7 @@ pub fn render(graph: &Graph, config: &TrellisConfig, format: OutputFormat) -> Re
         layers: count_layers(&graph),
         crossings: routing_result.crossings,
         bends: routing_result.total_bends,
-        render_ms: elapsed.as_millis() as u64,
+        render_ms,
         grid_utilization: grid.utilization(),
         grid_rows: grid.rows,
         grid_cols: grid.cols,
@@ -100,10 +114,17 @@ pub fn render(graph: &Graph, config: &TrellisConfig, format: OutputFormat) -> Re
 
     let data = match format {
         OutputFormat::Svg => svg_data,
+        #[cfg(feature = "png")]
         OutputFormat::Png => {
             crate::render::png::svg_to_png(&svg_data).map_err(|e| RenderError {
                 message: format!("PNG conversion failed: {}", e),
             })?
+        }
+        #[cfg(not(feature = "png"))]
+        OutputFormat::Png => {
+            return Err(RenderError {
+                message: "PNG output is not supported in this build (compile with feature 'png')".to_string(),
+            });
         }
     };
 
