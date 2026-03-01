@@ -1,0 +1,33 @@
+# .dockerignore — excludes files from the Docker build context
+# (applies to all Dockerfiles that use the repo root as context)
+
+# Rust build artefacts (can be gigabytes)
+target/
+
+# Node.js build artefacts
+editors/vscode/node_modules/
+editors/vscode/out/
+editors/intellij/node_modules/
+
+# WASM build outputs (re-built inside Docker)
+editors/vscode/wasm/
+editors/intellij/src/main/resources/wasm/
+
+# Git history
+.git/
+.gitignore
+
+# IDE / editor metadata
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS noise
+.DS_Store
+Thumbs.db
+
+# Dist artefacts
+dist/
+*.vsix
+*.zip

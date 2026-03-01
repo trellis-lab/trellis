@@ -20,7 +20,6 @@ Thumbs.db
 
 # Test outputs
 *.svg
-*.png
 test.*
 
 # WASM

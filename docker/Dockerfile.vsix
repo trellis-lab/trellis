@@ -1,0 +1,129 @@
+# docker/Dockerfile.vsix
+#
+# Multi-stage build that produces a VS Code .vsix extension package.
+#
+# Stages:
+#   wasm-builder  – Rust toolchain + wasm-pack → editors/vscode/wasm/
+#   ext-builder   – Node.js + vsce → TypeScript compile + vsce package
+#   artifact      – Minimal Alpine image that copies the .vsix to /output
+#
+# Usage (from repo root):
+#   docker build -f docker/Dockerfile.vsix -t trellis-vsix-builder .
+#   docker run --rm -v "$(pwd)/dist:/output" trellis-vsix-builder
+#
+# The .vsix will be written to ./dist/trellis-preview-*.vsix
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Stage 1 – WASM builder
+# ══════════════════════════════════════════════════════════════════════════════
+FROM rust:1.93.1-slim-bookworm AS wasm-builder
+
+# System packages:
+#   curl + ca-certificates – for the wasm-pack installer
+# Note: binaryen/wasm-opt is intentionally excluded – the Debian Bookworm package
+#       is version-mismatched with wasm-bindgen and corrupts element segments,
+#       causing "WebAssembly.Table.grow()" failures at runtime.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+    curl \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install wasm-pack
+RUN curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+
+# Add the WebAssembly compilation target
+RUN rustup target add wasm32-unknown-unknown
+
+WORKDIR /build
+
+# ── Dependency pre-caching (speeds up rebuilds when only source changes) ──────
+# Copy workspace manifests first; create minimal dummy sources so that
+# `cargo fetch` can resolve and download all crates without compiling real code.
+COPY Cargo.toml Cargo.lock ./
+COPY crates/trellis-parser/Cargo.toml  crates/trellis-parser/Cargo.toml
+COPY crates/trellis-core/Cargo.toml    crates/trellis-core/Cargo.toml
+COPY crates/trellis-wasm/Cargo.toml    crates/trellis-wasm/Cargo.toml
+COPY crates/trellis-cli/Cargo.toml     crates/trellis-cli/Cargo.toml
+COPY tests/benchmarks/Cargo.toml       tests/benchmarks/Cargo.toml
+COPY tests/integration/Cargo.toml      tests/integration/Cargo.toml
+
+RUN mkdir -p \
+    crates/trellis-parser/src \
+    crates/trellis-core/src \
+    crates/trellis-wasm/src \
+    crates/trellis-cli/src \
+    tests/benchmarks/src \
+    tests/integration/src \
+    && echo 'fn main() {}' > crates/trellis-cli/src/main.rs \
+    && touch \
+    crates/trellis-parser/src/lib.rs \
+    crates/trellis-core/src/lib.rs \
+    crates/trellis-wasm/src/lib.rs \
+    tests/benchmarks/src/lib.rs \
+    tests/integration/src/lib.rs
+
+# Pre-fetch all crate dependencies (cached Docker layer)
+RUN cargo fetch --target wasm32-unknown-unknown
+
+# ── Real source ───────────────────────────────────────────────────────────────
+COPY crates/ crates/
+
+# Build the WASM module (web target = ES module suitable for webviews).
+# --out-dir MUST be absolute: wasm-pack resolves relative paths from the
+# crate directory (/build/crates/trellis-wasm), not from WORKDIR.
+RUN wasm-pack build \
+    --release \
+    --target web \
+    --out-dir /wasm-out \
+    --out-name trellis_wasm \
+    crates/trellis-wasm
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Stage 2 – VS Code extension builder
+# ══════════════════════════════════════════════════════════════════════════════
+FROM node:25-slim AS ext-builder
+
+# Install the official VS Code extension packaging tool
+RUN npm install -g @vscode/vsce
+
+WORKDIR /ext
+
+# ── npm dependency caching ────────────────────────────────────────────────────
+# Copy manifests first so the install layer is cached unless deps change.
+COPY editors/vscode/package.json editors/vscode/package-lock.json* ./
+RUN npm ci --ignore-scripts
+
+# ── Extension source ──────────────────────────────────────────────────────────
+COPY editors/vscode/src        ./src
+COPY editors/vscode/tsconfig.json .
+COPY editors/vscode/media      ./media
+COPY editors/vscode/.vscodeignore .
+COPY editors/vscode/README.md  ./README.md
+
+# Extension icon (sourced from repo root images/ directory)
+COPY images/logo.png           ./images/logo.png
+
+# Copy WASM files produced in stage 1 (absolute path matches --out-dir above)
+COPY --from=wasm-builder /wasm-out ./wasm/
+
+# Compile TypeScript → out/
+RUN npm run compile
+
+# Package the extension (no production npm dependencies to bundle)
+RUN vsce package --no-dependencies
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Stage 3 – Minimal artifact image
+# ══════════════════════════════════════════════════════════════════════════════
+FROM alpine:3.20
+
+COPY --from=ext-builder /ext/*.vsix /artifact/
+
+# When run with  -v /host/dist:/output  the .vsix is copied to the host.
+ENTRYPOINT ["sh", "-c", \
+    "set -e; \
+    src=$(ls /artifact/*.vsix | head -1); \
+    dest=\"/output/$(basename $src)\"; \
+    cp \"$src\" \"$dest\"; \
+    echo \"VSIX extracted → $dest\""]
