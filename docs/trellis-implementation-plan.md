@@ -366,7 +366,7 @@ A C4 elhelyezés **nem gráfalgoritmus-alapú** – sorfolyásos (row-flow) elre
 
 ---
 
-## Mref – Placement algoritmus / diagram szétválasztás refaktorálás
+## M13.1 – Placement algoritmus / diagram szétválasztás refaktorálás
 
 > **Cél:** A placement modul szerkezete következetes legyen: minden algoritmus saját fájlban él, a diagram-specifikus orchestráció külön fájlban hívja azt – ugyanúgy, ahogy a flowchart/Sugiyama (`sugiyama.rs` + `subgraph.rs`) és az ER/force-directed (`force_directed.rs` + `er.rs`) már elkülönül.
 > **Smoke test:** `cargo test --workspace` zöld; `cargo clippy --workspace` hiba nélkül; minden diagramtípus SVG kimenettel renderelődik
@@ -383,17 +383,17 @@ A C4 elhelyezés **nem gráfalgoritmus-alapú** – sorfolyásos (row-flow) elre
 
 ## M14 – CLI teljes funkciókészlet
 
-> **Cél:** Az összes CLI parancs működik, beleértve batch módot, preprocessort, és licenckezelést.
+> **Cél:** Az összes CLI parancs működik, beleértve batch módot, preprocessort
 > **Smoke test:** `trellis preprocess doc.md -o out.md --image-dir img/` → Mermaid blokkok képekre cserélve
 
-* [ ] `render` stdin mód (`trellis render - -f svg` – pipe-olható)
-* [ ] `render-batch` parancs (könyvtár bejárás, .mmd szűrés, párhuzamos renderelés)
-* [ ] `validate` parancs (parser + összesítő, szintaxis hibák kiírása)
-* [ ] `preprocess` parancs (markdown Mermaid blokkok → képhivatkozások)
-* [ ] `--metrics` JSON kimenet stderr-re (crossings, bends, render_ms, grid_utilization)
-* [ ] `--config` fájl betöltés (`~/.trellis/config.toml`)
-* [ ] Pandoc Lua filter (`filters/trellis-filter.lua`) megírása és tesztelése
-* [ ] Exit kódok: 0 = OK, 1 = parse hiba, 2 = render hiba (licenckezelés → Mc mérföldkő)
+* [x] `render` stdin mód (`trellis render - -f svg` – pipe-olható)
+* [x] `render-batch` parancs (könyvtár bejárás, .mmd szűrés, párhuzamos renderelés)
+* [x] `validate` parancs (parser + összesítő, szintaxis hibák kiírása)
+* [x] `preprocess` parancs (markdown Mermaid blokkok → képhivatkozások)
+* [x] `--metrics` JSON kimenet stderr-re (crossings, bends, render_ms, grid_utilization)
+* [x] `--config` fájl betöltés (`~/.trellis/config.toml`)
+* [x] Pandoc Lua filter (`filters/trellis-filter.lua`) megírása és tesztelése
+* [x] Exit kódok: 0 = OK, 1 = parse hiba, 2 = render hiba (licenckezelés → Mc mérföldkő)
 
 ---
 

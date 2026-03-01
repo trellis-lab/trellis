@@ -34,5 +34,10 @@ wasm-bindgen = "0.2"
 # Rendering dependencies
 resvg = "0.42"
 
+# CLI extra dependencies
+toml = "1.0"
+walkdir = "2.5"
+rayon = "1.10"
+
 # Testing
 criterion = { version = "0.5", features = ["html_reports"] }
