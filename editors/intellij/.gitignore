@@ -1,6 +1,0 @@
-# editors/intellij/.gitignore
-.gradle/
-build/
-.idea/
-*.iml
-src/main/resources/wasm/
