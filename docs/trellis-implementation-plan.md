@@ -410,7 +410,7 @@ A C4 elhelyezés **nem gráfalgoritmus-alapú** – sorfolyásos (row-flow) elre
 * [x] Preview webview template (`media/preview.html`)
 * [x] Fájl mentés figyelés (`.mmd` fájl változáskor automatikus újra-render)
 * [x] Export funkció (`export.ts` – PNG/SVG mentés) (licenckorlátok → Mc mérföldkő)
-* [x] `vsce package` → `.vsix` fájl előállítás
+* [ ] `vsce package` → `.vsix` fájl előállítás
 
 ---
 

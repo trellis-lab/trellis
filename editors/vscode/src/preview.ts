@@ -197,7 +197,7 @@ function getPreviewHtml(
     const csp = [
         `default-src 'none'`,
         `style-src ${webview.cspSource} 'unsafe-inline'`,
-        `script-src 'nonce-${nonce}' 'wasm-unsafe-eval' ${webview.cspSource}`,
+        `script-src 'nonce-${nonce}' 'wasm-unsafe-eval'`,
         `img-src ${webview.cspSource} data:`,
         `connect-src ${webview.cspSource}`,
     ].join('; ');

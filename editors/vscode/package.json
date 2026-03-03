@@ -4,7 +4,6 @@
   "description": "High-quality Mermaid diagram preview powered by the Trellis renderer (VLSI-grade orthogonal routing).",
   "version": "0.1.0",
   "publisher": "trellis",
-  "icon": "images/logo.png",
   "license": "SEE LICENSE IN LICENSE",
   "repository": {
     "type": "git",
@@ -24,6 +23,7 @@
     "flowchart",
     "UML"
   ],
+  "icon": "media/icon.png",
   "activationEvents": [
     "onLanguage:mermaid"
   ],
@@ -100,7 +100,6 @@
     }
   },
   "scripts": {
-    "vscode:prepublish": "npm run compile",
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./",
     "lint": "eslint src --ext ts",
