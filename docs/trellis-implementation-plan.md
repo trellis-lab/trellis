@@ -419,12 +419,12 @@ A C4 elhelyezés **nem gráfalgoritmus-alapú** – sorfolyásos (row-flow) elre
 > **Cél:** IntelliJ plugin működik: .mmd fájl → tool window → renderelt diagram.
 > **Smoke test:** IntelliJ-ben Run Plugin → .mmd fájl → preview
 
-* [ ] `scripts/build-wasm.sh` kiegészítés bundler targettel (IntelliJ-hez)
-* [ ] Plugin váz (`build.gradle.kts`, `plugin.xml`, `TrellisPlugin.kt`)
-* [ ] WASM bridge Chicory runtime-mal (`WasmBridge.kt`)
-* [ ] Preview tool window (`PreviewPanel.kt` – JCEF/SVG megjelenítés)
-* [ ] Fájl változás figyelés (IntelliJ VFS listener)
-* [ ] Export (`ExportAction.kt` – PNG/SVG) (licenckorlátok → Mc mérföldkő)
+* [x] `scripts/build-wasm.sh` kiegészítés bundler targettel (IntelliJ-hez) – web target JCEF-hez
+* [x] Plugin váz (`build.gradle.kts`, `plugin.xml`, `TrellisPlugin.kt`)
+* [x] WASM bridge JCEF-alapú (`WasmBridge.kt` – erőforrás kinyerés + file:// URIs)
+* [x] Preview tool window (`PreviewPanel.kt` – JCEF/SVG megjelenítés)
+* [x] Fájl változás figyelés (IntelliJ VFS listener – `MmdFileListener.kt`)
+* [x] Export (`ExportAction.kt` – PNG/SVG) (licenckorlátok → Mc mérföldkő)
 * [ ] `./gradlew buildPlugin` → `.zip` fájl
 
 ---

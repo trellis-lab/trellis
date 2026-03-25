@@ -1,0 +1,25 @@
+# docker/Dockerfile.vscode-builder
+#
+# Builds the Trellis VS Code extension (.vsix) from source.
+# Expects the WASM binary to already be present in editors/vscode/wasm/
+# (run scripts/build-wasm-docker.sh first).
+#
+# Build image (done automatically by scripts/build-vscode-docker.sh):
+#   docker build -f docker/Dockerfile.vscode-builder -t trellis-vscode-builder .
+#
+# Run (repo mounted; output lands in dist/):
+#   docker run --rm -v "$(pwd):/workspace" trellis-vscode-builder
+
+FROM node:20-slim
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        # vsce needs git to embed commit info
+        git \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY docker/vscode-entrypoint.sh /usr/local/bin/build-vscode
+RUN chmod +x /usr/local/bin/build-vscode
+
+WORKDIR /workspace/editors/vscode
+
+ENTRYPOINT ["/usr/local/bin/build-vscode"]

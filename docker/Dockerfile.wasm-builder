@@ -1,0 +1,36 @@
+# docker/Dockerfile.wasm-builder
+#
+# Self-contained image for building the trellis-wasm crate.
+# Works on any OS where Docker is available (Windows, macOS, Linux).
+#
+# Build the image (done automatically by scripts/build-wasm-docker.sh):
+#   docker build -f docker/Dockerfile.wasm-builder -t trellis-wasm-builder .
+#
+# Run (mounts the repo so output lands directly in the editor folders):
+#   docker run --rm -v "$(pwd):/workspace" trellis-wasm-builder
+#   docker run --rm -v "$(pwd):/workspace" trellis-wasm-builder --release
+
+FROM rust:1.93.1-slim
+
+# ── System dependencies ────────────────────────────────────────────────────────
+# curl + ca-certificates: needed by the wasm-pack installer
+# binaryen: provides wasm-opt for release-build size optimisation
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    ca-certificates \
+    binaryen \
+    && rm -rf /var/lib/apt/lists/*
+
+# ── Rust WASM target ───────────────────────────────────────────────────────────
+RUN rustup target add wasm32-unknown-unknown
+
+# ── wasm-pack ─────────────────────────────────────────────────────────────────
+RUN curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+
+# ── Entrypoint script ──────────────────────────────────────────────────────────
+COPY docker/wasm-entrypoint.sh /usr/local/bin/build-wasm
+RUN chmod +x /usr/local/bin/build-wasm
+
+WORKDIR /workspace
+
+ENTRYPOINT ["/usr/local/bin/build-wasm"]

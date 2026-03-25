@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<!--
+  html/preview.html – Trellis IntelliJ Plugin preview page
+
+  Loaded by PreviewPanel via a `file://` URL from the temp directory alongside
+  the wasm-pack `--target web` output.  All three files are extracted from the
+  plugin JAR at runtime:
+
+      trellis_wasm.js        (ES module entry point – wasm-pack generated)
+      trellis_wasm_bg.wasm   (WASM binary)
+      preview.html           (this file)
+
+  Communication with the Kotlin host is one-way (host → page):
+      window.trellisInit(wasmModuleUri, wasmBinaryUri)  – called once after load
+      window.trellisUpdate(source, configJson)           – called on every change
+-->
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Trellis Preview</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #1e1e1e;
+      color: #d4d4d4;
+      font-family: system-ui, -apple-system, sans-serif;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    #toolbar {
+      padding: 4px 10px;
+      background: #252526;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      border-bottom: 1px solid #3c3c3c;
+      flex-shrink: 0;
+    }
+
+    #status { flex: 1; opacity: 0.75; }
+
+    #diagram-container {
+      flex: 1;
+      overflow: auto;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      padding: 16px;
+    }
+
+    #diagram-container svg {
+      max-width: 100%;
+      height: auto;
+      background: white;
+      border-radius: 4px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.45);
+    }
+
+    #error-box {
+      display: none;
+      margin: 16px;
+      padding: 12px 16px;
+      background: #5a1d1d;
+      border: 1px solid #be1100;
+      border-radius: 4px;
+      font-family: monospace;
+      font-size: 12px;
+      white-space: pre-wrap;
+      word-break: break-all;
+      flex-shrink: 0;
+    }
+
+    .placeholder {
+      color: #555;
+      font-size: 13px;
+      text-align: center;
+      margin: auto;
+      line-height: 1.6;
+    }
+
+    .spinner {
+      width: 28px; height: 28px;
+      border: 3px solid #0078d4;
+      border-top-color: transparent;
+      border-radius: 50%;
+      animation: spin 0.75s linear infinite;
+      margin: auto;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+  <div id="toolbar">
+    <span id="status">Initialising Trellis renderer…</span>
+  </div>
+  <div id="error-box"></div>
+  <div id="diagram-container">
+    <div class="spinner" id="spinner"></div>
+  </div>
+
+  <script type="module">
+    // ── State ─────────────────────────────────────────────────────────────────
+    let wasmModule = null;
+    let pendingSource = null;
+    let pendingConfig = null;
+
+    const statusEl  = document.getElementById('status');
+    const spinnerEl = document.getElementById('spinner');
+    const errorEl   = document.getElementById('error-box');
+    const containerEl = document.getElementById('diagram-container');
+
+    const setStatus  = (t) => { statusEl.textContent = t; };
+    const showSpinner = () => { spinnerEl.style.display = 'block'; };
+    const hideSpinner = () => { spinnerEl.style.display = 'none'; };
+
+    function showError(msg) {
+      errorEl.textContent = msg;
+      errorEl.style.display = 'block';
+    }
+    function clearError() {
+      errorEl.style.display = 'none';
+      errorEl.textContent = '';
+    }
+
+    function displaySvg(svgString) {
+      const existing = containerEl.querySelector('svg');
+      if (existing) existing.remove();
+      const tmp = document.createElement('div');
+      tmp.innerHTML = svgString;
+      const svgEl = tmp.querySelector('svg');
+      if (svgEl) containerEl.appendChild(svgEl);
+    }
+
+    // ── Public API called by Kotlin via executeJavaScript ─────────────────────
+
+    /**
+     * Initialise the WASM renderer.
+     * Called once by PreviewPanel after the page finishes loading.
+     * @param {string} moduleUri  - file:// path to trellis_wasm.js
+     * @param {string} binaryUri  - file:// path to trellis_wasm_bg.wasm
+     */
+    window.trellisInit = async function(moduleUri, binaryUri) {
+      setStatus('Loading WASM renderer…');
+      showSpinner();
+      try {
+        const mod = await import(moduleUri);
+        await mod.default(binaryUri);
+        wasmModule = mod;
+        hideSpinner();
+        setStatus('Trellis ready');
+        if (pendingSource !== null) {
+          await renderDiagram(pendingSource, pendingConfig || '');
+          pendingSource = null;
+          pendingConfig = null;
+        }
+      } catch (err) {
+        hideSpinner();
+        const msg = String(err);
+        setStatus('WASM load failed');
+        showError('Failed to load WASM renderer:\n' + msg);
+      }
+    };
+
+    /**
+     * Render a new Mermaid source string.
+     * Called by PreviewPanel whenever the .mmd document changes.
+     * @param {string} source     - raw Mermaid source
+     * @param {string} configJson - partial TrellisConfig JSON (may be empty string)
+     */
+    window.trellisUpdate = async function(source, configJson) {
+      if (!wasmModule) {
+        pendingSource = source;
+        pendingConfig = configJson;
+        return;
+      }
+      await renderDiagram(source, configJson);
+    };
+
+    // ── Internal rendering ────────────────────────────────────────────────────
+
+    async function renderDiagram(source, configJson) {
+      clearError();
+      showSpinner();
+      setStatus('Rendering…');
+      try {
+        const resultJson = wasmModule.render_with_metrics(
+          source,
+          configJson || null,
+        );
+        const result = JSON.parse(resultJson);
+        displaySvg(result.svg);
+        const m = result.metrics;
+        setStatus(`${m.nodes} nodes · ${m.edges} edges · ${m.render_ms} ms`);
+        hideSpinner();
+      } catch (err) {
+        hideSpinner();
+        const msg = String(err);
+        setStatus('Render error');
+        showError(msg);
+      }
+    }
+  </script>
+</body>
+</html>
