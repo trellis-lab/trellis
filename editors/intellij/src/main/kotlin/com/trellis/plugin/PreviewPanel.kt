@@ -1,7 +1,6 @@
 package com.trellis.plugin
 
 import com.intellij.openapi.Disposable
-import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.diagnostic.logger
 import com.intellij.openapi.project.Project
@@ -10,8 +9,6 @@ import com.intellij.openapi.wm.ToolWindowFactory
 import com.intellij.ui.content.ContentFactory
 import com.intellij.ui.jcef.JBCefApp
 import com.intellij.ui.jcef.JBCefBrowser
-import com.intellij.ui.jcef.JBCefBrowserBase
-import com.intellij.ui.jcef.JBCefJSQuery
 import org.cef.browser.CefBrowser
 import org.cef.browser.CefFrame
 import org.cef.handler.CefLoadHandlerAdapter
@@ -45,7 +42,7 @@ class PreviewPanel(private val project: Project) : Disposable {
     val component: JComponent = buildComponent()
 
     private var browser: JBCefBrowser? = null
-    private var wasmReady = false
+    private var pageReady = false
     private var pendingSource: String? = null
     private var pendingConfig: String? = null
 
@@ -64,12 +61,14 @@ class PreviewPanel(private val project: Project) : Disposable {
         val b = JBCefBrowser()
         browser = b
 
-        // After every page load (including the initial load of preview.html),
-        // inject the WASM module URIs so the page can initialise the renderer.
+        // After the page finishes loading, flush any pending diagram update.
+        // The page auto-initializes WASM via relative ES module imports served
+        // over HTTP — no file:// URIs needed.
         b.jbCefClient.addLoadHandler(object : CefLoadHandlerAdapter() {
             override fun onLoadEnd(browser: CefBrowser, frame: CefFrame, httpStatusCode: Int) {
                 if (!frame.isMain) return
-                initWasm()
+                pageReady = true
+                flushPending()
             }
         }, b.cefBrowser)
 
@@ -81,16 +80,15 @@ class PreviewPanel(private val project: Project) : Disposable {
     /**
      * Render a new Mermaid source string in the preview.
      *
-     * If the browser page is not yet ready (WASM not initialised) the source is
-     * queued and rendered as soon as initialisation completes.
+     * If the browser page is not yet ready the source is queued and rendered
+     * as soon as the page finishes loading. The page itself queues the update
+     * internally until its WASM module has initialised.
      */
     fun update(source: String) {
         val configJson = WasmBridge.buildConfigJson()
-
-        // Ensure the page is loaded
         ensurePageLoaded()
 
-        if (wasmReady) {
+        if (pageReady) {
             pushUpdate(source, configJson)
         } else {
             pendingSource = source
@@ -101,6 +99,7 @@ class PreviewPanel(private val project: Project) : Disposable {
     override fun dispose() {
         browser?.dispose()
         browser = null
+        WasmBridge.shutdown()
     }
 
     // ── Internal helpers ──────────────────────────────────────────────────────
@@ -111,38 +110,16 @@ class PreviewPanel(private val project: Project) : Disposable {
         if (pageLoaded) return
         val b = browser ?: return
 
-        val previewPath = extractPreviewHtml() ?: run {
+        extractPreviewHtml() ?: run {
             log.warn("Trellis: Could not extract preview.html; preview unavailable.")
             return
         }
-        b.loadURL(previewPath.toUri().toString())
-        pageLoaded = true
-    }
-
-    /** Send the `trellisInit` call to the page with the WASM file URIs. */
-    private fun initWasm() {
-        val b = browser ?: return
-        val moduleUri = WasmBridge.wasmModuleUri()
-        val binaryUri = WasmBridge.wasmBinaryUri()
-
-        if (moduleUri == null || binaryUri == null) {
-            // Resources not yet extracted – try now (blocking, but on a render thread)
-            ApplicationManager.getApplication().executeOnPooledThread {
-                WasmBridge.prepare()
-                b.cefBrowser.executeJavaScript(
-                    initJs(WasmBridge.wasmModuleUri() ?: return@executeOnPooledThread,
-                           WasmBridge.wasmBinaryUri() ?: return@executeOnPooledThread),
-                    b.cefBrowser.url, 0,
-                )
-                wasmReady = true
-                flushPending()
-            }
+        val baseUrl = WasmBridge.serverBaseUrl() ?: run {
+            log.warn("Trellis: Local resource server not available.")
             return
         }
-
-        b.cefBrowser.executeJavaScript(initJs(moduleUri, binaryUri), b.cefBrowser.url, 0)
-        wasmReady = true
-        flushPending()
+        b.loadURL("$baseUrl/preview.html")
+        pageLoaded = true
     }
 
     private fun flushPending() {
@@ -168,12 +145,9 @@ class PreviewPanel(private val project: Project) : Disposable {
         )
     }
 
-    private fun initJs(moduleUri: String, binaryUri: String): String =
-        "window.trellisInit('$moduleUri', '$binaryUri');"
-
     /**
      * Extract `html/preview.html` from the plugin resources to the same temp
-     * directory as the WASM files so that relative ES module imports resolve.
+     * directory as the WASM files so that the local HTTP server can serve it.
      */
     private fun extractPreviewHtml(): Path? {
         val wasmDir = WasmBridge.prepare() ?: return null
