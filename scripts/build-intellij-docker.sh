@@ -18,6 +18,18 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(dirname "$SCRIPT_DIR")"
+
+# ── Windows / Git Bash compatibility ─────────────────────────────────────────
+# Git Bash (MSYS2) rewrites Unix-style absolute paths to Windows paths when
+# passing them to non-MSYS executables (like docker).  This breaks container
+# mount paths such as "/workspace".  We convert REPO_ROOT to a Docker-friendly
+# form and disable MSYS path conversion for the docker-run invocation.
+if [[ "$(uname -s)" == MINGW* || "$(uname -s)" == MSYS* ]]; then
+    # Convert /c/Users/... → C:/Users/... for Docker volume mounts
+    DOCKER_REPO_ROOT="$(cygpath -w "$REPO_ROOT")"
+else
+    DOCKER_REPO_ROOT="$REPO_ROOT"
+fi
 IMAGE_NAME="trellis-intellij-builder"
 GRADLE_CACHE_VOLUME="trellis-gradle-cache"
 WASM_FILE="$REPO_ROOT/editors/intellij/src/main/resources/wasm/trellis_wasm_bg.wasm"
@@ -55,18 +67,18 @@ fi
 
 # ── Build image ───────────────────────────────────────────────────────────────
 echo "==> Building Docker image '$IMAGE_NAME'…"
-docker build \
-    --file "$REPO_ROOT/docker/Dockerfile.intellij-builder" \
+MSYS_NO_PATHCONV=1 docker build \
+    --file "$DOCKER_REPO_ROOT/docker/Dockerfile.intellij-builder" \
     --tag  "$IMAGE_NAME" \
-    "$REPO_ROOT"
+    "$DOCKER_REPO_ROOT"
 
 # ── Build plugin ──────────────────────────────────────────────────────────────
 echo ""
 echo "==> Building IntelliJ plugin inside Docker…"
 echo "    Gradle cache volume: $GRADLE_CACHE_VOLUME"
 echo "    (first run downloads Gradle + IntelliJ sandbox; subsequent runs use the cache)"
-docker run --rm \
-    --volume "$REPO_ROOT:/workspace" \
+MSYS_NO_PATHCONV=1 docker run --rm \
+    --volume "$DOCKER_REPO_ROOT:/workspace" \
     --volume "$GRADLE_CACHE_VOLUME:/root/.gradle" \
     "$IMAGE_NAME"
 

@@ -58,6 +58,7 @@ class MmdFileListener : StartupActivity {
         )
 
         // ── Live typing: document listener ────────────────────────────────────
+        val disposable = PreviewPanel.getInstance(project)
         EditorFactory.getInstance().eventMulticaster.addDocumentListener(
             object : DocumentListener {
                 override fun documentChanged(event: DocumentEvent) {
@@ -70,6 +71,7 @@ class MmdFileListener : StartupActivity {
                     PreviewPanel.getInstance(project).update(event.document.text)
                 }
             },
+            disposable,
         )
     }
 

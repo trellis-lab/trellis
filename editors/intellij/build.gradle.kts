@@ -11,7 +11,7 @@ group = "com.trellis"
 version = "0.1.0"
 
 kotlin {
-    jvmToolchain(17)
+    jvmToolchain(21)
 }
 
 repositories {
@@ -24,7 +24,6 @@ repositories {
 dependencies {
     intellijPlatform {
         intellijIdeaCommunity("2024.3")
-        instrumentationTools()
     }
 }
 
@@ -40,6 +39,7 @@ intellijPlatform {
 
         ideaVersion {
             sinceBuild = "243"
+            untilBuild = provider { null }
         }
     }
 }

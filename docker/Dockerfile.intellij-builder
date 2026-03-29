@@ -14,8 +14,8 @@
 #     -v "trellis-gradle-cache:/root/.gradle" \
 #     trellis-intellij-builder
 
-# Eclipse Temurin JDK 17 on Ubuntu Jammy – same JDK family IntelliJ ships with
-FROM eclipse-temurin:17-jdk-jammy
+# Eclipse Temurin JDK 21 on Ubuntu Jammy – same JDK family IntelliJ ships with
+FROM eclipse-temurin:21-jdk-jammy
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
         curl \
