@@ -2,17 +2,16 @@
 <!--
   html/preview.html – Trellis IntelliJ Plugin preview page
 
-  Loaded by PreviewPanel via a `file://` URL from the temp directory alongside
-  the wasm-pack `--target web` output.  All three files are extracted from the
-  plugin JAR at runtime:
+  Served by a local HTTP server (127.0.0.1) started by WasmBridge.  All three
+  files are extracted from the plugin JAR at runtime:
 
       trellis_wasm.js        (ES module entry point – wasm-pack generated)
       trellis_wasm_bg.wasm   (WASM binary)
       preview.html           (this file)
 
+  WASM is auto-initialised on page load via relative ES module imports.
   Communication with the Kotlin host is one-way (host → page):
-      window.trellisInit(wasmModuleUri, wasmBinaryUri)  – called once after load
-      window.trellisUpdate(source, configJson)           – called on every change
+      window.trellisUpdate(source, configJson)  – called on every change
 -->
 <html lang="en">
 <head>
@@ -136,20 +135,14 @@
       if (svgEl) containerEl.appendChild(svgEl);
     }
 
-    // ── Public API called by Kotlin via executeJavaScript ─────────────────────
+    // ── Auto-initialise WASM via relative imports (served over HTTP) ──────────
 
-    /**
-     * Initialise the WASM renderer.
-     * Called once by PreviewPanel after the page finishes loading.
-     * @param {string} moduleUri  - file:// path to trellis_wasm.js
-     * @param {string} binaryUri  - file:// path to trellis_wasm_bg.wasm
-     */
-    window.trellisInit = async function(moduleUri, binaryUri) {
+    async function initWasm() {
       setStatus('Loading WASM renderer…');
       showSpinner();
       try {
-        const mod = await import(moduleUri);
-        await mod.default(binaryUri);
+        const mod = await import('./trellis_wasm.js');
+        await mod.default('./trellis_wasm_bg.wasm');
         wasmModule = mod;
         hideSpinner();
         setStatus('Trellis ready');
@@ -160,15 +153,19 @@
         }
       } catch (err) {
         hideSpinner();
-        const msg = String(err);
         setStatus('WASM load failed');
-        showError('Failed to load WASM renderer:\n' + msg);
+        showError('Failed to load WASM renderer:\n' + String(err));
       }
-    };
+    }
+
+    initWasm();
+
+    // ── Public API called by Kotlin via executeJavaScript ─────────────────────
 
     /**
      * Render a new Mermaid source string.
      * Called by PreviewPanel whenever the .mmd document changes.
+     * If WASM is not yet ready, the source is queued.
      * @param {string} source     - raw Mermaid source
      * @param {string} configJson - partial TrellisConfig JSON (may be empty string)
      */
@@ -199,9 +196,8 @@
         hideSpinner();
       } catch (err) {
         hideSpinner();
-        const msg = String(err);
         setStatus('Render error');
-        showError(msg);
+        showError(String(err));
       }
     }
   </script>

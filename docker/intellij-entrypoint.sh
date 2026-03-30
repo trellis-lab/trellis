@@ -34,7 +34,9 @@ chmod +x gradlew
 # ── Build plugin ───────────────────────────────────────────────────────────────
 echo "==> Building IntelliJ plugin…"
 echo "    (first run downloads Gradle + IntelliJ sandbox – this can take a few minutes)"
-./gradlew buildPlugin --no-daemon
+# Skip buildSearchableOptions: it launches a headless IntelliJ instance that
+# requires Unix domain sockets, which are unsupported in Docker on Windows/WSL2.
+./gradlew buildPlugin --no-daemon -x buildSearchableOptions
 
 # ── Copy output to dist/ ──────────────────────────────────────────────────────
 mkdir -p "$DIST_DIR"

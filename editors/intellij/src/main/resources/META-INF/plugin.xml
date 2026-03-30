@@ -14,11 +14,19 @@
 
     <extensions defaultExtensionNs="com.intellij">
 
+        <!-- Register .mmd and .mermaid as Mermaid Diagram files -->
+        <fileType name="Mermaid Diagram"
+                  implementationClass="com.trellis.plugin.MmdFileType"
+                  fieldName="INSTANCE"
+                  language="Mermaid"
+                  extensions="mmd;mermaid"/>
+
         <!-- Preview tool window (right side panel) -->
         <toolWindow
                 id="Trellis Preview"
                 factoryClass="com.trellis.plugin.PreviewToolWindowFactory"
                 anchor="right"
+                icon="/icons/toolWindow.svg"
                 canCloseContents="false"
                 secondary="false"/>
 
