@@ -1,0 +1,13 @@
+graph TB
+    A("Node A")
+    B["Node B"]
+    C(("Node C"))
+    D{{"Node D"}}
+    E{"Node E"}
+    F[("Database F")]
+
+    A -->|label 1| B -->|label 2| C -.->|label aDSaA| D --> E
+    D -.-> B
+    D -.-> D
+
+    E -->|Send| F

@@ -1,4 +1,7 @@
 pub mod ast;
+pub mod c4_diagram;
+pub mod class_diagram;
+pub mod er_diagram;
 pub mod flowchart;
 pub mod text_metrics;
 pub mod tokenizer;
@@ -15,16 +18,9 @@ pub fn parse(input: &str) -> Result<Graph, ParseError> {
 
     match diagram_type {
         DiagramType::Flowchart => flowchart::parse_flowchart(&tokens),
-        DiagramType::ClassDiagram => Err(ParseError {
-            message: "Class diagram parsing not yet implemented".to_string(),
-            line: 0,
-            column: 0,
-        }),
-        DiagramType::ErDiagram => Err(ParseError {
-            message: "ER diagram parsing not yet implemented".to_string(),
-            line: 0,
-            column: 0,
-        }),
+        DiagramType::ClassDiagram => class_diagram::parse_class_diagram(&tokens),
+        DiagramType::ErDiagram => er_diagram::parse_er_diagram(&tokens),
+        DiagramType::C4Diagram => c4_diagram::parse_c4_diagram(&tokens),
     }
 }
 
@@ -73,15 +69,22 @@ mod tests {
     }
 
     #[test]
-    fn test_parse_class_diagram_not_implemented() {
+    fn test_parse_class_diagram() {
         let result = parse("classDiagram\n    ClassA <|-- ClassB\n");
-        assert!(result.is_err());
+        assert!(result.is_ok());
+        let graph = result.unwrap();
+        assert_eq!(graph.diagram_type, DiagramType::ClassDiagram);
+        assert_eq!(graph.nodes.len(), 2);
     }
 
     #[test]
-    fn test_parse_er_diagram_not_implemented() {
+    fn test_parse_er_diagram() {
         let result = parse("erDiagram\n    CUSTOMER ||--o{ ORDER : places\n");
-        assert!(result.is_err());
+        assert!(result.is_ok());
+        let graph = result.unwrap();
+        assert_eq!(graph.diagram_type, DiagramType::ErDiagram);
+        assert_eq!(graph.nodes.len(), 2);
+        assert_eq!(graph.edges.len(), 1);
     }
 
     #[test]

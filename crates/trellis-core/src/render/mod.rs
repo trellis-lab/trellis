@@ -1,4 +1,12 @@
+pub mod c4_boundary;
+pub mod c4_shapes;
+pub mod class_shapes;
+pub mod crossing;
 pub mod edges;
+pub mod er_shapes;
+pub mod grid;
 pub mod nodes;
+#[cfg(feature = "png")]
 pub mod png;
+pub mod subgraph;
 pub mod svg;

@@ -1,9 +1,20 @@
-pub mod sugiyama;
+pub mod algorithm;
+pub mod c4;
+pub mod class;
+pub mod er;
+pub mod force_directed;
+pub mod overlap;
+pub mod row_flow;
 pub mod snap;
+pub mod subgraph;
+pub mod sugiyama;
+
+pub use algorithm::LayoutAlgorithm;
 
 use std::collections::HashMap;
-use trellis_parser::{Direction, Graph};
-use crate::ports::MIN_PORT_SPACING;
+use trellis_parser::{Graph, NodeShape};
+
+use crate::types::{BoundingBox, SubgraphTree};
 
 /// Layer spacing in pixels (distance between layers)
 pub const LAYER_SPACING: f64 = 100.0;
@@ -12,56 +23,163 @@ pub const LAYER_SPACING: f64 = 100.0;
 pub const NODE_SPACING: f64 = 80.0;
 
 /// Place all nodes in the graph by assigning (x, y) coordinates.
-/// Currently only supports flowcharts via Sugiyama layout.
-pub fn place_nodes(graph: &mut Graph) {
-    expand_nodes_for_ports(graph);
+///
+/// If the graph contains subgraphs, uses recursive bottom-up placement
+/// and returns the subgraph tree and bounding boxes for rendering.
+///
+/// `cell_size` is used to snap node dimensions to grid-point multiples.
+pub fn place_nodes(
+    graph: &mut Graph,
+    cell_size: i32,
+) -> Option<(SubgraphTree, HashMap<String, BoundingBox>)> {
+    snap_node_dimensions_to_grid(graph, cell_size);
 
-    match graph.diagram_type {
-        trellis_parser::DiagramType::Flowchart => {
-            sugiyama::layout(graph);
+    // C4 diagrams always use boundary-aware row-flow, even when graph.subgraphs is
+    // non-empty (boundaries). Must be checked before the subgraph fallback below.
+    if graph.diagram_type == trellis_parser::DiagramType::C4Diagram {
+        c4::place_c4_diagram(graph);
+        snap_node_positions_to_grid(graph, cell_size);
+        if !graph.subgraphs.is_empty() {
+            Some(c4::compute_c4_subgraph_data(graph))
+        } else {
+            None
         }
-        // Other diagram types will be implemented in M10
-        _ => {
-            sugiyama::layout(graph);
+    } else if !graph.subgraphs.is_empty() {
+        // Subgraph-aware placement for flowcharts (M9)
+        let result = subgraph::place_with_subgraphs(graph, cell_size);
+        snap_node_positions_to_grid(graph, cell_size);
+        Some(result)
+    } else {
+        match graph.diagram_type {
+            trellis_parser::DiagramType::Flowchart => {
+                sugiyama::layout(graph);
+            }
+            trellis_parser::DiagramType::ClassDiagram => {
+                class::place_class_diagram(graph);
+            }
+            trellis_parser::DiagramType::ErDiagram => {
+                er::place_er_diagram(graph);
+            }
+            trellis_parser::DiagramType::C4Diagram => {
+                unreachable!("C4 is handled above")
+            }
         }
+        snap_node_positions_to_grid(graph, cell_size);
+        None
     }
 }
 
-/// Expand node dimensions so that high-degree nodes have enough space for port routing.
+/// Snap node top-left positions to the nearest grid points.
+fn snap_node_positions_to_grid(graph: &mut Graph, cell_size: i32) {
+    let cs = cell_size as f64;
+    for node in &mut graph.nodes {
+        node.x = (node.x / cs).round() * cs;
+        node.y = (node.y / cs).round() * cs;
+    }
+}
+
+/// Snap node dimensions to grid-aligned sizes.
 ///
-/// For each node, counts its edge degree and ensures the node is wide/tall enough
-/// to fit all ports with at least `MIN_PORT_SPACING` between them.
-fn expand_nodes_for_ports(graph: &mut Graph) {
-    // Count degree per node
-    let mut degree: HashMap<&str, usize> = HashMap::new();
-    for edge in &graph.edges {
-        *degree.entry(edge.from.as_str()).or_default() += 1;
-        *degree.entry(edge.to.as_str()).or_default() += 1;
+/// "Width = N * cell_size" means N grid points along the edge,
+/// i.e., pixel width = (N-1) * cell_size.
+/// Minimum: 5 grid points wide (4*cs pixels), 3 grid points tall (2*cs pixels).
+fn snap_node_dimensions_to_grid(graph: &mut Graph, cell_size: i32) {
+    let cs = cell_size as f64;
+    for node in &mut graph.nodes {
+        // Calculate how many grid points needed to cover the text-based dimension.
+        // N grid points span (N-1) cell intervals = (N-1)*cs pixels.
+        // So N = ceil(pixels / cs) + 1.
+        let mut w_points = ((node.width / cs).ceil() as i32 + 1).max(5); // min 5 grid points
+        let mut h_points = ((node.height / cs).ceil() as i32 + 1).max(3); // min 3 grid points
+
+        // Make it always odd number
+        if w_points % 2 == 0 {
+            w_points += 1;
+        }
+
+        if h_points % 2 == 0 {
+            h_points += 1;
+        }
+
+        // Correct circles and double-circles: force equal width and height
+        if node.shape == NodeShape::Circle || node.shape == NodeShape::DoubleCircle {
+            let max = w_points.max(h_points);
+            w_points = max;
+            h_points = max;
+        }
+
+        // Cylinders need extra height so the top ellipse cap does not overlap the label.
+        // +2 grid points = 2 * cell_size extra pixels (stays odd since 2 is even).
+        if node.shape == NodeShape::Cylinder {
+            h_points += 2;
+        }
+
+        node.width = (w_points - 1) as f64 * cs;
+        node.height = (h_points - 1) as f64 * cs;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use trellis_parser::{Node, NodeShape};
+
+    fn make_node(id: &str, w: f64, h: f64) -> Node {
+        Node {
+            id: id.to_string(),
+            label: id.to_string(),
+            shape: NodeShape::Rectangle,
+            width: w,
+            height: h,
+            x: 0.0,
+            y: 0.0,
+            ..Default::default()        }
     }
 
-    let is_vertical = matches!(graph.direction, Direction::TB | Direction::BT);
+    #[test]
+    fn test_snap_dimensions_minimum() {
+        let mut graph = Graph::new();
+        graph.nodes = vec![make_node("A", 10.0, 10.0)];
+        snap_node_dimensions_to_grid(&mut graph, 10);
+        // min 5 grid points wide = 4*10 = 40 pixels
+        assert_eq!(graph.nodes[0].width, 40.0);
+        // min 3 grid points tall = 2*10 = 20 pixels
+        assert_eq!(graph.nodes[0].height, 20.0);
+    }
 
-    for node in &mut graph.nodes {
-        let deg = degree.get(node.id.as_str()).copied().unwrap_or(0);
-        if deg <= 1 {
-            continue;
-        }
+    #[test]
+    fn test_snap_dimensions_rounds_up() {
+        let mut graph = Graph::new();
+        // width=55 needs ceil(55/10)+1 = 6+1 = 7 grid points = 60 pixels
+        graph.nodes = vec![make_node("A", 55.0, 25.0)];
+        snap_node_dimensions_to_grid(&mut graph, 10);
+        assert_eq!(graph.nodes[0].width, 60.0);
+        // height=25 needs ceil(25/10)+1 = 3+1+1 = 5 grid points = 40 pixels
+        assert_eq!(graph.nodes[0].height, 40.0);
+    }
 
-        // Primary axis: the side that fans out (bottom for TB, right for LR)
-        // needs to hold up to `deg` ports. Secondary axes hold overflow.
-        // Conservative estimate: primary dimension needs all ports,
-        // secondary needs roughly a third (overflow from primary).
-        let primary_required = (deg as f64 + 1.0) * MIN_PORT_SPACING;
-        let secondary_required = ((deg as f64 / 3.0).ceil() + 1.0) * MIN_PORT_SPACING;
+    #[test]
+    fn test_snap_dimensions_exact_multiple() {
+        let mut graph = Graph::new();
+        // width=40 = exactly 4 cell intervals, ceil(40/10)+1 = 5 grid points = 40 pixels
+        graph.nodes = vec![make_node("A", 40.0, 20.0)];
+        snap_node_dimensions_to_grid(&mut graph, 10);
+        assert_eq!(graph.nodes[0].width, 40.0);
+        assert_eq!(graph.nodes[0].height, 20.0);
+    }
 
-        if is_vertical {
-            // Width is the primary dimension (bottom/top side holds most ports)
-            node.width = node.width.max(primary_required);
-            node.height = node.height.max(secondary_required);
-        } else {
-            // Height is the primary dimension (right/left side holds most ports)
-            node.height = node.height.max(primary_required);
-            node.width = node.width.max(secondary_required);
-        }
+    #[test]
+    fn test_snap_dimensions_cylinder_extra_height() {
+        let mut graph = Graph::new();
+        // Same pixel size as the rectangle in test_snap_dimensions_exact_multiple,
+        // but shape=Cylinder → h_points gets +2 extra grid points = +2*10 = +20 px.
+        let mut node = make_node("A", 40.0, 20.0);
+        node.shape = NodeShape::Cylinder;
+        graph.nodes = vec![node];
+        snap_node_dimensions_to_grid(&mut graph, 10);
+        // width unchanged
+        assert_eq!(graph.nodes[0].width, 40.0);
+        // height: base h_points = 3 (from test above) + 2 = 5 → (5-1)*10 = 40 px
+        assert_eq!(graph.nodes[0].height, 40.0);
     }
 }

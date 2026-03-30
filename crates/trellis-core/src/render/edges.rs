@@ -1,4 +1,7 @@
 use crate::grid::Grid;
+use crate::render::c4_shapes::c4_edge_markers;
+use crate::render::class_shapes::class_edge_markers;
+use crate::render::er_shapes::er_edge_markers;
 use crate::routing::astar::GridPoint;
 use trellis_parser::{ArrowHead, Edge, EdgeStyle};
 
@@ -15,8 +18,20 @@ fn direction_sign(from: &Point, to: &Point) -> (i32, i32) {
     let eps = 0.001;
     let dx = to.x - from.x;
     let dy = to.y - from.y;
-    let sx = if dx.abs() < eps { 0 } else if dx > 0.0 { 1 } else { -1 };
-    let sy = if dy.abs() < eps { 0 } else if dy > 0.0 { 1 } else { -1 };
+    let sx = if dx.abs() < eps {
+        0
+    } else if dx > 0.0 {
+        1
+    } else {
+        -1
+    };
+    let sy = if dy.abs() < eps {
+        0
+    } else if dy > 0.0 {
+        1
+    } else {
+        -1
+    };
     (sx, sy)
 }
 
@@ -159,22 +174,26 @@ pub fn render_edge(
     let path_data = generate_rounded_polyline(&simplified, corner_radius);
 
     let stroke = stroke_attrs(edge.style);
-    let marker = marker_attr(edge.arrow_head);
+
+    // Use diagram-specific markers when available, otherwise use arrow_head marker
+    let (marker_start, marker_end) = if edge.class_edge_type.is_some() {
+        class_edge_markers(edge)
+    } else if edge.er_source_card.is_some() || edge.er_target_card.is_some() {
+        er_edge_markers(edge)
+    } else if edge.c4_rel_type.is_some() {
+        c4_edge_markers(edge)
+    } else {
+        (String::new(), marker_attr(edge.arrow_head).to_string())
+    };
 
     format!(
-        "<path d=\"{}\" fill=\"none\" stroke=\"#666\" {}{}/>",
-        path_data, stroke, marker
+        "<path d=\"{}\" fill=\"none\" stroke=\"#555\" {}{}{}/>",
+        path_data, stroke, marker_start, marker_end
     )
 }
 
 /// Render a fallback straight-line edge when A* routing failed.
-pub fn render_fallback_edge(
-    edge: &Edge,
-    from_x: f64,
-    from_y: f64,
-    to_x: f64,
-    to_y: f64,
-) -> String {
+pub fn render_fallback_edge(edge: &Edge, from_x: f64, from_y: f64, to_x: f64, to_y: f64) -> String {
     let stroke = stroke_attrs(edge.style);
     let marker = marker_attr(edge.arrow_head);
     format!(
@@ -188,7 +207,7 @@ pub fn render_fallback_edge(
 pub fn arrow_marker_defs() -> &'static str {
     "<defs>\
      <marker id=\"arrowhead\" viewBox=\"0 0 10 10\" refX=\"10\" refY=\"5\" \
-     markerWidth=\"6\" markerHeight=\"6\" orient=\"auto-start-reverse\">\
+     markerWidth=\"4\" markerHeight=\"4\" orient=\"auto-start-reverse\">\
      <path d=\"M 0 0 L 10 5 L 0 10 z\" fill=\"#666\"/>\
      </marker>\
      </defs>"
@@ -228,8 +247,8 @@ mod tests {
         let points = vec![
             Point { x: 0.0, y: 0.0 },
             Point { x: 0.0, y: 5.0 },
-            Point { x: 0.0, y: 10.0 },  // collinear, should be removed
-            Point { x: 5.0, y: 10.0 },  // bend here, keep (0,10)
+            Point { x: 0.0, y: 10.0 }, // collinear, should be removed
+            Point { x: 5.0, y: 10.0 }, // bend here, keep (0,10)
             Point { x: 10.0, y: 10.0 },
         ];
         let simplified = simplify_path(&points);
@@ -239,10 +258,7 @@ mod tests {
 
     #[test]
     fn test_rounded_polyline_straight() {
-        let points = vec![
-            Point { x: 0.0, y: 0.0 },
-            Point { x: 100.0, y: 0.0 },
-        ];
+        let points = vec![Point { x: 0.0, y: 0.0 }, Point { x: 100.0, y: 0.0 }];
         let path = generate_rounded_polyline(&points, 5.0);
         assert!(path.starts_with("M 0.0 0.0"));
         assert!(path.contains("L 100.0 0.0"));

@@ -205,7 +205,7 @@ mod tests {
 
     #[test]
     fn test_route_straight_line() {
-        let grid = Grid::new(10, 10, 10.0, 0.0, 0.0);
+        let grid = Grid::new(10, 10, 10, 0, 0);
         let source = GridPoint { row: 0, col: 0 };
         let target = GridPoint { row: 0, col: 5 };
 
@@ -221,7 +221,7 @@ mod tests {
 
     #[test]
     fn test_route_around_obstacle() {
-        let mut grid = Grid::new(10, 10, 10.0, 0.0, 0.0);
+        let mut grid = Grid::new(10, 10, 10, 0, 0);
         // Block a wall at col 3, rows 0-8
         for row in 0..9 {
             grid.get_mut(row, 3).unwrap().state = CellState::Blocked;
@@ -254,7 +254,7 @@ mod tests {
 
     #[test]
     fn test_route_same_point() {
-        let grid = Grid::new(10, 10, 10.0, 0.0, 0.0);
+        let grid = Grid::new(10, 10, 10, 0, 0);
         let point = GridPoint { row: 5, col: 5 };
 
         let result = route_edge(&grid, point, point, &default_costs());
@@ -264,7 +264,7 @@ mod tests {
 
     #[test]
     fn test_no_path_completely_blocked() {
-        let mut grid = Grid::new(5, 5, 10.0, 0.0, 0.0);
+        let mut grid = Grid::new(5, 5, 10, 0, 0);
         // Block all cells except source and target in separate regions
         for row in 0..5 {
             for col in 0..5 {

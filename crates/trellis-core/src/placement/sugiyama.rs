@@ -1,7 +1,8 @@
 use std::collections::HashMap;
 use trellis_parser::{Direction, Graph};
 
-use super::{LAYER_SPACING, NODE_SPACING};
+use super::algorithm::LayoutAlgorithm;
+use super::NODE_SPACING;
 
 /// Maximum iterations for barycenter ordering
 const MAX_BARYCENTER_ITERATIONS: usize = 20;
@@ -69,7 +70,12 @@ pub fn break_cycles(
     for start in 0..n {
         if !visited[start] {
             dfs_break_cycles(
-                start, &adj, &mut visited, &mut in_stack, edges, &mut reversed,
+                start,
+                &adj,
+                &mut visited,
+                &mut in_stack,
+                edges,
+                &mut reversed,
             );
         }
     }
@@ -213,12 +219,17 @@ pub fn order_within_layers(
         let mut improved = false;
 
         // Top-down pass
+        #[allow(clippy::needless_range_loop)] // TODO: fix this warning
         for layer in 1..=max_layer {
             for node_id in &nodes_in_layer[layer] {
                 // Get neighbors in the previous layer
                 let neighbors: Vec<&String> = backward
                     .get(node_id)
-                    .map(|v| v.iter().filter(|n| layers.get(*n) == Some(&(layer - 1))).collect())
+                    .map(|v| {
+                        v.iter()
+                            .filter(|n| layers.get(*n) == Some(&(layer - 1)))
+                            .collect()
+                    })
                     .unwrap_or_default();
 
                 if !neighbors.is_empty() {
@@ -256,7 +267,11 @@ pub fn order_within_layers(
                 for node_id in &nodes_in_layer[layer] {
                     let neighbors: Vec<&String> = forward
                         .get(node_id)
-                        .map(|v| v.iter().filter(|n| layers.get(*n) == Some(&(layer + 1))).collect())
+                        .map(|v| {
+                            v.iter()
+                                .filter(|n| layers.get(*n) == Some(&(layer + 1)))
+                                .collect()
+                        })
                         .unwrap_or_default();
 
                     if !neighbors.is_empty() {
@@ -319,53 +334,88 @@ pub fn assign_coordinates(
         layer_nodes.sort_by_key(|&i| positions.get(&graph.nodes[i].id).copied().unwrap_or(0));
     }
 
-    // Assign coordinates with centering
+    // Compute dynamic layer positions along the main axis.
+    //
+    // Using a fixed LAYER_SPACING caused nodes taller/wider than LAYER_SPACING to
+    // overlap with the next layer. Instead, each layer starts immediately after the
+    // tallest (TB/BT) or widest (LR/RL) node in the previous layer plus a fixed gap.
+    let is_vertical = matches!(graph.direction, Direction::TB | Direction::BT);
+    let mut layer_main_pos: Vec<f64> = vec![0.0; max_layer + 1];
+    for layer in 1..=max_layer {
+        let prev_max_dim = nodes_in_layer[layer - 1]
+            .iter()
+            .map(|&i| {
+                if is_vertical {
+                    graph.nodes[i].height
+                } else {
+                    graph.nodes[i].width
+                }
+            })
+            .fold(0.0_f64, f64::max);
+        layer_main_pos[layer] = layer_main_pos[layer - 1] + prev_max_dim + NODE_SPACING;
+    }
+
+    // Assign coordinates with centering (node.x/y = top-left corner)
     for (layer_idx, layer_nodes) in nodes_in_layer.iter().enumerate() {
         if layer_nodes.is_empty() {
             continue;
         }
 
-        // Calculate total width of this layer
-        let total_width: f64 = layer_nodes
-            .iter()
-            .map(|&i| graph.nodes[i].width)
-            .sum::<f64>()
+        // Cross-axis: sum of node extents perpendicular to the main flow direction.
+        // TB/BT → cross axis is x, extent is width.
+        // LR/RL → cross axis is y, extent is height.
+        let cross_dim = |i: usize| -> f64 {
+            if is_vertical {
+                graph.nodes[i].width
+            } else {
+                graph.nodes[i].height
+            }
+        };
+        let total_cross: f64 = layer_nodes.iter().map(|&i| cross_dim(i)).sum::<f64>()
             + (layer_nodes.len() as f64 - 1.0) * NODE_SPACING;
 
-        let mut offset = -total_width / 2.0;
+        let mut offset = -total_cross / 2.0;
+        let main_pos = layer_main_pos[layer_idx];
 
         for &node_idx in layer_nodes {
             let node = &mut graph.nodes[node_idx];
-            let layer = layer_idx;
-            let node_center_x = offset + node.width / 2.0;
+            let cross_extent = if is_vertical { node.width } else { node.height };
 
             match graph.direction {
                 Direction::TB => {
-                    node.x = node_center_x;
-                    node.y = layer as f64 * LAYER_SPACING;
+                    node.x = offset;
+                    node.y = main_pos;
                 }
                 Direction::BT => {
-                    node.x = node_center_x;
-                    node.y = -(layer as f64) * LAYER_SPACING;
+                    node.x = offset;
+                    node.y = -main_pos;
                 }
                 Direction::LR => {
-                    node.x = layer as f64 * LAYER_SPACING;
-                    node.y = node_center_x;
+                    node.x = main_pos;
+                    node.y = offset;
                 }
                 Direction::RL => {
-                    node.x = -(layer as f64) * LAYER_SPACING;
-                    node.y = node_center_x;
+                    node.x = -main_pos;
+                    node.y = offset;
                 }
             }
 
-            offset += node.width + NODE_SPACING;
+            offset += cross_extent + NODE_SPACING;
         }
     }
 
-    // Normalize: shift so minimum coordinate is at a reasonable origin
+    // Normalize: shift so minimum top-left coordinate is at a reasonable origin
     if !graph.nodes.is_empty() {
-        let min_x = graph.nodes.iter().map(|n| n.x - n.width / 2.0).fold(f64::INFINITY, f64::min);
-        let min_y = graph.nodes.iter().map(|n| n.y - n.height / 2.0).fold(f64::INFINITY, f64::min);
+        let min_x = graph
+            .nodes
+            .iter()
+            .map(|n| n.x)
+            .fold(f64::INFINITY, f64::min);
+        let min_y = graph
+            .nodes
+            .iter()
+            .map(|n| n.y)
+            .fold(f64::INFINITY, f64::min);
         let margin = 50.0;
         for node in &mut graph.nodes {
             node.x -= min_x - margin;
@@ -377,7 +427,7 @@ pub fn assign_coordinates(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use trellis_parser::{DiagramType, Edge, EdgeStyle, ArrowHead, Node, NodeShape};
+    use trellis_parser::{ArrowHead, DiagramType, Edge, EdgeStyle, Node, NodeShape};
 
     fn make_node(id: &str) -> Node {
         Node {
@@ -388,7 +438,7 @@ mod tests {
             height: 40.0,
             x: 0.0,
             y: 0.0,
-        }
+            ..Default::default()        }
     }
 
     fn make_edge(from: &str, to: &str) -> Edge {
@@ -398,7 +448,7 @@ mod tests {
             label: None,
             style: EdgeStyle::Solid,
             arrow_head: ArrowHead::Arrow,
-        }
+            ..Default::default()        }
     }
 
     fn make_graph(nodes: Vec<&str>, edges: Vec<(&str, &str)>) -> Graph {
@@ -417,7 +467,11 @@ mod tests {
     fn test_break_cycles_no_cycle() {
         let mut graph = make_graph(vec!["A", "B", "C"], vec![("A", "B"), ("B", "C")]);
         let node_ids: Vec<String> = graph.nodes.iter().map(|n| n.id.clone()).collect();
-        let node_index: HashMap<String, usize> = node_ids.iter().enumerate().map(|(i, id)| (id.clone(), i)).collect();
+        let node_index: HashMap<String, usize> = node_ids
+            .iter()
+            .enumerate()
+            .map(|(i, id)| (id.clone(), i))
+            .collect();
 
         let reversed = break_cycles(&node_ids, &node_index, &mut graph.edges);
         assert!(reversed.is_empty());
@@ -430,7 +484,11 @@ mod tests {
             vec![("A", "B"), ("B", "C"), ("C", "D"), ("D", "A")],
         );
         let node_ids: Vec<String> = graph.nodes.iter().map(|n| n.id.clone()).collect();
-        let node_index: HashMap<String, usize> = node_ids.iter().enumerate().map(|(i, id)| (id.clone(), i)).collect();
+        let node_index: HashMap<String, usize> = node_ids
+            .iter()
+            .enumerate()
+            .map(|(i, id)| (id.clone(), i))
+            .collect();
 
         let reversed = break_cycles(&node_ids, &node_index, &mut graph.edges);
         assert!(!reversed.is_empty(), "At least one edge should be reversed");
@@ -445,11 +503,16 @@ mod tests {
 
     #[test]
     fn test_assign_layers_linear() {
-        let graph = make_graph(vec!["A", "B", "C", "D", "E"], vec![
-            ("A", "B"), ("B", "C"), ("C", "D"), ("D", "E"),
-        ]);
+        let graph = make_graph(
+            vec!["A", "B", "C", "D", "E"],
+            vec![("A", "B"), ("B", "C"), ("C", "D"), ("D", "E")],
+        );
         let node_ids: Vec<String> = graph.nodes.iter().map(|n| n.id.clone()).collect();
-        let node_index: HashMap<String, usize> = node_ids.iter().enumerate().map(|(i, id)| (id.clone(), i)).collect();
+        let node_index: HashMap<String, usize> = node_ids
+            .iter()
+            .enumerate()
+            .map(|(i, id)| (id.clone(), i))
+            .collect();
 
         let layers = assign_layers(&node_ids, &node_index, &graph.edges);
 
@@ -462,11 +525,16 @@ mod tests {
 
     #[test]
     fn test_assign_layers_diamond() {
-        let graph = make_graph(vec!["A", "B", "C", "D"], vec![
-            ("A", "B"), ("A", "C"), ("B", "D"), ("C", "D"),
-        ]);
+        let graph = make_graph(
+            vec!["A", "B", "C", "D"],
+            vec![("A", "B"), ("A", "C"), ("B", "D"), ("C", "D")],
+        );
         let node_ids: Vec<String> = graph.nodes.iter().map(|n| n.id.clone()).collect();
-        let node_index: HashMap<String, usize> = node_ids.iter().enumerate().map(|(i, id)| (id.clone(), i)).collect();
+        let node_index: HashMap<String, usize> = node_ids
+            .iter()
+            .enumerate()
+            .map(|(i, id)| (id.clone(), i))
+            .collect();
 
         let layers = assign_layers(&node_ids, &node_index, &graph.edges);
 
@@ -480,10 +548,21 @@ mod tests {
     fn test_assign_layers_wide_branch() {
         let graph = make_graph(
             vec!["A", "B1", "B2", "B3", "B4", "B5", "B6"],
-            vec![("A", "B1"), ("A", "B2"), ("A", "B3"), ("A", "B4"), ("A", "B5"), ("A", "B6")],
+            vec![
+                ("A", "B1"),
+                ("A", "B2"),
+                ("A", "B3"),
+                ("A", "B4"),
+                ("A", "B5"),
+                ("A", "B6"),
+            ],
         );
         let node_ids: Vec<String> = graph.nodes.iter().map(|n| n.id.clone()).collect();
-        let node_index: HashMap<String, usize> = node_ids.iter().enumerate().map(|(i, id)| (id.clone(), i)).collect();
+        let node_index: HashMap<String, usize> = node_ids
+            .iter()
+            .enumerate()
+            .map(|(i, id)| (id.clone(), i))
+            .collect();
 
         let layers = assign_layers(&node_ids, &node_index, &graph.edges);
 
@@ -497,11 +576,16 @@ mod tests {
 
     #[test]
     fn test_order_within_layers_diamond() {
-        let graph = make_graph(vec!["A", "B", "C", "D"], vec![
-            ("A", "B"), ("A", "C"), ("B", "D"), ("C", "D"),
-        ]);
+        let graph = make_graph(
+            vec!["A", "B", "C", "D"],
+            vec![("A", "B"), ("A", "C"), ("B", "D"), ("C", "D")],
+        );
         let node_ids: Vec<String> = graph.nodes.iter().map(|n| n.id.clone()).collect();
-        let node_index: HashMap<String, usize> = node_ids.iter().enumerate().map(|(i, id)| (id.clone(), i)).collect();
+        let node_index: HashMap<String, usize> = node_ids
+            .iter()
+            .enumerate()
+            .map(|(i, id)| (id.clone(), i))
+            .collect();
 
         let layers = assign_layers(&node_ids, &node_index, &graph.edges);
         let positions = order_within_layers(&node_ids, &node_index, &graph.edges, &layers);
@@ -520,14 +604,22 @@ mod tests {
             vec![("A", "X"), ("B", "Y"), ("C", "Z")],
         );
         let node_ids: Vec<String> = graph.nodes.iter().map(|n| n.id.clone()).collect();
-        let node_index: HashMap<String, usize> = node_ids.iter().enumerate().map(|(i, id)| (id.clone(), i)).collect();
+        let node_index: HashMap<String, usize> = node_ids
+            .iter()
+            .enumerate()
+            .map(|(i, id)| (id.clone(), i))
+            .collect();
 
         let layers = assign_layers(&node_ids, &node_index, &graph.edges);
         let positions = order_within_layers(&node_ids, &node_index, &graph.edges, &layers);
 
         // Each node should have a defined position
         for id in &node_ids {
-            assert!(positions.contains_key(id), "Node {} should have a position", id);
+            assert!(
+                positions.contains_key(id),
+                "Node {} should have a position",
+                id
+            );
         }
     }
 
@@ -594,9 +686,10 @@ mod tests {
 
     #[test]
     fn test_layout_diamond_no_overlap() {
-        let mut graph = make_graph(vec!["A", "B", "C", "D"], vec![
-            ("A", "B"), ("A", "C"), ("B", "D"), ("C", "D"),
-        ]);
+        let mut graph = make_graph(
+            vec!["A", "B", "C", "D"],
+            vec![("A", "B"), ("A", "C"), ("B", "D"), ("C", "D")],
+        );
         layout(&mut graph);
 
         // B and C should be on the same layer but different x positions
@@ -606,12 +699,25 @@ mod tests {
         assert!(
             (b.y - c.y).abs() < 1.0,
             "B and C should be on the same layer (B.y={}, C.y={})",
-            b.y, c.y
+            b.y,
+            c.y
         );
         assert!(
             (b.x - c.x).abs() > 10.0,
             "B and C should not overlap (B.x={}, C.x={})",
-            b.x, c.x
+            b.x,
+            c.x
         );
+    }
+}
+
+/// Zero-configuration handle for the Sugiyama hierarchical layout algorithm.
+///
+/// Construct once and pass as `&dyn LayoutAlgorithm` or `Box<dyn LayoutAlgorithm>`.
+pub struct SugiyamaLayout;
+
+impl LayoutAlgorithm for SugiyamaLayout {
+    fn layout(&self, graph: &mut Graph) {
+        layout(graph);
     }
 }

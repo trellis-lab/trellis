@@ -1,0 +1,23 @@
+C4Container
+    title Container diagram for Internet Banking System
+
+    Person(customer, "Banking Customer Ddfgdf Ddgsgsg", "A customer of the bank sfd sd fsdf sd sdsd fsdd fsdf ds")
+    System_Ext(email_system, "E-Mail System", "Microsoft Exchange")
+    System_Ext(mainframe, "Mainframe Banking System", "IBM zSeries")
+
+    System_Boundary(sb, "Internet Banking System") {
+        Container(web_app, "Web Application", "Java/Spring MVC", "Delivers the static content")
+        Container(spa, "Single-Page Application", "JavaScript/Angular", "Provides the Internet banking functionality")
+        ContainerDb(db, "Database", "Oracle Database Schema", "Stores user registration, auth and access logs")
+        Container(api, "API Application", "Java/Spring MVC", "Provides Internet banking functionality via a JSON/HTTPS API")
+        ContainerQueue(mq, "Message Queue", "RabbitMQ", "Async messaging")
+    }
+
+    Rel(customer, web_app, "Visits", "HTTPS")
+    Rel(customer, spa, "Uses", "HTTPS")
+    Rel(web_app, spa, "Delivers", "HTTPS")
+    Rel(spa, api, "Makes API calls to", "JSON/HTTPS")
+    Rel(api, db, "Reads from and writes to", "JDBC")
+    Rel(api, mainframe, "Makes API calls to", "XML/HTTPS")
+    Rel(api, mq, "Sends messages to", "AMQP")
+    BiRel(mq, email_system, "Triggers e-mails via", "SMTP")

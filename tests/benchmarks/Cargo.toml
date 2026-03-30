@@ -1,0 +1,15 @@
+[package]
+name = "trellis-benchmarks"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[[bench]]
+name = "bench"
+harness = false
+path = "src/bench.rs"
+
+[dev-dependencies]
+criterion = { version = "0.5", features = ["html_reports"] }
+trellis-core = { path = "../../crates/trellis-core" }
+trellis-parser = { path = "../../crates/trellis-parser" }

@@ -1,0 +1,41 @@
+erDiagram
+    %% ── Identifying relationships (solid line: --) ──────────────────────
+
+    %% ExactlyOne (||) on both ends
+    EO_SOURCE ||--|| EO_TARGET : "exactly-one to exactly-one"
+
+    %% ExactlyOne source → ZeroOrOne target
+    EO_SRC2 ||--o| ZOO_TARGET : "exactly-one to zero-or-one"
+
+    %% ExactlyOne source → OneOrMore target
+    EO_SRC3 ||--|{ OOM_TARGET : "exactly-one to one-or-more"
+
+    %% ExactlyOne source → ZeroOrMore target
+    EO_SRC4 ||--o{ ZOM_TARGET : "exactly-one to zero-or-more"
+
+    %% ZeroOrOne (|o) source → all targets
+    ZOO_SRC |o--|| EO_TGT2 : "zero-or-one to exactly-one"
+    ZOO_SRC |o--o| ZOO_TGT2 : "zero-or-one to zero-or-one"
+    ZOO_SRC |o--|{ OOM_TGT2 : "zero-or-one to one-or-more"
+    ZOO_SRC |o--o{ ZOM_TGT2 : "zero-or-one to zero-or-more"
+
+    %% OneOrMore (}|) source → all targets
+    OOM_SRC }|--|| EO_TGT3 : "one-or-more to exactly-one"
+    OOM_SRC }|--o| ZOO_TGT3 : "one-or-more to zero-or-one"
+    OOM_SRC }|--|{ OOM_TGT3 : "one-or-more to one-or-more"
+    OOM_SRC }|--o{ ZOM_TGT3 : "one-or-more to zero-or-more"
+
+    %% ZeroOrMore (}o) source → all targets
+    ZOM_SRC }o--|| EO_TGT4 : "zero-or-more to exactly-one"
+    ZOM_SRC }o--o| ZOO_TGT4 : "zero-or-more to zero-or-one"
+    ZOM_SRC }o--|{ OOM_TGT4 : "zero-or-more to one-or-more"
+    ZOM_SRC }o--o{ ZOM_TGT4 : "zero-or-more to zero-or-more"
+
+    %% ── Non-identifying relationships (dashed line: ..) ─────────────────
+
+    NI_EO_SRC ||..|| NI_EO_TGT : "non-id: exactly-one to exactly-one"
+    NI_ZOO_SRC |o..o| NI_ZOO_TGT : "non-id: zero-or-one to zero-or-one"
+    NI_OOM_SRC }|..|{ NI_OOM_TGT : "non-id: one-or-more to one-or-more"
+    NI_ZOM_SRC }o..o{ NI_ZOM_TGT : "non-id: zero-or-more to zero-or-more"
+    NI_MIXED_SRC ||..o{ NI_MIXED_TGT : "non-id: exactly-one to zero-or-more"
+    NI_MIXED2_SRC }|..o| NI_MIXED2_TGT : "non-id: one-or-more to zero-or-one"

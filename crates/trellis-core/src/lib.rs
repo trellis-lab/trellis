@@ -1,5 +1,7 @@
 pub mod config;
+pub mod deadlock;
 pub mod grid;
+pub mod labels;
 pub mod pipeline;
 pub mod placement;
 pub mod ports;
@@ -31,7 +33,7 @@ mod tests {
     #[test]
     fn test_config_default() {
         let config = TrellisConfig::default();
-        assert_eq!(config.cell_size, 20.0);
+        assert_eq!(config.cell_size, 10);
         assert_eq!(config.decomposition_threshold, 50);
     }
 
@@ -53,9 +55,12 @@ mod tests {
         assert_eq!(m.edges, 4);
         assert!(m.grid_rows > 0, "grid should have rows");
         assert!(m.grid_cols > 0, "grid should have cols");
-        assert!(m.cell_size >= 5.0, "cell size should be at least 5");
+        assert!(m.cell_size >= 5, "cell size should be at least 5");
         assert_eq!(m.port_count, 8); // 4 edges * 2 ports each
-        assert!(m.grid_utilization > 0.0, "grid should have blocked cells from nodes");
+        assert!(
+            m.grid_utilization > 0.0,
+            "grid should have blocked cells from nodes"
+        );
     }
 
     #[test]
@@ -78,8 +83,11 @@ mod tests {
         assert!(m.grid_rows > 0);
         assert!(m.grid_cols > 0);
         assert_eq!(m.port_count, 18); // 9 edges * 2
-        // Dense graph should have larger grid
-        assert!(m.grid_rows * m.grid_cols > 20, "K3,3 should have a reasonably sized grid");
+                                      // Dense graph should have larger grid
+        assert!(
+            m.grid_rows * m.grid_cols > 20,
+            "K3,3 should have a reasonably sized grid"
+        );
     }
 
     #[test]
@@ -104,30 +112,98 @@ mod tests {
         assert_eq!(m.port_count, 12);
     }
 
+    // --- Edge label tests ---
+
+    #[test]
+    fn test_edge_labels_appear_in_svg() {
+        let graph = trellis_parser::parse("graph TB\n    A -->|Yes| B\n    A -->|No| C")
+            .expect("parse failed");
+        let mut config = TrellisConfig::default();
+        config.show_edge_labels = true;
+        let result = render(&graph, &config, OutputFormat::Svg).expect("render failed");
+        let svg = String::from_utf8(result.data).expect("invalid utf8");
+
+        assert!(svg.contains("Yes"), "SVG should contain label 'Yes'");
+        assert!(svg.contains("No"), "SVG should contain label 'No'");
+        assert!(
+            svg.contains("edge-labels"),
+            "SVG should have edge-labels group"
+        );
+    }
+
+    #[test]
+    fn test_edge_labels_no_labels_no_group() {
+        let graph =
+            trellis_parser::parse("graph TB\n    A --> B\n    B --> C").expect("parse failed");
+        let config = TrellisConfig::default();
+        let result = render(&graph, &config, OutputFormat::Svg).expect("render failed");
+        let svg = String::from_utf8(result.data).expect("invalid utf8");
+
+        assert!(
+            !svg.contains("edge-labels"),
+            "SVG should NOT have edge-labels group when no labels"
+        );
+    }
+
+    #[test]
+    fn test_edge_labels_inline_syntax() {
+        let graph = trellis_parser::parse("graph TB\n    A --text--> B").expect("parse failed");
+        let config = TrellisConfig::default();
+        let result = render(&graph, &config, OutputFormat::Svg).expect("render failed");
+        let svg = String::from_utf8(result.data).expect("invalid utf8");
+
+        assert!(
+            svg.contains("text"),
+            "SVG should contain inline label 'text'"
+        );
+    }
+
+    #[test]
+    fn test_edge_labels_collision_avoidance() {
+        // Two labeled edges between close nodes - labels should both be placed
+        let graph = trellis_parser::parse(
+            "graph TB\n    A -->|first| B\n    B -->|second| C\n    C -->|third| D",
+        )
+        .expect("parse failed");
+        let mut config = TrellisConfig::default();
+        config.show_edge_labels = true;
+        let result = render(&graph, &config, OutputFormat::Svg).expect("render failed");
+        let svg = String::from_utf8(result.data).expect("invalid utf8");
+
+        assert!(svg.contains("first"), "SVG should contain label 'first'");
+        assert!(svg.contains("second"), "SVG should contain label 'second'");
+        assert!(svg.contains("third"), "SVG should contain label 'third'");
+    }
+
     // --- Port symmetry tests ---
 
     #[test]
     fn test_port_positions_within_node_bounds() {
-        let graph = trellis_parser::parse("graph TB\n    A --> B\n    A --> C\n    B --> D\n    C --> D").unwrap();
+        let graph =
+            trellis_parser::parse("graph TB\n    A --> B\n    A --> C\n    B --> D\n    C --> D")
+                .unwrap();
         let mut graph = graph.clone();
-        placement::place_nodes(&mut graph);
-
-        let cell_size = grid::calculate_cell_size(&graph);
-        let extent = grid::calculate_grid_extent(&graph);
-        let port_assignments = ports::assign_ports(&graph, cell_size, extent.offset_x, extent.offset_y);
+        let config = config::TrellisConfig::default();
+        let cell_size = config.cell_size;
+        placement::place_nodes(&mut graph, cell_size);
+        let extent = grid::calculate_grid_extent(&graph, cell_size);
+        let port_assignments =
+            ports::assign_ports(&graph, cell_size, extent.offset_x, extent.offset_y);
 
         // All ports should be on the boundary of their respective nodes
         for node in &graph.nodes {
-            let left = node.x - node.width / 2.0;
-            let right = node.x + node.width / 2.0;
-            let top = node.y - node.height / 2.0;
-            let bottom = node.y + node.height / 2.0;
+            let left = node.x;
+            let right = node.x + node.width;
+            let top = node.y;
+            let bottom = node.y + node.height;
 
             for (_, ep) in &port_assignments {
                 // Check source ports
                 for port in [&ep.source_port, &ep.target_port] {
-                    let on_this_node = port.x >= left - 0.01 && port.x <= right + 0.01
-                        && port.y >= top - 0.01 && port.y <= bottom + 0.01;
+                    let on_this_node = port.x >= left - 0.01
+                        && port.x <= right + 0.01
+                        && port.y >= top - 0.01
+                        && port.y <= bottom + 0.01;
                     if on_this_node {
                         // Port should be on the edge of the node (not inside)
                         let on_edge = (port.x - left).abs() < 0.01

@@ -119,8 +119,30 @@ struct NodeRef {
     shape: Option<NodeShape>,
 }
 
+/// Maps a node shape specifier to a `NodeShape`.
+/// Each entry is `(open_delimiter, close_delimiter, shape)`.
+/// `parse_node_ref` sorts these by open-delimiter length (descending) at runtime,
+/// so the declaration order here does not matter.
+const NODE_SHAPES: &[(&str, &str, NodeShape)] = &[
+    ("(((", ")))", NodeShape::DoubleCircle),
+    ("((", "))", NodeShape::Circle),
+    ("([", "])", NodeShape::Stadium),
+    ("{{", "}}", NodeShape::Hexagon),
+    ("[[", "]]", NodeShape::Subroutine),
+    ("[(", ")]", NodeShape::Cylinder),
+    ("[/", "/]", NodeShape::Parallelogram),
+    ("[\\", "\\]", NodeShape::ParallelogramAlt),
+    ("[/", "\\]", NodeShape::Trapezoid),
+    ("[\\", "/]", NodeShape::TrapezoidAlt),
+    ("[", "]", NodeShape::Rectangle),
+    ("(", ")", NodeShape::RoundedRectangle),
+    ("{", "}", NodeShape::Diamond),
+    (">", "]", NodeShape::Asymmetric),
+    // TODO: Add custom shape string support - Future release
+];
+
 /// Parse a node reference: `ID`, `ID[label]`, `ID(label)`, `ID{label}`,
-/// `ID((label))`, `ID{{label}}`, or `ID>label]`
+/// `ID((label))`, or `ID{{label}}`
 fn parse_node_ref(input: &str) -> Option<(NodeRef, &str)> {
     let input = input.trim_start();
     if input.is_empty() {
@@ -139,82 +161,24 @@ fn parse_node_ref(input: &str) -> Option<(NodeRef, &str)> {
     let id = &input[..id_end];
     let rest = &input[id_end..];
 
-    // Try to parse shape/label (longer prefixes first to avoid ambiguity)
+    // Sort by open-delimiter length descending so that longer (more-specific)
+    // delimiters like "((" are always tried before shorter ones like "(".
+    let mut sorted_shapes = NODE_SHAPES.to_vec();
+    sorted_shapes.sort_by(|a, b| b.0.len().cmp(&a.0.len()));
 
-    // TODO: Make it more readable with for loop and preconfigured setup. E.g., { "((", "))", NodeShape::Circle }
-
-    // ((label)) → Circle
-    if let Some(line_content) = rest.strip_prefix("((") {
-        if let Some(close) = line_content.find("))") {
-            let label = strip_quotes(rest[2..2 + close].trim());
-            return Some((
-                NodeRef {
-                    id: id.to_string(),
-                    label: Some(label),
-                    shape: Some(NodeShape::Circle),
-                },
-                &rest[2 + close + 2..],
-            ));
-        }
-    }
-
-    // {{label}} → Hexagon
-    if let Some(line_content) = rest.strip_prefix("{{") {
-        if let Some(close) = line_content.find("}}") {
-            let label = strip_quotes(rest[2..2 + close].trim());
-            return Some((
-                NodeRef {
-                    id: id.to_string(),
-                    label: Some(label),
-                    shape: Some(NodeShape::Hexagon),
-                },
-                &rest[2 + close + 2..],
-            ));
-        }
-    }
-
-    // [label] → Rectangle
-    if let Some(line_content) = rest.strip_prefix("[") {
-        if let Some(close) = line_content.find(']') {
-            let label = strip_quotes(rest[1..1 + close].trim());
-            return Some((
-                NodeRef {
-                    id: id.to_string(),
-                    label: Some(label),
-                    shape: Some(NodeShape::Rectangle),
-                },
-                &rest[1 + close + 1..],
-            ));
-        }
-    }
-
-    // (label) → RoundedRectangle
-    if rest.starts_with('(') && !rest.starts_with("((") {
-        if let Some(close) = rest[1..].find(')') {
-            let label = strip_quotes(rest[1..1 + close].trim());
-            return Some((
-                NodeRef {
-                    id: id.to_string(),
-                    label: Some(label),
-                    shape: Some(NodeShape::RoundedRectangle),
-                },
-                &rest[1 + close + 1..],
-            ));
-        }
-    }
-
-    // {label} → Diamond
-    if rest.starts_with('{') && !rest.starts_with("{{") {
-        if let Some(close) = rest[1..].find('}') {
-            let label = strip_quotes(rest[1..1 + close].trim());
-            return Some((
-                NodeRef {
-                    id: id.to_string(),
-                    label: Some(label),
-                    shape: Some(NodeShape::Diamond),
-                },
-                &rest[1 + close + 1..],
-            ));
+    for (open, close, shape) in sorted_shapes {
+        if let Some(inner) = rest.strip_prefix(open) {
+            if let Some(close_pos) = inner.find(close) {
+                let label = strip_quotes(inner[..close_pos].trim());
+                return Some((
+                    NodeRef {
+                        id: id.to_string(),
+                        label: Some(label),
+                        shape: Some(shape),
+                    },
+                    &rest[open.len() + close_pos + close.len()..],
+                ));
+            }
         }
     }
 
@@ -511,12 +475,27 @@ fn parse_statement(
             label: arrow.label,
             style: arrow.style,
             arrow_head: arrow.arrow_head,
-        });
+            ..Default::default()        });
 
         prev_id = next_id;
     }
 
     Ok(())
+}
+
+/// Adjust raw text-based dimensions to match the actual rendered extent of a shape.
+///
+/// Shapes like Circle and DoubleCircle are rendered as circles whose radius is
+/// `max(w, h) / 2`, so the bounding box must be square or the circle will overflow
+/// and nodes will visually overlap despite correct grid spacing.
+fn shape_adjusted_size(shape: NodeShape, width: f64, height: f64) -> (f64, f64) {
+    match shape {
+        NodeShape::Circle | NodeShape::DoubleCircle => {
+            let size = width.max(height);
+            (size, size)
+        }
+        _ => (width, height),
+    }
 }
 
 /// Ensure a node exists in the graph. Creates it if new, updates shape/label
@@ -539,12 +518,22 @@ fn ensure_node(
         if let Some(shape) = node_ref.shape {
             graph.nodes[idx].shape = shape;
         }
+        // Re-apply shape constraints after any updates (shape may have changed
+        // independently of label, or label changed with an existing shape).
+        let (w, h) = shape_adjusted_size(
+            graph.nodes[idx].shape,
+            graph.nodes[idx].width,
+            graph.nodes[idx].height,
+        );
+        graph.nodes[idx].width = w;
+        graph.nodes[idx].height = h;
     } else {
         // New node
         let label = node_ref.label.clone().unwrap_or_else(|| id.clone());
-        let width = text_metrics::calculate_text_width(&label);
-        let height = text_metrics::calculate_text_height(&label);
         let shape = node_ref.shape.unwrap_or(NodeShape::Rectangle);
+        let raw_width = text_metrics::calculate_text_width(&label);
+        let raw_height = text_metrics::calculate_text_height(&label);
+        let (width, height) = shape_adjusted_size(shape, raw_width, raw_height);
 
         graph.nodes.push(Node {
             id: id.clone(),
@@ -554,7 +543,7 @@ fn ensure_node(
             height,
             x: 0.0,
             y: 0.0,
-        });
+            ..Default::default()        });
         node_map.insert(id.clone(), graph.nodes.len() - 1);
     }
 
@@ -632,6 +621,71 @@ mod tests {
         assert_eq!(node.id, "A");
         assert_eq!(node.label.as_deref(), Some("Hexagon"));
         assert_eq!(node.shape, Some(NodeShape::Hexagon));
+    }
+
+    #[test]
+    fn test_parse_node_ref_cylinder() {
+        let (node, rest) = parse_node_ref("A[(Database)] --> B").unwrap();
+        assert_eq!(node.id, "A");
+        assert_eq!(node.label.as_deref(), Some("Database"));
+        assert_eq!(node.shape, Some(NodeShape::Cylinder));
+        assert_eq!(rest, " --> B");
+    }
+
+    #[test]
+    fn test_parse_node_ref_stadium() {
+        let (node, _) = parse_node_ref("A([Stadium])").unwrap();
+        assert_eq!(node.shape, Some(NodeShape::Stadium));
+        assert_eq!(node.label.as_deref(), Some("Stadium"));
+    }
+
+    #[test]
+    fn test_parse_node_ref_subroutine() {
+        let (node, _) = parse_node_ref("A[[Sub]]").unwrap();
+        assert_eq!(node.shape, Some(NodeShape::Subroutine));
+        assert_eq!(node.label.as_deref(), Some("Sub"));
+    }
+
+    #[test]
+    fn test_parse_node_ref_asymmetric() {
+        let (node, _) = parse_node_ref("A>Flag]").unwrap();
+        assert_eq!(node.shape, Some(NodeShape::Asymmetric));
+        assert_eq!(node.label.as_deref(), Some("Flag"));
+    }
+
+    #[test]
+    fn test_parse_node_ref_double_circle() {
+        let (node, _) = parse_node_ref("A(((DC)))").unwrap();
+        assert_eq!(node.shape, Some(NodeShape::DoubleCircle));
+        assert_eq!(node.label.as_deref(), Some("DC"));
+    }
+
+    #[test]
+    fn test_parse_node_ref_parallelogram() {
+        let (node, _) = parse_node_ref("A[/Para/]").unwrap();
+        assert_eq!(node.shape, Some(NodeShape::Parallelogram));
+        assert_eq!(node.label.as_deref(), Some("Para"));
+    }
+
+    #[test]
+    fn test_parse_node_ref_parallelogram_alt() {
+        let (node, _) = parse_node_ref("A[\\Para\\]").unwrap();
+        assert_eq!(node.shape, Some(NodeShape::ParallelogramAlt));
+        assert_eq!(node.label.as_deref(), Some("Para"));
+    }
+
+    #[test]
+    fn test_parse_node_ref_trapezoid() {
+        let (node, _) = parse_node_ref("A[/Trap\\]").unwrap();
+        assert_eq!(node.shape, Some(NodeShape::Trapezoid));
+        assert_eq!(node.label.as_deref(), Some("Trap"));
+    }
+
+    #[test]
+    fn test_parse_node_ref_trapezoid_alt() {
+        let (node, _) = parse_node_ref("A[\\Trap/]").unwrap();
+        assert_eq!(node.shape, Some(NodeShape::TrapezoidAlt));
+        assert_eq!(node.label.as_deref(), Some("Trap"));
     }
 
     #[test]

@@ -1,0 +1,40 @@
+# docker/Dockerfile.intellij-builder
+#
+# Builds the Trellis IntelliJ plugin (.zip) from source.
+# Expects the WASM binary to already be present in
+# editors/intellij/src/main/resources/wasm/
+# (run scripts/build-wasm-docker.sh first).
+#
+# Build image (done automatically by scripts/build-intellij-docker.sh):
+#   docker build -f docker/Dockerfile.intellij-builder -t trellis-intellij-builder .
+#
+# Run (repo + Gradle cache mounted; output lands in dist/):
+#   docker run --rm \
+#     -v "$(pwd):/workspace" \
+#     -v "trellis-gradle-cache:/root/.gradle" \
+#     trellis-intellij-builder
+
+# Eclipse Temurin JDK 21 on Ubuntu Jammy – same JDK family IntelliJ ships with
+FROM eclipse-temurin:21-jdk-jammy
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        curl \
+        unzip \
+        git \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Gradle 8.5 so the entrypoint can generate gradlew if it is missing
+# from the repository (the wrapper is not committed to source control).
+ENV GRADLE_VERSION=8.5
+RUN curl -fsSL "https://services.gradle.org/distributions/gradle-${GRADLE_VERSION}-bin.zip" \
+        -o /tmp/gradle.zip \
+    && unzip -q /tmp/gradle.zip -d /opt \
+    && ln -s "/opt/gradle-${GRADLE_VERSION}/bin/gradle" /usr/local/bin/gradle \
+    && rm /tmp/gradle.zip
+
+COPY docker/intellij-entrypoint.sh /usr/local/bin/build-intellij
+RUN chmod +x /usr/local/bin/build-intellij
+
+WORKDIR /workspace/editors/intellij
+
+ENTRYPOINT ["/usr/local/bin/build-intellij"]

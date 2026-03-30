@@ -1,0 +1,25 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cargo test:*)",
+      "Bash(/tmp/check_parse_after_split.ps1:*)",
+      "Bash(/tmp/check_full_parse.ps1:*)",
+      "Bash(/tmp/check_fallback.ps1:*)",
+      "Bash(/tmp/fix_fallback.ps1:*)",
+      "Bash(/tmp/fix_both_directions.ps1:*)",
+      "Bash(grep:*)",
+      "Read(//c/Users/vzora/AppData/Local/Temp/**)",
+      "Bash(echo:*)",
+      "Bash(printf '/// Zero-configuration handle for the Sugiyama hierarchical layout algorithm.\\\\n///\\\\n/// Construct once and pass as `&dyn LayoutAlgorithm` or `Box<dyn LayoutAlgorithm>`.\\\\npub struct SugiyamaLayout;\\\\n\\\\nimpl LayoutAlgorithm for SugiyamaLayout {\\\\n    fn layout\\(&self, graph: &mut Graph\\) {\\\\n        layout\\(graph\\);\\\\n    }\\\\n}\\\\n')",
+      "Bash(printf '\\\\n/// Handle for the row-flow layout algorithm.\\\\n///\\\\n/// Places every node in the graph left-to-right in rows of `shapes_per_row`\\\\n/// elements, starting at the origin `\\(0, 0\\)`.\\\\n///\\\\n/// For sub-group row-flow \\(e.g. C4 boundary groups\\) call\\\\n/// [`place_in_rows`] / [`compute_row_heights`] directly instead.\\\\npub struct RowFlowLayout {\\\\n    pub shapes_per_row: usize,\\\\n}\\\\n\\\\nimpl LayoutAlgorithm for RowFlowLayout {\\\\n    fn layout\\(&self, graph: &mut Graph\\) {\\\\n        let indices: Vec<usize> = \\(0..graph.nodes.len\\(\\)\\).collect\\(\\);\\\\n        let row_heights = compute_row_heights\\(&graph.nodes, &indices, self.shapes_per_row\\);\\\\n        place_in_rows\\(graph, &indices, 0.0, 0.0, self.shapes_per_row, &row_heights\\);\\\\n    }\\\\n}\\\\n')",
+      "Read(//tmp/**)",
+      "Bash(for f in \"Cargo.toml\" \"Cargo.lock\" \"crates/trellis-parser/Cargo.toml\" \"crates/trellis-core/Cargo.toml\" \"crates/trellis-wasm/Cargo.toml\" \"crates/trellis-cli/Cargo.toml\" \"tests/benchmarks/Cargo.toml\" \"tests/integration/Cargo.toml\" \"crates/\" \"editors/vscode/package.json\" \"editors/vscode/src\" \"editors/vscode/tsconfig.json\" \"editors/vscode/media\" \"editors/vscode/.vscodeignore\")",
+      "Bash(do)",
+      "Bash([ -e \"$f\" ])",
+      "Bash(chmod +x \"c:/User/work/trellis-mermaid/trellis/scripts/build-intellij.sh\")"
+    ],
+    "additionalDirectories": [
+      "c:\\Users\\vzora\\.claude\\projects\\c--User-work-trellis-mermaid-trellis\\memory"
+    ]
+  }
+}

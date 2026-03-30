@@ -1,0 +1,53 @@
+<idea-plugin>
+    <id>com.trellis.plugin</id>
+    <name>Trellis Mermaid Preview</name>
+    <version>0.1.0</version>
+    <vendor url="https://github.com/trellis-mermaid/trellis">Trellis</vendor>
+
+    <description><![CDATA[
+        Live preview for Mermaid <code>.mmd</code> diagram files using the Trellis VLSI-routing renderer.
+        Opens a tool window that re-renders the diagram on every file save or editor switch.
+    ]]></description>
+
+    <!-- Requires only the platform module; works in all JetBrains IDEs -->
+    <depends>com.intellij.modules.platform</depends>
+
+    <extensions defaultExtensionNs="com.intellij">
+
+        <!-- Preview tool window (right side panel) -->
+        <toolWindow
+                id="Trellis Preview"
+                factoryClass="com.trellis.plugin.PreviewToolWindowFactory"
+                anchor="right"
+                canCloseContents="false"
+                secondary="false"/>
+
+        <!-- Project-level service: owns the JBCefBrowser for that project -->
+        <projectService serviceImplementation="com.trellis.plugin.PreviewPanel"/>
+
+        <!-- Application-level settings (auto-preview toggle, theme) -->
+        <applicationService serviceImplementation="com.trellis.plugin.TrellisSettings"/>
+
+        <!-- Listen to .mmd file saves at project scope -->
+        <postStartupActivity implementation="com.trellis.plugin.MmdFileListener"/>
+
+    </extensions>
+
+    <actions>
+        <action
+                id="Trellis.Export"
+                class="com.trellis.plugin.ExportAction"
+                text="Trellis: Export Diagram…"
+                description="Export the current diagram as PNG or SVG (Premium)">
+            <add-to-group group-id="ToolsMenu" anchor="last"/>
+        </action>
+    </actions>
+
+    <applicationListeners>
+        <!-- Pre-warm WASM resource extraction on IDE startup -->
+        <listener
+                class="com.trellis.plugin.TrellisPlugin"
+                topic="com.intellij.ide.AppLifecycleListener"/>
+    </applicationListeners>
+
+</idea-plugin>

@@ -7,6 +7,7 @@ pub mod priority;
 use std::collections::HashMap;
 
 use crate::config::TrellisConfig;
+use crate::deadlock;
 use crate::grid::Grid;
 use crate::ports::EdgePorts;
 use astar::{route_edge, GridPoint, RoutedPath};
@@ -20,29 +21,70 @@ use trellis_parser::Graph;
 pub struct RoutingResult {
     /// Routed paths indexed by edge index
     pub paths: HashMap<usize, RoutedPath>,
-    /// Total number of crossings detected
+    /// Total number of crossing points (grid cells shared by two distinct paths)
     pub crossings: usize,
     /// Total number of bends across all paths
     pub total_bends: usize,
     /// Number of edges that could not be routed
     pub failed_routes: usize,
+    /// Total length of all routed paths in grid steps
+    pub total_path_length: usize,
+    /// Sum of A* routing costs across all routed paths
+    pub total_routing_cost: f64,
+    /// Longest single routed path in grid steps
+    pub max_path_length: usize,
+    /// Largest bend count on any single routed path
+    pub max_bends_per_edge: usize,
+    /// Sum of source→target Manhattan distances for all routed edges
+    /// (denominator for the average detour factor)
+    pub sum_manhattan_distance: usize,
+    /// Number of edges that required the 3-level deadlock recovery handler
+    pub deadlock_recoveries: usize,
 }
 
 /// Route all edges in the graph using A* pathfinding.
 ///
 /// Edges are routed in priority order. Multi-edges are detected and
 /// routed with awareness of each other to prevent overlap.
+/// On failure, the 3-level deadlock handler is invoked.
 pub fn route_all_edges(
     graph: &Graph,
     grid: &mut Grid,
     port_assignments: &HashMap<usize, EdgePorts>,
     config: &TrellisConfig,
 ) -> RoutingResult {
+    route_all_edges_inner(graph, grid, port_assignments, config, true)
+}
+
+/// Route all edges WITHOUT deadlock handling.
+/// Used internally by grid expansion to avoid infinite recursion.
+pub(crate) fn route_all_edges_no_deadlock(
+    graph: &Graph,
+    grid: &mut Grid,
+    port_assignments: &HashMap<usize, EdgePorts>,
+    config: &TrellisConfig,
+) -> RoutingResult {
+    route_all_edges_inner(graph, grid, port_assignments, config, false)
+}
+
+fn route_all_edges_inner(
+    graph: &Graph,
+    grid: &mut Grid,
+    port_assignments: &HashMap<usize, EdgePorts>,
+    config: &TrellisConfig,
+    deadlock_enabled: bool,
+) -> RoutingResult {
     let mut result = RoutingResult {
         paths: HashMap::new(),
         crossings: 0,
         total_bends: 0,
         failed_routes: 0,
+        total_path_length: 0,
+        total_routing_cost: 0.0,
+        max_path_length: 0,
+        max_bends_per_edge: 0,
+        sum_manhattan_distance: 0,
+        deadlock_recoveries: 0,
     };
 
     if graph.edges.is_empty() {
@@ -79,31 +121,55 @@ pub fn route_all_edges(
                     }
 
                     route_single_edge(
+                        graph,
                         grid,
                         group_edge_idx,
                         port_assignments,
                         config,
                         &mut result,
+                        deadlock_enabled,
                     );
                     routed.insert(group_edge_idx, true);
                 }
             }
         } else {
-            route_single_edge(grid, edge_idx, port_assignments, config, &mut result);
+            route_single_edge(graph, grid, edge_idx, port_assignments, config, &mut result, deadlock_enabled);
             routed.insert(edge_idx, true);
         }
     }
 
+    // Post-routing: derive per-path stats from the final committed paths.
+    // Using the final result.paths (rather than incremental tracking) avoids
+    // double-counting during rip-up-and-reroute rollbacks.
+    for (&edge_idx, path) in &result.paths {
+        let path_len = path.points.len().saturating_sub(1);
+        result.max_path_length = result.max_path_length.max(path_len);
+        result.max_bends_per_edge = result.max_bends_per_edge.max(path.bend_count);
+
+        if let Some(ports) = port_assignments.get(&edge_idx) {
+            let manhattan = ((ports.source_port.grid_row - ports.target_port.grid_row).abs()
+                + (ports.source_port.grid_col - ports.target_port.grid_col).abs())
+                as usize;
+            result.sum_manhattan_distance += manhattan;
+        }
+    }
+
+    // Count crossing points from the committed grid state
+    result.crossings = grid.count_crossings();
+
     result
 }
 
-/// Route a single edge and commit the result to the grid
+/// Route a single edge and commit the result to the grid.
+/// If routing fails and `deadlock_enabled` is true, triggers the 3-level deadlock handler.
 fn route_single_edge(
+    graph: &Graph,
     grid: &mut Grid,
     edge_idx: usize,
     port_assignments: &HashMap<usize, EdgePorts>,
     config: &TrellisConfig,
     result: &mut RoutingResult,
+    deadlock_enabled: bool,
 ) {
     let ports = match port_assignments.get(&edge_idx) {
         Some(p) => p,
@@ -124,18 +190,43 @@ fn route_single_edge(
 
     // Temporarily mark source and target cells as free if they're blocked
     // (ports are on node boundaries, which may be blocked in the grid)
-    let source_state = save_and_free_cell(grid, source);
-    let target_state = save_and_free_cell(grid, target);
+    let source_state = save_and_free_cell(grid, source, &config.routing_costs);
+    let target_state = save_and_free_cell(grid, target, &config.routing_costs);
 
     match route_edge(grid, source, target, &config.routing_costs) {
         Some(path) => {
             result.total_bends += path.bend_count;
+            result.total_path_length += path.points.len().saturating_sub(1);
+            result.total_routing_cost += path.total_cost;
             let edge_id = format!("edge_{}", edge_idx);
-            commit_path(grid, &path.points, &edge_id);
+            commit_path(grid, &path.points, &edge_id, &config.routing_costs);
             result.paths.insert(edge_idx, path);
         }
         None => {
-            result.failed_routes += 1;
+            // Restore cells before deadlock handling (it manages its own cell states)
+            restore_cell(grid, source, source_state);
+            restore_cell(grid, target, target_state);
+
+            if deadlock_enabled {
+                // M7: 3-level deadlock handling
+                match deadlock::handle_deadlock(
+                    graph, grid, edge_idx, port_assignments, config, result,
+                ) {
+                    Some(path) => {
+                        result.deadlock_recoveries += 1;
+                        result.total_bends += path.bend_count;
+                        result.total_path_length += path.points.len().saturating_sub(1);
+                        result.total_routing_cost += path.total_cost;
+                        result.paths.insert(edge_idx, path);
+                    }
+                    None => {
+                        result.failed_routes += 1;
+                    }
+                }
+            } else {
+                result.failed_routes += 1;
+            }
+            return;
         }
     }
 
@@ -145,7 +236,7 @@ fn route_single_edge(
 }
 
 /// Save a cell's state and temporarily mark it as free for routing
-fn save_and_free_cell(grid: &mut Grid, point: GridPoint) -> Option<crate::grid::CellState> {
+fn save_and_free_cell(grid: &mut Grid, point: GridPoint, costs: &crate::config::RoutingCosts) -> Option<crate::grid::CellState> {
     if !grid.in_bounds(point.row, point.col) {
         return None;
     }
@@ -158,7 +249,7 @@ fn save_and_free_cell(grid: &mut Grid, point: GridPoint) -> Option<crate::grid::
         if original_state == crate::grid::CellState::Blocked {
             if let Some(cell) = grid.get_mut(row, col) {
                 cell.state = crate::grid::CellState::Free;
-                cell.cost = 1.0;
+                cell.cost = costs.base_cost;
             }
         }
         Some(original_state)
@@ -192,20 +283,19 @@ fn restore_cell(
 mod tests {
     use super::*;
     use crate::grid::build_grid;
-    use crate::grid::params::{calculate_cell_size, calculate_grid_extent};
+    use crate::grid::params::calculate_grid_extent;
     use crate::placement;
     use crate::ports::assign_ports;
 
     /// Helper: parse, place, build grid, assign ports, route, return result
     fn route_fixture(mermaid: &str) -> (RoutingResult, Grid) {
         let mut graph = trellis_parser::parse(mermaid).expect("parse failed");
-        placement::place_nodes(&mut graph);
-
-        let cell_size = calculate_cell_size(&graph);
-        let extent = calculate_grid_extent(&graph);
+        let config = TrellisConfig::default();
+        let cell_size = config.cell_size;
+        placement::place_nodes(&mut graph, cell_size);
+        let extent = calculate_grid_extent(&graph, cell_size);
         let mut grid = build_grid(&graph, cell_size, &extent);
         let port_assignments = assign_ports(&graph, cell_size, extent.offset_x, extent.offset_y);
-        let config = TrellisConfig::default();
 
         let result = route_all_edges(&graph, &mut grid, &port_assignments, &config);
         (result, grid)
