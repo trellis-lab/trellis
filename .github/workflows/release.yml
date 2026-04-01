@@ -55,7 +55,7 @@ jobs:
 
       - name: Build CLI
         shell: bash
-        run: ./scripts/build-cli.sh --ci --target ${{ matrix.target }}
+        run: bash ./scripts/build-cli.sh --ci --target ${{ matrix.target }}
 
       - name: Package (tar.gz)
         if: matrix.archive == 'tar.gz'
@@ -97,7 +97,7 @@ jobs:
         run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
 
       - name: Build WASM
-        run: ./scripts/build-wasm.sh --release
+        run: bash ./scripts/build-wasm.sh --release
 
       # ── VS Code Extension ──
       - uses: actions/setup-node@v4
