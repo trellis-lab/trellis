@@ -9,6 +9,7 @@ on:
 env:
   CARGO_TERM_COLOR: always
   RUST_BACKTRACE: 1
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   # ── Test & Lint ─────────────────────────────────────────────────────────────
@@ -219,7 +220,7 @@ jobs:
 
       - name: Build plugin
         working-directory: editors/intellij
-        run: ./gradlew build -x buildSearchableOptions
+        run: bash ./gradlew build -x buildSearchableOptions
 
       - name: Upload plugin ZIP
         uses: actions/upload-artifact@v4
