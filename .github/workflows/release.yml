@@ -128,7 +128,7 @@ jobs:
 
       - name: Build IntelliJ plugin
         working-directory: editors/intellij
-        run: bash ./gradlew build -x buildSearchableOptions
+        run: bash ./gradlew buildPlugin -x buildSearchableOptions
 
       - name: Upload IntelliJ plugin
         uses: actions/upload-artifact@v4

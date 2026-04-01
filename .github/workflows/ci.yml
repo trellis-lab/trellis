@@ -220,7 +220,7 @@ jobs:
 
       - name: Build plugin
         working-directory: editors/intellij
-        run: bash ./gradlew build -x buildSearchableOptions
+        run: bash ./gradlew buildPlugin -x buildSearchableOptions
 
       - name: Upload plugin ZIP
         uses: actions/upload-artifact@v4
