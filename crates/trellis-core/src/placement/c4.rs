@@ -95,8 +95,7 @@ pub fn place_c4_diagram(graph: &mut Graph) {
         // Top padding only — the label strip is at the bottom of the frame.
         current_y += BOUNDARY_PADDING;
 
-        let row_heights =
-            row_flow::compute_row_heights(&graph.nodes, &contained, shapes_per_row);
+        let row_heights = row_flow::compute_row_heights(&graph.nodes, &contained, shapes_per_row);
         current_y = row_flow::place_in_rows(
             graph,
             &contained,

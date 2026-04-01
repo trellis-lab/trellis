@@ -1,8 +1,7 @@
 use crate::{
     config::TrellisConfig,
     grid::{build_grid, calculate_grid_extent},
-    labels,
-    placement,
+    labels, placement,
     ports::assign_ports,
     routing,
     types::*,
@@ -24,7 +23,11 @@ fn elapsed_ms(_start: ()) -> u64 {
 /// Main rendering pipeline
 ///
 /// Runs the full pipeline: placement → grid → ports → routing → SVG/PNG.
-pub fn render(graph: &Graph, config: &TrellisConfig, format: OutputFormat) -> Result<RenderResult, RenderError> {
+pub fn render(
+    graph: &Graph,
+    config: &TrellisConfig,
+    format: OutputFormat,
+) -> Result<RenderResult, RenderError> {
     #[cfg(not(target_arch = "wasm32"))]
     let start = std::time::Instant::now();
     #[cfg(target_arch = "wasm32")]
@@ -123,7 +126,8 @@ pub fn render(graph: &Graph, config: &TrellisConfig, format: OutputFormat) -> Re
         #[cfg(not(feature = "png"))]
         OutputFormat::Png => {
             return Err(RenderError {
-                message: "PNG output is not supported in this build (compile with feature 'png')".to_string(),
+                message: "PNG output is not supported in this build (compile with feature 'png')"
+                    .to_string(),
             });
         }
     };
@@ -142,7 +146,10 @@ fn count_layers(graph: &Graph) -> usize {
     }
 
     // For TB/BT layouts, layers are distinguished by y; for LR/RL by x
-    let is_horizontal = matches!(graph.direction, trellis_parser::Direction::LR | trellis_parser::Direction::RL);
+    let is_horizontal = matches!(
+        graph.direction,
+        trellis_parser::Direction::LR | trellis_parser::Direction::RL
+    );
 
     let mut layer_values: Vec<i64> = graph
         .nodes

@@ -86,10 +86,7 @@ mod tests {
 
     #[test]
     fn test_snap_nodes_no_collision() {
-        let mut nodes = vec![
-            (100.0, 100.0, 60.0, 40.0),
-            (200.0, 200.0, 60.0, 40.0),
-        ];
+        let mut nodes = vec![(100.0, 100.0, 60.0, 40.0), (200.0, 200.0, 60.0, 40.0)];
         snap_nodes_to_grid(&mut nodes, 20.0);
 
         // Should snap to nearest grid points

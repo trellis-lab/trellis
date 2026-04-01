@@ -66,7 +66,7 @@ pub fn is_multi_edge(edge_index: usize, multi_groups: &[MultiEdgeGroup]) -> bool
 #[cfg(test)]
 mod tests {
     use super::*;
-    use trellis_parser::{Edge, EdgeStyle, ArrowHead};
+    use trellis_parser::{ArrowHead, Edge, EdgeStyle};
 
     fn make_edge(from: &str, to: &str) -> Edge {
         Edge {
@@ -75,7 +75,8 @@ mod tests {
             label: None,
             style: EdgeStyle::Solid,
             arrow_head: ArrowHead::Arrow,
-            ..Default::default()        }
+            ..Default::default()
+        }
     }
 
     #[test]

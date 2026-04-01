@@ -185,7 +185,8 @@ fn place_subgraph_recursive(
                 height: bbox.height,
                 x: 0.0,
                 y: 0.0,
-            ..Default::default()            });
+                ..Default::default()
+            });
         }
     }
 
@@ -468,7 +469,8 @@ pub fn resolve_subgraph_edges(graph: &mut Graph, subgraph_boxes: &HashMap<String
                         height: bbox.height,
                         x: bbox.x,
                         y: bbox.y,
-            ..Default::default()                    });
+                        ..Default::default()
+                    });
                     virtual_nodes_added.insert(virtual_id.clone());
                 }
             }
@@ -487,7 +489,8 @@ pub fn resolve_subgraph_edges(graph: &mut Graph, subgraph_boxes: &HashMap<String
                         height: bbox.height,
                         x: bbox.x,
                         y: bbox.y,
-            ..Default::default()                    });
+                        ..Default::default()
+                    });
                     virtual_nodes_added.insert(virtual_id.clone());
                 }
             }

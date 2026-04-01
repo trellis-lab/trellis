@@ -194,7 +194,10 @@ fn parse_format(format: &str) -> Result<trellis_core::OutputFormat, AppError> {
     match format {
         "svg" => Ok(trellis_core::OutputFormat::Svg),
         "png" => Ok(trellis_core::OutputFormat::Png),
-        other => Err(AppError::Render(format!("unsupported format '{}' (use svg or png)", other))),
+        other => Err(AppError::Render(format!(
+            "unsupported format '{}' (use svg or png)",
+            other
+        ))),
     }
 }
 
@@ -217,8 +220,7 @@ fn cmd_render(
 ) -> Result<(), AppError> {
     let content = read_input(input)?;
 
-    let graph = trellis_parser::parse(&content)
-        .map_err(|e| AppError::Parse(e.to_string()))?;
+    let graph = trellis_parser::parse(&content).map_err(|e| AppError::Parse(e.to_string()))?;
 
     let output_format = parse_format(format)?;
 
@@ -247,8 +249,9 @@ fn cmd_render_batch(
     format: &str,
     config: &TrellisConfig,
 ) -> Result<(), AppError> {
-    fs::create_dir_all(output_dir)
-        .map_err(|e| AppError::Render(format!("cannot create output dir {:?}: {}", output_dir, e)))?;
+    fs::create_dir_all(output_dir).map_err(|e| {
+        AppError::Render(format!("cannot create output dir {:?}: {}", output_dir, e))
+    })?;
 
     let output_format = parse_format(format)?;
     let ext = format;
@@ -312,8 +315,7 @@ fn cmd_render_batch(
 fn cmd_validate(input: &PathBuf) -> Result<(), AppError> {
     let content = read_input(input)?;
 
-    let graph = trellis_parser::parse(&content)
-        .map_err(|e| AppError::Parse(e.to_string()))?;
+    let graph = trellis_parser::parse(&content).map_err(|e| AppError::Parse(e.to_string()))?;
 
     let subgraph_count = count_subgraphs(&graph.subgraphs);
     if subgraph_count > 0 {
@@ -362,7 +364,10 @@ fn cmd_preprocess(
             let trimmed = line.trim_start();
             if (trimmed.starts_with("```mermaid") || trimmed.starts_with("~~~mermaid"))
                 && (trimmed.len() == "```mermaid".len()
-                    || trimmed.chars().nth("```mermaid".len()).is_none_or(|c| c.is_whitespace()))
+                    || trimmed
+                        .chars()
+                        .nth("```mermaid".len())
+                        .is_none_or(|c| c.is_whitespace()))
             {
                 fence_char = trimmed.chars().next().unwrap_or('`');
                 in_mermaid = true;

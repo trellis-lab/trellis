@@ -335,7 +335,8 @@ mod tests {
             height: 30.0,
             x,
             y,
-            ..Default::default()        }
+            ..Default::default()
+        }
     }
 
     #[test]

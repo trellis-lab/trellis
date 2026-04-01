@@ -1,7 +1,5 @@
 use crate::labels::collision::collides;
-use crate::labels::placement::{
-    BoundingBox, LabelPlacement, LabelSide, Segment, SegmentDirection,
-};
+use crate::labels::placement::{BoundingBox, LabelPlacement, LabelSide, Segment, SegmentDirection};
 use trellis_parser::Node;
 
 /// Padding around label text in pixels.
@@ -70,7 +68,11 @@ pub fn slide_label_along_segment(
         // Alternate: +STEP, -STEP, +2*STEP, -2*STEP, ...
         step_count += 1;
         let abs_offset = (step_count as f64 / 2.0).ceil() * STEP;
-        let step_sign: f64 = if step_count.is_multiple_of(2) { 1.0 } else { -1.0 };
+        let step_sign: f64 = if step_count.is_multiple_of(2) {
+            1.0
+        } else {
+            -1.0
+        };
         offset = abs_offset * step_sign;
     }
 
@@ -133,15 +135,7 @@ mod tests {
         };
         let mut placed = Vec::new();
 
-        let result = slide_label_along_segment(
-            &segment,
-            "Test",
-            28.0,
-            14.0,
-            &[],
-            &[],
-            &mut placed,
-        );
+        let result = slide_label_along_segment(&segment, "Test", 28.0, 14.0, &[], &[], &mut placed);
 
         // Should have placed a label and added to placed_bboxes
         assert_eq!(placed.len(), 1);
@@ -159,22 +153,14 @@ mod tests {
 
         // Place a label at the midpoint above
         let blocking = BoundingBox {
-            x: 86.0,   // roughly centered at 100
-            y: 28.0,   // above the segment
+            x: 86.0, // roughly centered at 100
+            y: 28.0, // above the segment
             width: 36.0,
             height: 22.0,
         };
         let mut placed = vec![blocking];
 
-        let result = slide_label_along_segment(
-            &segment,
-            "Test",
-            28.0,
-            14.0,
-            &[],
-            &[],
-            &mut placed,
-        );
+        let result = slide_label_along_segment(&segment, "Test", 28.0, 14.0, &[], &[], &mut placed);
 
         // Should have found a different position
         assert_eq!(placed.len(), 2);

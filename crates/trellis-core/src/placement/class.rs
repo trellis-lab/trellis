@@ -68,8 +68,11 @@ pub fn place_class_diagram(graph: &mut Graph) {
         .iter()
         .map(|n| (n.id.clone(), (n.x + n.width / 2.0, n.y + n.height / 2.0)))
         .collect();
-    let sizes: HashMap<String, (f64, f64)> =
-        graph.nodes.iter().map(|n| (n.id.clone(), (n.width, n.height))).collect();
+    let sizes: HashMap<String, (f64, f64)> = graph
+        .nodes
+        .iter()
+        .map(|n| (n.id.clone(), (n.width, n.height)))
+        .collect();
 
     let all_node_ids: Vec<String> = graph.nodes.iter().map(|n| n.id.clone()).collect();
 
@@ -81,9 +84,7 @@ pub fn place_class_diagram(graph: &mut Graph) {
             if placed.contains(node_id) {
                 continue;
             }
-            if let Some(best) =
-                find_most_connected_placed_neighbour(node_id, &adj, &placed)
-            {
+            if let Some(best) = find_most_connected_placed_neighbour(node_id, &adj, &placed) {
                 let (bx, by) = coords[&best];
                 let (bw, _bh) = sizes[&best];
                 let (my_w, my_h) = sizes[node_id];
@@ -109,7 +110,11 @@ pub fn place_class_diagram(graph: &mut Graph) {
 
     // Place any remaining completely-disconnected nodes in a row below everything
     let max_y = coords.values().map(|(_, y)| *y).fold(0.0_f64, f64::max);
-    let base_y = if placed.is_empty() { 0.0 } else { max_y + LAYER_SPACING };
+    let base_y = if placed.is_empty() {
+        0.0
+    } else {
+        max_y + LAYER_SPACING
+    };
     let mut x_cursor = 0.0_f64;
 
     for node_id in &all_node_ids {
@@ -118,14 +123,8 @@ pub fn place_class_diagram(graph: &mut Graph) {
             let candidate_x = x_cursor + my_w / 2.0;
             let candidate_y = base_y + my_h / 2.0;
 
-            let pos = overlap::find_free_position(
-                candidate_x,
-                candidate_y,
-                my_w,
-                my_h,
-                &coords,
-                &sizes,
-            );
+            let pos =
+                overlap::find_free_position(candidate_x, candidate_y, my_w, my_h, &coords, &sizes);
             coords.insert(node_id.clone(), pos);
             placed.insert(node_id.clone());
             x_cursor = pos.0 + my_w / 2.0 + NODE_SPACING;

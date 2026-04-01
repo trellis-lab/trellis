@@ -350,16 +350,14 @@ fn size_c4_node(
         let head_space = width / 2.0 - 10.0;
 
         // Caption (15 px bold) — use the caption-specific char width.
-        let caption_cpl =
-            ((width - PADDING_X * 2.0) / RENDER_CHAR_WIDTH_CAPTION).max(5.0) as usize;
+        let caption_cpl = ((width - PADDING_X * 2.0) / RENDER_CHAR_WIDTH_CAPTION).max(5.0) as usize;
         // PERSON_BASE_BOX_H already reserves one caption line; each extra line
         // adds PERSON_RENDERER_LH (14 px).
         let caption_lines = word_wrap_line_count(label, caption_cpl).min(PERSON_MAX_LINES);
         let caption_extra = caption_lines.saturating_sub(1) as f64 * PERSON_RENDERER_LH;
 
         // Description (13 px) — use the label char width.
-        let desc_cpl =
-            ((width - PADDING_X * 2.0) / RENDER_CHAR_WIDTH_LABEL).max(5.0) as usize;
+        let desc_cpl = ((width - PADDING_X * 2.0) / RENDER_CHAR_WIDTH_LABEL).max(5.0) as usize;
         // Description word-wrap (4 px type→desc gap + lines × 14 px).
         let desc_extra = if let Some(desc) = description {
             let desc_lines = word_wrap_line_count(desc, desc_cpl).min(PERSON_MAX_LINES);

@@ -133,7 +133,7 @@ pub enum ArrowHead {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub enum ClassVisibility {
     #[default]
-    Public,    // +
+    Public, // +
     Private,   // -
     Protected, // #
     Package,   // ~
@@ -163,14 +163,14 @@ pub struct ClassMethod {
 /// Type of class diagram relationship
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub enum ClassEdgeType {
-    Inheritance,  // <|-- or --|>
-    Composition,  // *-- or --*
-    Aggregation,  // o-- or --o
+    Inheritance, // <|-- or --|>
+    Composition, // *-- or --*
+    Aggregation, // o-- or --o
     #[default]
-    Association,  // --> or <-- or --
-    Realization,  // <|.. or ..|>
-    Dependency,   // ..> or <..
-    Link,         // ..
+    Association, // --> or <-- or --
+    Realization, // <|.. or ..|>
+    Dependency,  // ..> or <..
+    Link,        // ..
 }
 
 // ── ER diagram types ──────────────────────────────────────────────────
@@ -195,10 +195,10 @@ pub struct ErAttribute {
 /// Cardinality notation for ER diagram relationships (crow's foot)
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ErCardinality {
-    ExactlyOne,  // ||
-    ZeroOrOne,   // |o or o|
-    OneOrMore,   // }| or |{
-    ZeroOrMore,  // }o or o{
+    ExactlyOne, // ||
+    ZeroOrOne,  // |o or o|
+    OneOrMore,  // }| or |{
+    ZeroOrMore, // }o or o{
 }
 
 // ── C4 diagram types ──────────────────────────────────────────────────

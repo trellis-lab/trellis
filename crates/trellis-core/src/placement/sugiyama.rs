@@ -438,7 +438,8 @@ mod tests {
             height: 40.0,
             x: 0.0,
             y: 0.0,
-            ..Default::default()        }
+            ..Default::default()
+        }
     }
 
     fn make_edge(from: &str, to: &str) -> Edge {
@@ -448,7 +449,8 @@ mod tests {
             label: None,
             style: EdgeStyle::Solid,
             arrow_head: ArrowHead::Arrow,
-            ..Default::default()        }
+            ..Default::default()
+        }
     }
 
     fn make_graph(nodes: Vec<&str>, edges: Vec<(&str, &str)>) -> Graph {

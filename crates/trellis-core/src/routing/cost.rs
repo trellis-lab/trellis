@@ -126,12 +126,7 @@ fn adjacent_penalty(grid: &Grid, row: usize, col: usize, costs: &RoutingCosts) -
 }
 
 /// Manhattan distance heuristic for A*
-pub fn manhattan_distance(
-    from_row: i64,
-    from_col: i64,
-    to_row: i64,
-    to_col: i64,
-) -> f64 {
+pub fn manhattan_distance(from_row: i64, from_col: i64, to_row: i64, to_col: i64) -> f64 {
     ((from_row - to_row).abs() + (from_col - to_col).abs()) as f64
 }
 
@@ -155,8 +150,11 @@ mod tests {
     fn test_movement_cost_bend() {
         let grid = Grid::new(10, 10, 10, 0, 0);
         let cost = movement_cost(
-            &grid, 5, 5,
-            Some(Direction::Right), Direction::Down,
+            &grid,
+            5,
+            5,
+            Some(Direction::Right),
+            Direction::Down,
             &default_costs(),
         );
         assert!((cost - 3.0).abs() < 0.01); // base + bend

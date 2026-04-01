@@ -37,7 +37,10 @@ pub fn render_er_node(node: &Node) -> String {
     svg.push_str(&format!(
         "<line x1=\"{:.1}\" y1=\"{:.1}\" x2=\"{:.1}\" y2=\"{:.1}\" \
          stroke=\"#336699\" stroke-width=\"1\"/>\n",
-        x, sep_y, x + w, sep_y
+        x,
+        sep_y,
+        x + w,
+        sep_y
     ));
 
     // Entity name — bold, centered
@@ -205,12 +208,7 @@ pub fn er_edge_markers(edge: &trellis_parser::Edge) -> (String, String) {
 
     let tgt = edge
         .er_target_card
-        .map(|c| {
-            format!(
-                " marker-end=\"url(#er-{}-end)\"",
-                cardinality_marker_id(c)
-            )
-        })
+        .map(|c| format!(" marker-end=\"url(#er-{}-end)\"", cardinality_marker_id(c)))
         .unwrap_or_default();
 
     (src, tgt)

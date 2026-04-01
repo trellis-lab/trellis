@@ -2,23 +2,55 @@ use serde::{Deserialize, Serialize};
 
 // ─── per-field default functions ──────────────────────────────────────────────
 
-fn default_cell_size() -> i32 { 10 }
-fn default_density_factor() -> f64 { 1.5 }
-fn default_safety_multiplier() -> f64 { 1.2 }
-fn default_corner_radius() -> f64 { 8.0 }
-fn default_render_crossings() -> bool { false }
-fn default_show_grid() -> bool { true }
-fn default_show_edge_labels() -> bool { false }
-fn default_decomposition() -> DecompositionMode { DecompositionMode::None }
-fn default_decomposition_threshold() -> usize { 50 }
-fn default_routing_costs() -> RoutingCosts { RoutingCosts::default() }
+fn default_cell_size() -> i32 {
+    10
+}
+fn default_density_factor() -> f64 {
+    1.5
+}
+fn default_safety_multiplier() -> f64 {
+    1.2
+}
+fn default_corner_radius() -> f64 {
+    8.0
+}
+fn default_render_crossings() -> bool {
+    false
+}
+fn default_show_grid() -> bool {
+    true
+}
+fn default_show_edge_labels() -> bool {
+    false
+}
+fn default_decomposition() -> DecompositionMode {
+    DecompositionMode::None
+}
+fn default_decomposition_threshold() -> usize {
+    50
+}
+fn default_routing_costs() -> RoutingCosts {
+    RoutingCosts::default()
+}
 
-fn default_base_cost() -> f64 { 1.0 }
-fn default_bend_cost() -> f64 { 2.0 }
-fn default_adjacent_cost() -> f64 { 0.5 }
-fn default_crossing_cost() -> f64 { 10.0 }
-fn default_blocked_cost() -> f64 { 1000.0 }
-fn default_perpendicular_cost() -> f64 { 6.0 }
+fn default_base_cost() -> f64 {
+    1.0
+}
+fn default_bend_cost() -> f64 {
+    2.0
+}
+fn default_adjacent_cost() -> f64 {
+    0.5
+}
+fn default_crossing_cost() -> f64 {
+    10.0
+}
+fn default_blocked_cost() -> f64 {
+    1000.0
+}
+fn default_perpendicular_cost() -> f64 {
+    6.0
+}
 
 // ─── config structs ───────────────────────────────────────────────────────────
 

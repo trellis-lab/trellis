@@ -55,12 +55,9 @@ pub fn handle_deadlock(
     }
 
     // Level 3: Crossing fallback
-    if let Some(path) = fallback::route_with_crossings_allowed(
-        grid,
-        failed_edge_idx,
-        port_assignments,
-        config,
-    ) {
+    if let Some(path) =
+        fallback::route_with_crossings_allowed(grid, failed_edge_idx, port_assignments, config)
+    {
         return Some(path);
     }
 

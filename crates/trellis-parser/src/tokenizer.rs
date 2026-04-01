@@ -61,8 +61,10 @@ fn classify_line(trimmed: &str) -> TokenType {
     let lower = trimmed.to_lowercase();
 
     // Flowchart directives
-    if lower.starts_with("graph ") || lower.starts_with("flowchart ")
-        || lower == "graph" || lower == "flowchart"
+    if lower.starts_with("graph ")
+        || lower.starts_with("flowchart ")
+        || lower == "graph"
+        || lower == "flowchart"
     {
         return TokenType::Directive;
     }
@@ -182,9 +184,15 @@ mod tests {
     #[test]
     fn test_detect_diagram_type() {
         let flowchart_tokens = tokenize("graph TB\n    A --> B\n");
-        assert_eq!(detect_diagram_type(&flowchart_tokens), DiagramType::Flowchart);
+        assert_eq!(
+            detect_diagram_type(&flowchart_tokens),
+            DiagramType::Flowchart
+        );
 
         let flowchart_tokens2 = tokenize("flowchart LR\n    A --> B\n");
-        assert_eq!(detect_diagram_type(&flowchart_tokens2), DiagramType::Flowchart);
+        assert_eq!(
+            detect_diagram_type(&flowchart_tokens2),
+            DiagramType::Flowchart
+        );
     }
 }

@@ -475,7 +475,8 @@ fn parse_statement(
             label: arrow.label,
             style: arrow.style,
             arrow_head: arrow.arrow_head,
-            ..Default::default()        });
+            ..Default::default()
+        });
 
         prev_id = next_id;
     }
@@ -543,7 +544,8 @@ fn ensure_node(
             height,
             x: 0.0,
             y: 0.0,
-            ..Default::default()        });
+            ..Default::default()
+        });
         node_map.insert(id.clone(), graph.nodes.len() - 1);
     }
 

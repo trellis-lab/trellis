@@ -133,7 +133,15 @@ fn route_all_edges_inner(
                 }
             }
         } else {
-            route_single_edge(graph, grid, edge_idx, port_assignments, config, &mut result, deadlock_enabled);
+            route_single_edge(
+                graph,
+                grid,
+                edge_idx,
+                port_assignments,
+                config,
+                &mut result,
+                deadlock_enabled,
+            );
             routed.insert(edge_idx, true);
         }
     }
@@ -210,7 +218,12 @@ fn route_single_edge(
             if deadlock_enabled {
                 // M7: 3-level deadlock handling
                 match deadlock::handle_deadlock(
-                    graph, grid, edge_idx, port_assignments, config, result,
+                    graph,
+                    grid,
+                    edge_idx,
+                    port_assignments,
+                    config,
+                    result,
                 ) {
                     Some(path) => {
                         result.deadlock_recoveries += 1;
@@ -236,7 +249,11 @@ fn route_single_edge(
 }
 
 /// Save a cell's state and temporarily mark it as free for routing
-fn save_and_free_cell(grid: &mut Grid, point: GridPoint, costs: &crate::config::RoutingCosts) -> Option<crate::grid::CellState> {
+fn save_and_free_cell(
+    grid: &mut Grid,
+    point: GridPoint,
+    costs: &crate::config::RoutingCosts,
+) -> Option<crate::grid::CellState> {
     if !grid.in_bounds(point.row, point.col) {
         return None;
     }
@@ -259,15 +276,9 @@ fn save_and_free_cell(grid: &mut Grid, point: GridPoint, costs: &crate::config::
 }
 
 /// Restore a cell's original state after routing
-fn restore_cell(
-    grid: &mut Grid,
-    point: GridPoint,
-    original_state: Option<crate::grid::CellState>,
-) {
+fn restore_cell(grid: &mut Grid, point: GridPoint, original_state: Option<crate::grid::CellState>) {
     if let Some(state) = original_state {
-        if state == crate::grid::CellState::Blocked
-            && grid.in_bounds(point.row, point.col)
-        {
+        if state == crate::grid::CellState::Blocked && grid.in_bounds(point.row, point.col) {
             if let Some(cell) = grid.get_mut(point.row as usize, point.col as usize) {
                 // Don't restore to blocked if we committed a path through it
                 if cell.state != crate::grid::CellState::Occupied {
@@ -303,9 +314,8 @@ mod tests {
 
     #[test]
     fn test_b01_linear_chain_all_edges_routed() {
-        let (result, _grid) = route_fixture(
-            "graph TB\n    A --> B\n    B --> C\n    C --> D\n    D --> E",
-        );
+        let (result, _grid) =
+            route_fixture("graph TB\n    A --> B\n    B --> C\n    C --> D\n    D --> E");
 
         assert_eq!(result.paths.len(), 4, "All 4 edges should be routed");
         assert_eq!(result.failed_routes, 0, "No edges should fail");
@@ -313,9 +323,8 @@ mod tests {
 
     #[test]
     fn test_b01_paths_are_orthogonal() {
-        let (result, _grid) = route_fixture(
-            "graph TB\n    A --> B\n    B --> C\n    C --> D\n    D --> E",
-        );
+        let (result, _grid) =
+            route_fixture("graph TB\n    A --> B\n    B --> C\n    C --> D\n    D --> E");
 
         for (_, path) in &result.paths {
             for i in 1..path.points.len() {
@@ -327,7 +336,10 @@ mod tests {
                 assert!(
                     (dr == 1 && dc == 0) || (dr == 0 && dc == 1),
                     "Path segment ({},{}) -> ({},{}) is not orthogonal",
-                    prev.row, prev.col, curr.row, curr.col
+                    prev.row,
+                    prev.col,
+                    curr.row,
+                    curr.col
                 );
             }
         }
@@ -335,15 +347,19 @@ mod tests {
 
     #[test]
     fn test_b01_no_path_overlap() {
-        let (result, _grid) = route_fixture(
-            "graph TB\n    A --> B\n    B --> C\n    C --> D\n    D --> E",
-        );
+        let (result, _grid) =
+            route_fixture("graph TB\n    A --> B\n    B --> C\n    C --> D\n    D --> E");
 
         // Collect all points from all paths (excluding start/end which may share ports)
         let mut all_points: Vec<(i64, i64)> = Vec::new();
         for (_, path) in &result.paths {
             // Skip first and last points (ports can be shared)
-            for point in path.points.iter().skip(1).take(path.points.len().saturating_sub(2)) {
+            for point in path
+                .points
+                .iter()
+                .skip(1)
+                .take(path.points.len().saturating_sub(2))
+            {
                 let key = (point.row, point.col);
                 assert!(
                     !all_points.contains(&key),
@@ -375,10 +391,8 @@ mod tests {
 
     #[test]
     fn test_b06_multi_edge_detection() {
-        let graph = trellis_parser::parse(
-            "graph TB\n    A --> B\n    A --> B\n    B --> C",
-        )
-        .unwrap();
+        let graph =
+            trellis_parser::parse("graph TB\n    A --> B\n    A --> B\n    B --> C").unwrap();
 
         let groups = multi_edge::detect_multi_edges(&graph);
         assert_eq!(groups.len(), 1, "Should detect 1 multi-edge group");
@@ -387,9 +401,8 @@ mod tests {
 
     #[test]
     fn test_b04_diamond_routed() {
-        let (result, _grid) = route_fixture(
-            "graph TB\n    A --> B\n    A --> C\n    B --> D\n    C --> D",
-        );
+        let (result, _grid) =
+            route_fixture("graph TB\n    A --> B\n    A --> C\n    B --> D\n    C --> D");
 
         assert_eq!(result.paths.len(), 4, "All diamond edges should be routed");
         assert_eq!(result.failed_routes, 0);

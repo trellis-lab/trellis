@@ -140,20 +140,24 @@ fn enumerate_connectors(
 ///
 /// For each node, edges are grouped by side (based on the angle to the connected node),
 /// overflow is handled, edges are sorted within each side, and connector positions are assigned.
-pub fn assign_ports(graph: &Graph, cell_size: i32, offset_x: i32, offset_y: i32) -> HashMap<usize, EdgePorts> {
+pub fn assign_ports(
+    graph: &Graph,
+    cell_size: i32,
+    offset_x: i32,
+    offset_y: i32,
+) -> HashMap<usize, EdgePorts> {
     let mut port_assignments: HashMap<usize, EdgePorts> = HashMap::new();
 
     // Build a node lookup by id
-    let node_map: HashMap<&str, &Node> = graph
-        .nodes
-        .iter()
-        .map(|n| (n.id.as_str(), n))
-        .collect();
+    let node_map: HashMap<&str, &Node> = graph.nodes.iter().map(|n| (n.id.as_str(), n)).collect();
 
     // Group edges by node
     let mut node_edges: HashMap<&str, Vec<NodeEdgeInfo>> = HashMap::new();
     for (edge_idx, edge) in graph.edges.iter().enumerate() {
-        if let (Some(source), Some(target)) = (node_map.get(edge.from.as_str()), node_map.get(edge.to.as_str())) {
+        if let (Some(source), Some(target)) = (
+            node_map.get(edge.from.as_str()),
+            node_map.get(edge.to.as_str()),
+        ) {
             let angle_from_source = calculate_angle(source, target);
             node_edges
                 .entry(edge.from.as_str())
@@ -359,16 +363,28 @@ fn sort_edges_on_side(edges: &mut Vec<&NodeEdgeInfo>, side: Side, node_map: &Has
         Side::Top | Side::Bottom => {
             // Sort by other node's center x coordinate (left to right)
             edges.sort_by(|a, b| {
-                let ax = node_map.get(a.other_node_id.as_str()).map(|n| n.x + n.width / 2.0).unwrap_or(0.0);
-                let bx = node_map.get(b.other_node_id.as_str()).map(|n| n.x + n.width / 2.0).unwrap_or(0.0);
+                let ax = node_map
+                    .get(a.other_node_id.as_str())
+                    .map(|n| n.x + n.width / 2.0)
+                    .unwrap_or(0.0);
+                let bx = node_map
+                    .get(b.other_node_id.as_str())
+                    .map(|n| n.x + n.width / 2.0)
+                    .unwrap_or(0.0);
                 ax.partial_cmp(&bx).unwrap()
             });
         }
         Side::Left | Side::Right => {
             // Sort by other node's center y coordinate (top to bottom)
             edges.sort_by(|a, b| {
-                let ay = node_map.get(a.other_node_id.as_str()).map(|n| n.y + n.height / 2.0).unwrap_or(0.0);
-                let by = node_map.get(b.other_node_id.as_str()).map(|n| n.y + n.height / 2.0).unwrap_or(0.0);
+                let ay = node_map
+                    .get(a.other_node_id.as_str())
+                    .map(|n| n.y + n.height / 2.0)
+                    .unwrap_or(0.0);
+                let by = node_map
+                    .get(b.other_node_id.as_str())
+                    .map(|n| n.y + n.height / 2.0)
+                    .unwrap_or(0.0);
                 ay.partial_cmp(&by).unwrap()
             });
         }
@@ -378,7 +394,7 @@ fn sort_edges_on_side(edges: &mut Vec<&NodeEdgeInfo>, side: Side, node_map: &Has
 #[cfg(test)]
 mod tests {
     use super::*;
-    use trellis_parser::{Edge, EdgeStyle, ArrowHead, NodeShape};
+    use trellis_parser::{ArrowHead, Edge, EdgeStyle, NodeShape};
 
     fn make_node(id: &str, w: f64, h: f64, x: f64, y: f64) -> Node {
         Node {
@@ -389,7 +405,8 @@ mod tests {
             height: h,
             x,
             y,
-            ..Default::default()        }
+            ..Default::default()
+        }
     }
 
     fn make_edge(from: &str, to: &str) -> Edge {
@@ -399,7 +416,8 @@ mod tests {
             label: None,
             style: EdgeStyle::Solid,
             arrow_head: ArrowHead::Arrow,
-            ..Default::default()        }
+            ..Default::default()
+        }
     }
 
     #[test]

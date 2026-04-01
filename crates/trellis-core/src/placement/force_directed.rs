@@ -89,8 +89,12 @@ pub fn force_directed_placement(
 
         // Attractive forces: along edges
         for (from, to) in edges {
-            let Some(&fi) = id_to_idx.get(from.as_str()) else { continue };
-            let Some(&ti) = id_to_idx.get(to.as_str()) else { continue };
+            let Some(&fi) = id_to_idx.get(from.as_str()) else {
+                continue;
+            };
+            let Some(&ti) = id_to_idx.get(to.as_str()) else {
+                continue;
+            };
             let (xi, yi) = pos[fi];
             let (xj, yj) = pos[ti];
             let dx = xi - xj;
@@ -168,8 +172,7 @@ mod tests {
         let edges: Vec<(String, String)> = (0..n - 1)
             .map(|i| (format!("N{}", i), format!("N{}", i + 1)))
             .collect();
-        let result =
-            force_directed_placement(&ids, &edges, &ForceDirectedConfig::default());
+        let result = force_directed_placement(&ids, &edges, &ForceDirectedConfig::default());
         assert_eq!(result.len(), n);
     }
 }

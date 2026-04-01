@@ -83,7 +83,10 @@ pub fn render_class_node(node: &Node) -> String {
     svg.push_str(&format!(
         "<line x1=\"{:.1}\" y1=\"{:.1}\" x2=\"{:.1}\" y2=\"{:.1}\" \
          stroke=\"#555\" stroke-width=\"1\"/>\n",
-        x, sep1_y, x + w, sep1_y,
+        x,
+        sep1_y,
+        x + w,
+        sep1_y,
     ));
 
     // ── Attribute compartment ──────────────────────────────────────────
@@ -130,7 +133,10 @@ pub fn render_class_node(node: &Node) -> String {
     svg.push_str(&format!(
         "<line x1=\"{:.1}\" y1=\"{:.1}\" x2=\"{:.1}\" y2=\"{:.1}\" \
          stroke=\"#555\" stroke-width=\"1\"/>\n",
-        x, sep2_y, x + w, sep2_y,
+        x,
+        sep2_y,
+        x + w,
+        sep2_y,
     ));
 
     // ── Method compartment ────────────────────────────────────────────
@@ -143,7 +149,12 @@ pub fn render_class_node(node: &Node) -> String {
             let vis_char = visibility_char(method.visibility);
             let params = &method.params;
             let text = if method.return_type.is_empty() {
-                format!("{}{}({})", vis_char, escape_xml(&method.name), escape_xml(params))
+                format!(
+                    "{}{}({})",
+                    vis_char,
+                    escape_xml(&method.name),
+                    escape_xml(params)
+                )
             } else {
                 format!(
                     "{}{}({}) {}",
@@ -342,7 +353,11 @@ mod tests {
         let svg = render_class_node(&node);
         // Should have at least two separator lines
         let line_count = svg.matches("<line").count();
-        assert!(line_count >= 2, "Expected at least 2 separator lines, got {}", line_count);
+        assert!(
+            line_count >= 2,
+            "Expected at least 2 separator lines, got {}",
+            line_count
+        );
     }
 
     #[test]

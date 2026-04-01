@@ -89,8 +89,8 @@ pub fn render_c4_boundaries(graph: &Graph, boxes: &HashMap<String, BoundingBox>)
         let label_x = bbox.x + 10.0;
         let bottom = bbox.y + bbox.height;
         // Place lines inside the LABEL_STRIP_HEIGHT area reserved at the frame bottom.
-        let line1_y = bottom - LABEL_STRIP_HEIGHT + LABEL_LINE_GAP;  // = bottom − 20
-        let line2_y = line1_y + LABEL_LINE_GAP - 2.0;               // = bottom − 6
+        let line1_y = bottom - LABEL_STRIP_HEIGHT + LABEL_LINE_GAP; // = bottom − 20
+        let line2_y = line1_y + LABEL_LINE_GAP - 2.0; // = bottom − 6
 
         svg.push_str(&format!(
             "<text x=\"{:.1}\" y=\"{:.1}\" \
@@ -108,11 +108,7 @@ pub fn render_c4_boundaries(graph: &Graph, boxes: &HashMap<String, BoundingBox>)
             "<text x=\"{:.1}\" y=\"{:.1}\" \
              font-family=\"Arial, Helvetica, sans-serif\" \
              font-size=\"{:.0}\" font-style=\"italic\" fill=\"{}\">{}</text>\n",
-            label_x,
-            line2_y,
-            FONT_SIZE_TYPE,
-            stroke,
-            type_label,
+            label_x, line2_y, FONT_SIZE_TYPE, stroke, type_label,
         ));
     }
 

@@ -58,8 +58,7 @@ pub fn parse_class_diagram(tokens: &[Token]) -> Result<Graph, crate::ParseError>
                 if let Some(rest) = line.strip_prefix("class ") {
                     let rest = rest.trim();
                     // Possible: "class Foo", "class Foo { ... }", "class Foo { <<stereo>> ... }"
-                    let (class_id, has_open_brace, inline_content) =
-                        split_class_header(rest);
+                    let (class_id, has_open_brace, inline_content) = split_class_header(rest);
                     ensure_class_node(&mut graph, &mut node_map, &class_id);
                     if has_open_brace {
                         // Check if body closes on same line
@@ -88,7 +87,9 @@ pub fn parse_class_diagram(tokens: &[Token]) -> Result<Graph, crate::ParseError>
                 if let Some(colon_pos) = line.find(" : ") {
                     let class_id = line[..colon_pos].trim().to_string();
                     let member = line[colon_pos + 3..].trim();
-                    if !class_id.contains(' ') && !class_id.contains('<') && !class_id.contains('-')
+                    if !class_id.contains(' ')
+                        && !class_id.contains('<')
+                        && !class_id.contains('-')
                         && !class_id.contains('.')
                     {
                         ensure_class_node(&mut graph, &mut node_map, &class_id);
@@ -116,7 +117,9 @@ pub fn parse_class_diagram(tokens: &[Token]) -> Result<Graph, crate::ParseError>
 
                     let style = if matches!(
                         edge_type,
-                        ClassEdgeType::Realization | ClassEdgeType::Dependency | ClassEdgeType::Link
+                        ClassEdgeType::Realization
+                            | ClassEdgeType::Dependency
+                            | ClassEdgeType::Link
                     ) {
                         EdgeStyle::Dotted
                     } else {
@@ -318,8 +321,14 @@ fn split_type_name(s: &str) -> (String, String) {
 // ── Relation parsing ──────────────────────────────────────────────────
 
 /// Return type for `parse_relation`: (from, edge_type, to, source_mult, target_mult, label).
-type RelationParts =
-    (String, ClassEdgeType, String, Option<String>, Option<String>, Option<String>);
+type RelationParts = (
+    String,
+    ClassEdgeType,
+    String,
+    Option<String>,
+    Option<String>,
+    Option<String>,
+);
 
 /// Try to parse a class diagram relation line.
 ///
@@ -345,7 +354,10 @@ pub fn parse_relation(line: &str) -> Option<RelationParts> {
     // Extract label at the end: "... : label"
     let (line_no_label, label) = if let Some(colon_pos) = find_relation_colon(line) {
         let lbl = line[colon_pos + 1..].trim().to_string();
-        (&line[..colon_pos], if lbl.is_empty() { None } else { Some(lbl) })
+        (
+            &line[..colon_pos],
+            if lbl.is_empty() { None } else { Some(lbl) },
+        )
     } else {
         (line, None)
     };
@@ -456,9 +468,7 @@ fn find_relation_colon(line: &str) -> Option<usize> {
 
 /// Extract `ClassName "mult" ... "mult" ClassName` structure.
 /// Returns `(lhs_with_arrow, source_mult, rhs, target_mult)`.
-fn extract_multiplicities(
-    line: &str,
-) -> Option<(String, Option<String>, String, Option<String>)> {
+fn extract_multiplicities(line: &str) -> Option<(String, Option<String>, String, Option<String>)> {
     // Try to find: `ClassName "mult" ARROW "mult" ClassName`
     // We look for quoted sections and extract them.
     let mut parts = Vec::new();
@@ -556,8 +566,8 @@ fn ensure_class_node(graph: &mut Graph, node_map: &mut HashMap<String, usize>, i
         id: id.to_string(),
         label: id.to_string(),
         shape: NodeShape::ClassBox,
-        width: 120.0,  // Will be recalculated
-        height: 60.0,  // Will be recalculated
+        width: 120.0, // Will be recalculated
+        height: 60.0, // Will be recalculated
         ..Default::default()
     });
     node_map.insert(id.to_string(), idx);
@@ -585,8 +595,7 @@ fn recalculate_class_node_sizes(graph: &mut Graph) {
         }
 
         for attr in &node.class_attributes {
-            let display_len =
-                1 + attr.attr_type.len() + 1 + attr.name.len(); // "+type name"
+            let display_len = 1 + attr.attr_type.len() + 1 + attr.name.len(); // "+type name"
             max_chars = max_chars.max(display_len);
         }
 
@@ -716,13 +725,19 @@ mod tests {
     #[test]
     fn test_private_attribute() {
         let g = parse("classDiagram\n    Foo : -int count\n");
-        assert_eq!(g.nodes[0].class_attributes[0].visibility, ClassVisibility::Private);
+        assert_eq!(
+            g.nodes[0].class_attributes[0].visibility,
+            ClassVisibility::Private
+        );
     }
 
     #[test]
     fn test_protected_attribute() {
         let g = parse("classDiagram\n    Foo : #String data\n");
-        assert_eq!(g.nodes[0].class_attributes[0].visibility, ClassVisibility::Protected);
+        assert_eq!(
+            g.nodes[0].class_attributes[0].visibility,
+            ClassVisibility::Protected
+        );
     }
 
     #[test]

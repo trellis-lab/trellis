@@ -106,7 +106,11 @@ pub fn route_with_crossings_allowed(
 }
 
 /// Save a cell's state and temporarily mark it as free for routing
-fn save_and_free_cell(grid: &mut Grid, point: GridPoint, costs: &RoutingCosts) -> Option<CellState> {
+fn save_and_free_cell(
+    grid: &mut Grid,
+    point: GridPoint,
+    costs: &RoutingCosts,
+) -> Option<CellState> {
     if !grid.in_bounds(point.row, point.col) {
         return None;
     }
@@ -187,9 +191,11 @@ mod tests {
         assert!(!path.points.is_empty());
 
         // Verify at least one crossing point was marked
-        let has_crossing = (0..grid.rows).any(|r| {
-            (0..grid.cols).any(|c| grid.get(r, c).map_or(false, |cell| cell.crossing))
-        });
-        assert!(has_crossing, "Should have marked at least one crossing point");
+        let has_crossing = (0..grid.rows)
+            .any(|r| (0..grid.cols).any(|c| grid.get(r, c).map_or(false, |cell| cell.crossing)));
+        assert!(
+            has_crossing,
+            "Should have marked at least one crossing point"
+        );
     }
 }

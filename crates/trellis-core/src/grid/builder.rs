@@ -120,12 +120,18 @@ impl Grid {
 
     /// Count the number of free cells
     pub fn free_cell_count(&self) -> usize {
-        self.cells.iter().filter(|c| c.state == CellState::Free).count()
+        self.cells
+            .iter()
+            .filter(|c| c.state == CellState::Free)
+            .count()
     }
 
     /// Count the number of blocked cells
     pub fn blocked_cell_count(&self) -> usize {
-        self.cells.iter().filter(|c| c.state == CellState::Blocked).count()
+        self.cells
+            .iter()
+            .filter(|c| c.state == CellState::Blocked)
+            .count()
     }
 
     /// Count the number of cells flagged as crossings (two routed paths share a cell)
@@ -138,7 +144,11 @@ impl Grid {
         if self.cells.is_empty() {
             return 0.0;
         }
-        let non_free = self.cells.iter().filter(|c| c.state != CellState::Free).count();
+        let non_free = self
+            .cells
+            .iter()
+            .filter(|c| c.state != CellState::Free)
+            .count();
         non_free as f64 / self.cells.len() as f64
     }
 }
@@ -277,7 +287,8 @@ mod tests {
             height: h,
             x,
             y,
-            ..Default::default()        }
+            ..Default::default()
+        }
     }
 
     #[test]
@@ -371,16 +382,28 @@ mod tests {
         let grid = build_grid(&graph, 10, &extent);
 
         // Top boundary connector (row 4, col 5) → BoundarySide::Top
-        assert_eq!(grid.get(4, 5).unwrap().boundary_side, Some(BoundarySide::Top));
+        assert_eq!(
+            grid.get(4, 5).unwrap().boundary_side,
+            Some(BoundarySide::Top)
+        );
 
         // Bottom boundary connector (row 6, col 5) → BoundarySide::Bottom
-        assert_eq!(grid.get(6, 5).unwrap().boundary_side, Some(BoundarySide::Bottom));
+        assert_eq!(
+            grid.get(6, 5).unwrap().boundary_side,
+            Some(BoundarySide::Bottom)
+        );
 
         // Left boundary connector (row 5, col 3) → BoundarySide::Left
-        assert_eq!(grid.get(5, 3).unwrap().boundary_side, Some(BoundarySide::Left));
+        assert_eq!(
+            grid.get(5, 3).unwrap().boundary_side,
+            Some(BoundarySide::Left)
+        );
 
         // Right boundary connector (row 5, col 7) → BoundarySide::Right
-        assert_eq!(grid.get(5, 7).unwrap().boundary_side, Some(BoundarySide::Right));
+        assert_eq!(
+            grid.get(5, 7).unwrap().boundary_side,
+            Some(BoundarySide::Right)
+        );
 
         // Interior cell → no boundary_side
         assert_eq!(grid.get(5, 5).unwrap().boundary_side, None);
@@ -409,17 +432,29 @@ mod tests {
         let grid = build_grid(&graph, 10, &extent);
 
         // One cell above a top connector (row 3, col 5) → approach zone for Top
-        assert_eq!(grid.get(3, 5).unwrap().boundary_side, Some(BoundarySide::Top));
+        assert_eq!(
+            grid.get(3, 5).unwrap().boundary_side,
+            Some(BoundarySide::Top)
+        );
         assert_eq!(grid.get(3, 5).unwrap().state, CellState::Free);
 
         // One cell below a bottom connector (row 7, col 5) → approach zone for Bottom
-        assert_eq!(grid.get(7, 5).unwrap().boundary_side, Some(BoundarySide::Bottom));
+        assert_eq!(
+            grid.get(7, 5).unwrap().boundary_side,
+            Some(BoundarySide::Bottom)
+        );
 
         // One cell left of a left connector (row 5, col 2) → approach zone for Left
-        assert_eq!(grid.get(5, 2).unwrap().boundary_side, Some(BoundarySide::Left));
+        assert_eq!(
+            grid.get(5, 2).unwrap().boundary_side,
+            Some(BoundarySide::Left)
+        );
 
         // One cell right of a right connector (row 5, col 8) → approach zone for Right
-        assert_eq!(grid.get(5, 8).unwrap().boundary_side, Some(BoundarySide::Right));
+        assert_eq!(
+            grid.get(5, 8).unwrap().boundary_side,
+            Some(BoundarySide::Right)
+        );
 
         // Two cells away → no boundary_side
         assert_eq!(grid.get(2, 5).unwrap().boundary_side, None);

@@ -77,7 +77,12 @@ mod tests {
 
         for (&edge_idx, path) in &setup.result.paths {
             // Skip first and last points (ports may legitimately share adjacency)
-            for point in path.points.iter().skip(1).take(path.points.len().saturating_sub(2)) {
+            for point in path
+                .points
+                .iter()
+                .skip(1)
+                .take(path.points.len().saturating_sub(2))
+            {
                 point_owners
                     .entry((point.row, point.col))
                     .or_default()
@@ -105,7 +110,12 @@ mod tests {
     // ──────────────────────────────────────────────────────────────────────────
     fn check_no_blocked_traversal(setup: &RoutingSetup) {
         for (&edge_idx, path) in &setup.result.paths {
-            for point in path.points.iter().skip(1).take(path.points.len().saturating_sub(2)) {
+            for point in path
+                .points
+                .iter()
+                .skip(1)
+                .take(path.points.len().saturating_sub(2))
+            {
                 let key = (point.row as usize, point.col as usize);
                 assert!(
                     !setup.pre_routing_blocked.contains(&key),
@@ -133,8 +143,10 @@ mod tests {
                     (dr == 1 && dc == 0) || (dr == 0 && dc == 1),
                     "Invariant violated – edge {} has diagonal/teleport segment ({},{})→({},{})",
                     edge_idx,
-                    prev.row, prev.col,
-                    curr.row, curr.col
+                    prev.row,
+                    prev.col,
+                    curr.row,
+                    curr.col
                 );
             }
         }
@@ -179,12 +191,16 @@ mod tests {
             assert!(
                 source_ports.insert(src_key),
                 "Invariant violated – edge {} shares its source port ({},{}) with another edge",
-                edge_idx, src_key.0, src_key.1
+                edge_idx,
+                src_key.0,
+                src_key.1
             );
             assert!(
                 target_ports.insert(tgt_key),
                 "Invariant violated – edge {} shares its target port ({},{}) with another edge",
-                edge_idx, tgt_key.0, tgt_key.1
+                edge_idx,
+                tgt_key.0,
+                tgt_key.1
             );
         }
     }
@@ -228,9 +244,7 @@ mod tests {
 
     #[test]
     fn invariants_b04_diamond() {
-        check_all_invariants(
-            "graph TB\n    A --> B\n    A --> C\n    B --> D\n    C --> D",
-        );
+        check_all_invariants("graph TB\n    A --> B\n    A --> C\n    B --> D\n    C --> D");
     }
 
     #[test]

@@ -27,8 +27,8 @@ pub struct RoutedPath {
 #[derive(Debug, Clone)]
 struct AStarNode {
     point: GridPoint,
-    g_cost: f64,       // actual cost from start
-    f_cost: f64,       // g + heuristic
+    g_cost: f64,                  // actual cost from start
+    f_cost: f64,                  // g + heuristic
     direction: Option<Direction>, // direction we arrived from
 }
 

@@ -70,7 +70,14 @@ fn render_subgraph_recursive(
         "<rect x=\"{:.1}\" y=\"{:.1}\" width=\"{:.1}\" height=\"{:.1}\" \
          rx=\"{:.0}\" fill=\"{}\" stroke=\"{}\" stroke-width=\"{:.1}\" \
          stroke-dasharray=\"{}\"/>\n",
-        bbox.x, bbox.y, bbox.width, bbox.height, BORDER_RADIUS, bg, stroke, STROKE_WIDTH,
+        bbox.x,
+        bbox.y,
+        bbox.width,
+        bbox.height,
+        BORDER_RADIUS,
+        bg,
+        stroke,
+        STROKE_WIDTH,
         STROKE_DASHARRAY,
     ));
 
@@ -163,10 +170,7 @@ mod tests {
             "Should have dashed stroke"
         );
         assert!(svg.contains("My Subgraph"), "Should contain the label");
-        assert!(
-            svg.contains("font-weight=\"bold\""),
-            "Label should be bold"
-        );
+        assert!(svg.contains("font-weight=\"bold\""), "Label should be bold");
     }
 
     #[test]
@@ -245,7 +249,13 @@ mod tests {
         );
 
         // Parent should use depth-0 color, child should use depth-1 color
-        assert!(svg.contains("#f0f4f8"), "Parent should have depth-0 bg color");
-        assert!(svg.contains("#e2e8f0"), "Child should have depth-1 bg color");
+        assert!(
+            svg.contains("#f0f4f8"),
+            "Parent should have depth-0 bg color"
+        );
+        assert!(
+            svg.contains("#e2e8f0"),
+            "Child should have depth-1 bg color"
+        );
     }
 }

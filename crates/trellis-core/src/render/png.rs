@@ -2,10 +2,9 @@
 pub fn svg_to_png(svg_data: &[u8]) -> Result<Vec<u8>, PngError> {
     let options = resvg::usvg::Options::default();
 
-    let tree = resvg::usvg::Tree::from_data(svg_data, &options)
-        .map_err(|e| PngError {
-            message: format!("Failed to parse SVG: {}", e),
-        })?;
+    let tree = resvg::usvg::Tree::from_data(svg_data, &options).map_err(|e| PngError {
+        message: format!("Failed to parse SVG: {}", e),
+    })?;
 
     let size = tree.size();
     let width = size.width().ceil() as u32;
@@ -17,15 +16,18 @@ pub fn svg_to_png(svg_data: &[u8]) -> Result<Vec<u8>, PngError> {
         });
     }
 
-    let mut pixmap = resvg::tiny_skia::Pixmap::new(width, height)
-        .ok_or_else(|| PngError {
-            message: format!("Failed to create pixmap {}x{}", width, height),
-        })?;
+    let mut pixmap = resvg::tiny_skia::Pixmap::new(width, height).ok_or_else(|| PngError {
+        message: format!("Failed to create pixmap {}x{}", width, height),
+    })?;
 
     // White background
     pixmap.fill(resvg::tiny_skia::Color::WHITE);
 
-    resvg::render(&tree, resvg::usvg::Transform::default(), &mut pixmap.as_mut());
+    resvg::render(
+        &tree,
+        resvg::usvg::Transform::default(),
+        &mut pixmap.as_mut(),
+    );
 
     pixmap.encode_png().map_err(|e| PngError {
         message: format!("Failed to encode PNG: {}", e),

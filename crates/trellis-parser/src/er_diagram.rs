@@ -211,7 +211,14 @@ fn parse_er_attribute(
 /// - Right-side: `||` ExactlyOne, `o|` ZeroOrOne, `|{` OneOrMore, `o{` ZeroOrMore
 fn try_parse_relation(
     line: &str,
-) -> Option<(String, ErCardinality, bool, ErCardinality, String, Option<String>)> {
+) -> Option<(
+    String,
+    ErCardinality,
+    bool,
+    ErCardinality,
+    String,
+    Option<String>,
+)> {
     // Characters used in cardinality markers
     const CARD_CHARS: &[u8] = b"|o}{";
 
@@ -278,7 +285,14 @@ fn try_parse_relation(
         return None;
     }
 
-    Some((entity_a, src_card, is_identifying, tgt_card, entity_b, label))
+    Some((
+        entity_a,
+        src_card,
+        is_identifying,
+        tgt_card,
+        entity_b,
+        label,
+    ))
 }
 
 /// Parse left-side cardinality marker (2 bytes).
@@ -326,7 +340,8 @@ fn size_er_node(node: &mut Node) {
         .er_attributes
         .iter()
         .map(|a| {
-            let text_len = a.attr_type.len() + 1 + a.name.len() + if a.keys.is_empty() { 0 } else { 4 };
+            let text_len =
+                a.attr_type.len() + 1 + a.name.len() + if a.keys.is_empty() { 0 } else { 4 };
             text_len as f64 * CHAR_WIDTH + PADDING_X * 2.0
         })
         .fold(0.0_f64, f64::max);
@@ -413,9 +428,7 @@ mod tests {
 
     #[test]
     fn test_entity_with_pk_fk() {
-        let g = parse(
-            "erDiagram\n    ORDER {\n        int id PK\n        int user_id FK\n    }\n",
-        );
+        let g = parse("erDiagram\n    ORDER {\n        int id PK\n        int user_id FK\n    }\n");
         let node = &g.nodes[0];
         assert!(node.er_attributes[0].keys.contains(&KeyType::PK));
         assert!(node.er_attributes[1].keys.contains(&KeyType::FK));

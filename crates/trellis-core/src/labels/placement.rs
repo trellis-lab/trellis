@@ -180,11 +180,7 @@ fn generate_candidates(
                 LabelSide::Above,
             ));
             // Below
-            candidates.push((
-                mx - label_width / 2.0,
-                my + LABEL_PADDING,
-                LabelSide::Below,
-            ));
+            candidates.push((mx - label_width / 2.0, my + LABEL_PADDING, LabelSide::Below));
         }
         SegmentDirection::Vertical => {
             // Left
@@ -227,16 +223,15 @@ pub fn place_all_labels(
         };
 
         // For C4 edges: append technology as a second label line "[Tech]".
-        let display_text: String =
-            if graph.diagram_type == DiagramType::C4Diagram {
-                if let Some(tech) = &edge.c4_technology {
-                    format!("{}\n[{}]", base_label, tech)
-                } else {
-                    base_label.to_string()
-                }
+        let display_text: String = if graph.diagram_type == DiagramType::C4Diagram {
+            if let Some(tech) = &edge.c4_technology {
+                format!("{}\n[{}]", base_label, tech)
             } else {
                 base_label.to_string()
-            };
+            }
+        } else {
+            base_label.to_string()
+        };
 
         let path = match routing_result.get(&edge_idx) {
             Some(p) => p,
@@ -355,9 +350,24 @@ mod tests {
     #[test]
     fn test_select_best_segment_middle() {
         let segments = vec![
-            Segment { x1: 0.0, y1: 0.0, x2: 30.0, y2: 0.0 },
-            Segment { x1: 30.0, y1: 0.0, x2: 30.0, y2: 50.0 },
-            Segment { x1: 30.0, y1: 50.0, x2: 80.0, y2: 50.0 },
+            Segment {
+                x1: 0.0,
+                y1: 0.0,
+                x2: 30.0,
+                y2: 0.0,
+            },
+            Segment {
+                x1: 30.0,
+                y1: 0.0,
+                x2: 30.0,
+                y2: 50.0,
+            },
+            Segment {
+                x1: 30.0,
+                y1: 50.0,
+                x2: 80.0,
+                y2: 50.0,
+            },
         ];
         // Middle segment (index 1) is long enough
         assert_eq!(select_best_segment(&segments, 40.0), 1);
@@ -366,9 +376,24 @@ mod tests {
     #[test]
     fn test_select_best_segment_longest_fallback() {
         let segments = vec![
-            Segment { x1: 0.0, y1: 0.0, x2: 10.0, y2: 0.0 },   // 10px
-            Segment { x1: 10.0, y1: 0.0, x2: 10.0, y2: 5.0 },   // 5px (middle)
-            Segment { x1: 10.0, y1: 5.0, x2: 100.0, y2: 5.0 },  // 90px
+            Segment {
+                x1: 0.0,
+                y1: 0.0,
+                x2: 10.0,
+                y2: 0.0,
+            }, // 10px
+            Segment {
+                x1: 10.0,
+                y1: 0.0,
+                x2: 10.0,
+                y2: 5.0,
+            }, // 5px (middle)
+            Segment {
+                x1: 10.0,
+                y1: 5.0,
+                x2: 100.0,
+                y2: 5.0,
+            }, // 90px
         ];
         // Middle segment too short (5px < 40px), falls back to longest (index 2)
         assert_eq!(select_best_segment(&segments, 40.0), 2);
@@ -404,18 +429,43 @@ mod tests {
 
     #[test]
     fn test_bounding_box_overlaps() {
-        let a = BoundingBox { x: 0.0, y: 0.0, width: 10.0, height: 10.0 };
-        let b = BoundingBox { x: 5.0, y: 5.0, width: 10.0, height: 10.0 };
+        let a = BoundingBox {
+            x: 0.0,
+            y: 0.0,
+            width: 10.0,
+            height: 10.0,
+        };
+        let b = BoundingBox {
+            x: 5.0,
+            y: 5.0,
+            width: 10.0,
+            height: 10.0,
+        };
         assert!(a.overlaps(&b));
 
-        let c = BoundingBox { x: 20.0, y: 20.0, width: 10.0, height: 10.0 };
+        let c = BoundingBox {
+            x: 20.0,
+            y: 20.0,
+            width: 10.0,
+            height: 10.0,
+        };
         assert!(!a.overlaps(&c));
     }
 
     #[test]
     fn test_bounding_box_no_overlap_adjacent() {
-        let a = BoundingBox { x: 0.0, y: 0.0, width: 10.0, height: 10.0 };
-        let b = BoundingBox { x: 10.0, y: 0.0, width: 10.0, height: 10.0 };
+        let a = BoundingBox {
+            x: 0.0,
+            y: 0.0,
+            width: 10.0,
+            height: 10.0,
+        };
+        let b = BoundingBox {
+            x: 10.0,
+            y: 0.0,
+            width: 10.0,
+            height: 10.0,
+        };
         // Touching but not overlapping
         assert!(!a.overlaps(&b));
     }

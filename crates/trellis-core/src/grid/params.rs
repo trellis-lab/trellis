@@ -163,7 +163,7 @@ fn calculate_max_degree(graph: &Graph) -> usize {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use trellis_parser::{Edge, Node, NodeShape, EdgeStyle, ArrowHead};
+    use trellis_parser::{ArrowHead, Edge, EdgeStyle, Node, NodeShape};
 
     fn make_node(id: &str, w: f64, h: f64, x: f64, y: f64) -> Node {
         Node {
@@ -174,7 +174,8 @@ mod tests {
             height: h,
             x,
             y,
-            ..Default::default()        }
+            ..Default::default()
+        }
     }
 
     fn make_edge(from: &str, to: &str) -> Edge {
@@ -184,7 +185,8 @@ mod tests {
             label: None,
             style: EdgeStyle::Solid,
             arrow_head: ArrowHead::Arrow,
-            ..Default::default()        }
+            ..Default::default()
+        }
     }
 
     #[test]
@@ -239,7 +241,7 @@ mod tests {
         let mut graph = Graph::new();
         // Top-left coordinates: A at (0,0), B at (200,100)
         graph.nodes = vec![
-            make_node("A", 80.0, 40.0, 0.0, 0.0),    // left 0, right 80, top 0, bottom 40
+            make_node("A", 80.0, 40.0, 0.0, 0.0), // left 0, right 80, top 0, bottom 40
             make_node("B", 80.0, 40.0, 200.0, 100.0), // left 200, right 280, top 100, bottom 140
         ];
         graph.edges = vec![make_edge("A", "B")];
@@ -249,12 +251,32 @@ mod tests {
         // bounding: width = 280, height = 140
         // density = 0.5, K = 1.5
         // offsets snapped to cell_size multiples, width/height snapped up
-        assert!(extent.width >= 280.0, "width {} should cover bounding box", extent.width);
-        assert!(extent.height >= 140.0, "height {} should cover bounding box", extent.height);
-        assert_eq!(extent.offset_x % cell_size, 0, "offset_x should be cell_size-aligned");
-        assert_eq!(extent.offset_y % cell_size, 0, "offset_y should be cell_size-aligned");
+        assert!(
+            extent.width >= 280.0,
+            "width {} should cover bounding box",
+            extent.width
+        );
+        assert!(
+            extent.height >= 140.0,
+            "height {} should cover bounding box",
+            extent.height
+        );
+        assert_eq!(
+            extent.offset_x % cell_size,
+            0,
+            "offset_x should be cell_size-aligned"
+        );
+        assert_eq!(
+            extent.offset_y % cell_size,
+            0,
+            "offset_y should be cell_size-aligned"
+        );
         // width and height should be multiples of cell_size
-        assert_eq!((extent.width as i32) % cell_size, 0, "width should be cell_size-aligned");
+        assert_eq!(
+            (extent.width as i32) % cell_size,
+            0,
+            "width should be cell_size-aligned"
+        );
     }
 
     #[test]

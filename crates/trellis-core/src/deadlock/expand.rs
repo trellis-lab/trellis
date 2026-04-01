@@ -60,8 +60,12 @@ pub fn expand_grid_and_retry(
         assign_ports(&scaled_graph, cell_size, extent.offset_x, extent.offset_y);
 
     // Route all edges on the new grid (without deadlock handling to avoid infinite recursion)
-    let new_result =
-        crate::routing::route_all_edges_no_deadlock(&scaled_graph, &mut new_grid, &new_port_assignments, config);
+    let new_result = crate::routing::route_all_edges_no_deadlock(
+        &scaled_graph,
+        &mut new_grid,
+        &new_port_assignments,
+        config,
+    );
 
     // Check if the failed edge was routed
     if let Some(failed_path) = new_result.paths.get(&failed_edge_idx) {

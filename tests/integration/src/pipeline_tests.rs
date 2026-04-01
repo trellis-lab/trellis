@@ -21,7 +21,10 @@ fn render_svg(mermaid: &str) -> trellis_core::types::RenderMetrics {
 }
 
 #[cfg(test)]
-fn render_and_assert_svg_contains(mermaid: &str, needle: &str) -> trellis_core::types::RenderMetrics {
+fn render_and_assert_svg_contains(
+    mermaid: &str,
+    needle: &str,
+) -> trellis_core::types::RenderMetrics {
     let graph = parse(mermaid).expect("parse failed");
     let config = TrellisConfig::default();
     let result = render(&graph, &config, OutputFormat::Svg).expect("render failed");
@@ -47,7 +50,10 @@ mod flowchart {
         assert_eq!(m.nodes, 5);
         assert_eq!(m.edges, 4);
         assert!(m.render_ms < 5000, "render should finish under 5 s");
-        eprintln!("[B01] nodes={} edges={} crossings={} bends={} render_ms={}", m.nodes, m.edges, m.crossings, m.bends, m.render_ms);
+        eprintln!(
+            "[B01] nodes={} edges={} crossings={} bends={} render_ms={}",
+            m.nodes, m.edges, m.crossings, m.bends, m.render_ms
+        );
     }
 
     #[test]
@@ -58,7 +64,10 @@ mod flowchart {
         assert_eq!(m.nodes, 7);
         assert_eq!(m.edges, 6);
         assert_eq!(m.crossings, 0, "wide branch should have no crossings");
-        eprintln!("[B02] nodes={} edges={} crossings={} bends={} render_ms={}", m.nodes, m.edges, m.crossings, m.bends, m.render_ms);
+        eprintln!(
+            "[B02] nodes={} edges={} crossings={} bends={} render_ms={}",
+            m.nodes, m.edges, m.crossings, m.bends, m.render_ms
+        );
     }
 
     #[test]
@@ -69,7 +78,10 @@ mod flowchart {
         );
         assert_eq!(m.nodes, 6);
         assert_eq!(m.edges, 9);
-        eprintln!("[B03] nodes={} edges={} crossings={} bends={} render_ms={}", m.nodes, m.edges, m.crossings, m.bends, m.render_ms);
+        eprintln!(
+            "[B03] nodes={} edges={} crossings={} bends={} render_ms={}",
+            m.nodes, m.edges, m.crossings, m.bends, m.render_ms
+        );
     }
 
     #[test]
@@ -78,7 +90,10 @@ mod flowchart {
         assert_eq!(m.nodes, 4);
         assert_eq!(m.edges, 4);
         assert_eq!(m.crossings, 0, "diamond should have no crossings");
-        eprintln!("[B04] nodes={} edges={} crossings={} bends={} render_ms={}", m.nodes, m.edges, m.crossings, m.bends, m.render_ms);
+        eprintln!(
+            "[B04] nodes={} edges={} crossings={} bends={} render_ms={}",
+            m.nodes, m.edges, m.crossings, m.bends, m.render_ms
+        );
     }
 
     #[test]
@@ -88,7 +103,10 @@ mod flowchart {
         );
         assert_eq!(m.nodes, 6);
         assert_eq!(m.edges, 6);
-        eprintln!("[B05] nodes={} edges={} crossings={} bends={} render_ms={}", m.nodes, m.edges, m.crossings, m.bends, m.render_ms);
+        eprintln!(
+            "[B05] nodes={} edges={} crossings={} bends={} render_ms={}",
+            m.nodes, m.edges, m.crossings, m.bends, m.render_ms
+        );
     }
 
     #[test]
@@ -96,7 +114,10 @@ mod flowchart {
         let m = render_svg("graph TB\n    A --> B\n    A --> B\n    B --> C");
         assert_eq!(m.nodes, 3);
         assert_eq!(m.edges, 3);
-        eprintln!("[B06] nodes={} edges={} crossings={} bends={} render_ms={}", m.nodes, m.edges, m.crossings, m.bends, m.render_ms);
+        eprintln!(
+            "[B06] nodes={} edges={} crossings={} bends={} render_ms={}",
+            m.nodes, m.edges, m.crossings, m.bends, m.render_ms
+        );
     }
 
     #[test]
@@ -104,7 +125,10 @@ mod flowchart {
         let m = render_svg("graph TB\n    A --> B\n    B --> C\n    C --> A");
         assert_eq!(m.nodes, 3);
         assert_eq!(m.edges, 3);
-        eprintln!("[B07] nodes={} edges={} crossings={} bends={} render_ms={}", m.nodes, m.edges, m.crossings, m.bends, m.render_ms);
+        eprintln!(
+            "[B07] nodes={} edges={} crossings={} bends={} render_ms={}",
+            m.nodes, m.edges, m.crossings, m.bends, m.render_ms
+        );
     }
 
     #[test]
@@ -113,7 +137,14 @@ mod flowchart {
             "graph TB\n    subgraph outer\n        subgraph inner\n            A --> B\n        end\n        C --> D\n    end",
             "subgraph",
         );
-        eprintln!("[B08] nodes={} edges={} crossings={} bends={} render_ms={}", svg_fragment.nodes, svg_fragment.edges, svg_fragment.crossings, svg_fragment.bends, svg_fragment.render_ms);
+        eprintln!(
+            "[B08] nodes={} edges={} crossings={} bends={} render_ms={}",
+            svg_fragment.nodes,
+            svg_fragment.edges,
+            svg_fragment.crossings,
+            svg_fragment.bends,
+            svg_fragment.render_ms
+        );
     }
 }
 
@@ -131,7 +162,10 @@ mod class_diagram {
             "Animal",
         );
         assert_eq!(m.nodes, 3);
-        eprintln!("[B12] nodes={} edges={} crossings={} bends={} render_ms={}", m.nodes, m.edges, m.crossings, m.bends, m.render_ms);
+        eprintln!(
+            "[B12] nodes={} edges={} crossings={} bends={} render_ms={}",
+            m.nodes, m.edges, m.crossings, m.bends, m.render_ms
+        );
     }
 
     #[test]
@@ -157,15 +191,15 @@ mod er_diagram {
             "erDiagram\n    CUSTOMER ||--o{ ORDER : places\n    ORDER ||--|{ LINE-ITEM : contains\n",
         );
         assert!(m.nodes >= 2, "should have at least 2 entities");
-        eprintln!("[B11] nodes={} edges={} crossings={} bends={} render_ms={}", m.nodes, m.edges, m.crossings, m.bends, m.render_ms);
+        eprintln!(
+            "[B11] nodes={} edges={} crossings={} bends={} render_ms={}",
+            m.nodes, m.edges, m.crossings, m.bends, m.render_ms
+        );
     }
 
     #[test]
     fn er_diagram_crow_foot_marker_in_svg() {
-        render_and_assert_svg_contains(
-            "erDiagram\n    A ||--o{ B : rel\n",
-            "er-",
-        );
+        render_and_assert_svg_contains("erDiagram\n    A ||--o{ B : rel\n", "er-");
     }
 }
 
@@ -182,7 +216,10 @@ mod c4_diagram {
             "C4Context\n    Person(user, \"User\", \"A person\")\n    System(sys, \"System\", \"The system\")\n    Rel(user, sys, \"Uses\")\n",
         );
         assert!(m.nodes >= 2);
-        eprintln!("[C4] nodes={} edges={} crossings={} bends={} render_ms={}", m.nodes, m.edges, m.crossings, m.bends, m.render_ms);
+        eprintln!(
+            "[C4] nodes={} edges={} crossings={} bends={} render_ms={}",
+            m.nodes, m.edges, m.crossings, m.bends, m.render_ms
+        );
     }
 }
 
@@ -210,7 +247,10 @@ mod metrics_summary {
         ];
 
         eprintln!();
-        eprintln!("{:<25} {:>6} {:>6} {:>9} {:>6} {:>10}", "Fixture", "Nodes", "Edges", "Crossings", "Bends", "Render ms");
+        eprintln!(
+            "{:<25} {:>6} {:>6} {:>9} {:>6} {:>10}",
+            "Fixture", "Nodes", "Edges", "Crossings", "Bends", "Render ms"
+        );
         eprintln!("{}", "-".repeat(70));
 
         for (name, mermaid) in fixtures {

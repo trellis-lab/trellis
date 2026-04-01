@@ -77,7 +77,7 @@ pub fn calculate_priorities(graph: &Graph) -> Vec<EdgePriority> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use trellis_parser::{Edge, EdgeStyle, ArrowHead, Node, NodeShape};
+    use trellis_parser::{ArrowHead, Edge, EdgeStyle, Node, NodeShape};
 
     fn make_node(id: &str, x: f64, y: f64) -> Node {
         Node {
@@ -88,7 +88,8 @@ mod tests {
             height: 40.0,
             x,
             y,
-            ..Default::default()        }
+            ..Default::default()
+        }
     }
 
     fn make_edge(from: &str, to: &str) -> Edge {
@@ -98,7 +99,8 @@ mod tests {
             label: None,
             style: EdgeStyle::Solid,
             arrow_head: ArrowHead::Arrow,
-            ..Default::default()        }
+            ..Default::default()
+        }
     }
 
     #[test]

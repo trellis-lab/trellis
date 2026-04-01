@@ -133,7 +133,8 @@ mod tests {
             height: h,
             x: 0.0,
             y: 0.0,
-            ..Default::default()        }
+            ..Default::default()
+        }
     }
 
     #[test]

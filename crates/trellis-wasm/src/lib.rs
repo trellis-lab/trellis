@@ -13,14 +13,12 @@ use wasm_bindgen::prelude::*;
 pub fn render(input: &str, config_json: Option<String>) -> Result<String, JsValue> {
     let config = parse_config(config_json)?;
 
-    let graph = trellis_parser::parse(input)
-        .map_err(|e| JsValue::from_str(&e.to_string()))?;
+    let graph = trellis_parser::parse(input).map_err(|e| JsValue::from_str(&e.to_string()))?;
 
     let result = trellis_core::render(&graph, &config, trellis_core::OutputFormat::Svg)
         .map_err(|e| JsValue::from_str(&e.to_string()))?;
 
-    let svg = String::from_utf8(result.data)
-        .map_err(|e| JsValue::from_str(&e.to_string()))?;
+    let svg = String::from_utf8(result.data).map_err(|e| JsValue::from_str(&e.to_string()))?;
 
     Ok(svg)
 }
@@ -37,14 +35,12 @@ pub fn render(input: &str, config_json: Option<String>) -> Result<String, JsValu
 pub fn render_with_metrics(input: &str, config_json: Option<String>) -> Result<String, JsValue> {
     let config = parse_config(config_json)?;
 
-    let graph = trellis_parser::parse(input)
-        .map_err(|e| JsValue::from_str(&e.to_string()))?;
+    let graph = trellis_parser::parse(input).map_err(|e| JsValue::from_str(&e.to_string()))?;
 
     let result = trellis_core::render(&graph, &config, trellis_core::OutputFormat::Svg)
         .map_err(|e| JsValue::from_str(&e.to_string()))?;
 
-    let svg = String::from_utf8(result.data)
-        .map_err(|e| JsValue::from_str(&e.to_string()))?;
+    let svg = String::from_utf8(result.data).map_err(|e| JsValue::from_str(&e.to_string()))?;
 
     let output = serde_json::json!({
         "svg": svg,

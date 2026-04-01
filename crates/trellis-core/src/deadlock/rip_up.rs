@@ -208,7 +208,11 @@ pub fn rip_up_and_reroute(
 }
 
 /// Save a cell's state and temporarily mark it as free for routing
-fn save_and_free_cell(grid: &mut Grid, point: GridPoint, costs: &RoutingCosts) -> Option<CellState> {
+fn save_and_free_cell(
+    grid: &mut Grid,
+    point: GridPoint,
+    costs: &RoutingCosts,
+) -> Option<CellState> {
     if !grid.in_bounds(point.row, point.col) {
         return None;
     }
