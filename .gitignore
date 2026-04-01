@@ -36,3 +36,6 @@ editors/intellij/gradle/
 editors/intellij/.intellijPlatform/
 editors/intellij/gradlew
 editors/intellij/gradlew.bat
+
+# PDF outputs
+*.pdf

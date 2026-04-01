@@ -434,14 +434,18 @@ A C4 elhelyezés **nem gráfalgoritmus-alapú** – sorfolyásos (row-flow) elre
 > **Cél:** Docker image és GitHub Actions CI pipeline működik.
 > **Smoke test:** `docker run --rm -v $(pwd):/data ghcr.io/trellis/trellis:latest trellis render /data/test.mmd -o /data/test.svg`
 
-* [ ] `docker/Dockerfile` – multi-stage build (builder + slim runtime)
-* [ ] Pandoc Dockerfile felépítése a teljes markdown rendereléshez
-* [ ] `scripts/build-docker.sh` – image build + tag
-* [ ] `scripts/build-cli.sh` – cross-compile: Linux x86_64, macOS x86_64/ARM, Windows
-* [ ] GitHub Actions CI workflow: `cargo test` → `cargo bench` → WASM build → CLI build → Docker build
-* [ ] GitHub Actions: artifact upload (.vsix, .zip, CLI binárísok, Docker push)
-* [ ] GitHub Releases automatizáció (tag push → release draft + binárisok)
-* [ ] README.md (telepítés, használat, példák, badge-ek)
+* [x] `docker/Dockerfile.wasm-builder` – multi-stage build (builder + slim runtime)
+* [x] `docker/Dockerfile.vscode-builder` – multi-stage build (builder + slim runtime)
+* [x] `docker/Dockerfile.intellij-builder` – multi-stage build (builder + slim runtime)
+* [x] Pandoc Dockerfile felépítése a teljes markdown rendereléshez
+* [x] `scripts/build-wasm-docker.sh` – image build + tag
+* [x] `scripts/build-vscode-docker.sh` – image build + tag
+* [x] `scripts/build-intellij-docker.sh` – image build + tag
+* [x] `scripts/build-cli.sh` – cross-compile: Linux x86_64, macOS x86_64/ARM, Windows
+* [x] GitHub Actions CI workflow: `cargo test` → `cargo bench` → WASM build → CLI build → Docker build
+* [x] GitHub Actions: artifact upload (.vsix, .zip, CLI binárisok, Docker push)
+* [x] GitHub Releases automatizáció (tag push → release draft + binárisok)
+* [x] README.md (telepítés, használat, példák, badge-ek)
 
 ---
 

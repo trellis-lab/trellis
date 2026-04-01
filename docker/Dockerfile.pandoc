@@ -1,0 +1,43 @@
+# docker/Dockerfile.pandoc
+#
+# Full Markdown-to-PDF/HTML rendering with Trellis diagram support.
+# Bundles Pandoc + the Trellis CLI + the trellis-filter.lua so that
+# Mermaid code blocks are rendered inline by the Trellis engine.
+#
+# Build image (done automatically by scripts/build-pandoc-docker.sh):
+#   docker build -f docker/Dockerfile.pandoc -t trellis-pandoc .
+#
+# Run (mounts current directory; converts input.md to output.pdf):
+#   docker run --rm -v "$(pwd):/data" trellis-pandoc input.md -o output.pdf
+#   docker run --rm -v "$(pwd):/data" trellis-pandoc input.md -o output.html
+
+FROM rust:1.93.1-slim AS builder
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        pkg-config \
+        libssl-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /build
+COPY Cargo.toml Cargo.lock ./
+COPY crates/ crates/
+COPY tests/ tests/
+
+RUN cargo build --release -p trellis-cli \
+    && cp target/release/trellis /usr/local/bin/trellis
+
+# ── Runtime stage ─────────────────────────────────────────────────────────────
+FROM pandoc/extra:latest-ubuntu
+
+# Trellis CLI binary from the builder stage
+COPY --from=builder /usr/local/bin/trellis /usr/local/bin/trellis
+
+# Pandoc Lua filter for Mermaid → SVG conversion
+COPY filters/trellis-filter.lua /usr/local/share/pandoc/filters/trellis-filter.lua
+
+COPY docker/pandoc-entrypoint.sh /usr/local/bin/pandoc-trellis
+RUN chmod +x /usr/local/bin/pandoc-trellis
+
+WORKDIR /data
+
+ENTRYPOINT ["/usr/local/bin/pandoc-trellis"]
