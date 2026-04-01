@@ -39,3 +39,4 @@ editors/intellij/gradlew.bat
 
 # PDF outputs
 *.pdf
+images/bugs/
