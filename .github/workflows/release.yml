@@ -102,7 +102,7 @@ jobs:
       # ── VS Code Extension ──
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
 
       - name: Build VS Code extension
         working-directory: editors/vscode

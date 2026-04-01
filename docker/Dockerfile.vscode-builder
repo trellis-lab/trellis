@@ -10,7 +10,7 @@
 # Run (repo mounted; output lands in dist/):
 #   docker run --rm -v "$(pwd):/workspace" trellis-vscode-builder
 
-FROM node:20-slim
+FROM node:24-slim
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
         # vsce needs git to embed commit info
