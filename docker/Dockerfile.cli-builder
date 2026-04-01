@@ -1,0 +1,38 @@
+# docker/Dockerfile.cli-builder
+#
+# Cross-compiles the Trellis CLI binary for multiple targets:
+#   - x86_64-unknown-linux-gnu
+#   - x86_64-apple-darwin
+#   - aarch64-apple-darwin
+#   - x86_64-pc-windows-gnu
+#
+# Build image (done automatically by scripts/build-cli.sh):
+#   docker build -f docker/Dockerfile.cli-builder -t trellis-cli-builder .
+#
+# Run (repo mounted; output lands in dist/):
+#   docker run --rm -v "$(pwd):/workspace" trellis-cli-builder
+#   docker run --rm -v "$(pwd):/workspace" trellis-cli-builder --target x86_64-unknown-linux-gnu
+
+FROM rust:1.93.1-slim
+
+# ── System dependencies for cross-compilation ─────────────────────────────────
+# gcc-mingw-w64: Windows cross-compiler
+# gcc-aarch64-linux-gnu: needed as a linker base for macOS ARM (actual macOS
+#     cross-compilation requires osxcross or a macOS runner — see CI workflow)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        pkg-config \
+        libssl-dev \
+        gcc-mingw-w64-x86-64 \
+    && rm -rf /var/lib/apt/lists/*
+
+# ── Rust cross-compilation targets ────────────────────────────────────────────
+RUN rustup target add \
+    x86_64-unknown-linux-gnu \
+    x86_64-pc-windows-gnu
+
+COPY docker/cli-entrypoint.sh /usr/local/bin/build-cli
+RUN chmod +x /usr/local/bin/build-cli
+
+WORKDIR /workspace
+
+ENTRYPOINT ["/usr/local/bin/build-cli"]
