@@ -29,6 +29,14 @@ RUN cargo build --release -p trellis-cli \
 # ── Runtime stage ─────────────────────────────────────────────────────────────
 FROM pandoc/extra:latest-ubuntu
 
+# Fonts required by resvg for PNG text rendering
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        fontconfig \
+        fonts-liberation \
+        fonts-dejavu-core \
+    && rm -rf /var/lib/apt/lists/* \
+    && fc-cache -f
+
 # Trellis CLI binary from the builder stage
 COPY --from=builder /usr/local/bin/trellis /usr/local/bin/trellis
 
