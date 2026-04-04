@@ -63,9 +63,21 @@ pub fn render(
     let port_assignments = assigner.assign_ports(&port_ctx);
 
     // Phase 5-6: Edge routing (A* pathfinding), with optional refinement loop
+    let use_refinement = if config.port_assignment == crate::config::PortAssignmentStrategy::Auto {
+        config.port_refinement_rounds > 0
+            && crate::ports::auto::auto_needs_refinement(
+                &graph,
+                cell_size,
+                extent.offset_x,
+                extent.offset_y,
+            )
+    } else {
+        needs_refinement(config.port_assignment) && config.port_refinement_rounds > 0
+    };
+
     #[allow(unused_mut)]
     let (port_assignments, mut grid, routing_result) =
-        if needs_refinement(config.port_assignment) && config.port_refinement_rounds > 0 {
+        if use_refinement {
             // Multi-round: route → detect crossings → swap ports → re-route
             crate::ports::iterative::refine_ports(
                 &graph,

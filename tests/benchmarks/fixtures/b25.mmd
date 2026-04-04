@@ -1,0 +1,24 @@
+%% Auto mode: complex hub topology (should select TwoPhase)
+%% Multiple hub nodes with high fan-out, moderate size
+flowchart TD
+    Hub1[Central Hub 1] --> A1[Worker A1]
+    Hub1 --> A2[Worker A2]
+    Hub1 --> A3[Worker A3]
+    Hub1 --> A4[Worker A4]
+    Hub1 --> A5[Worker A5]
+    Hub2[Central Hub 2] --> B1[Worker B1]
+    Hub2 --> B2[Worker B2]
+    Hub2 --> B3[Worker B3]
+    Hub2 --> B4[Worker B4]
+    Hub2 --> B5[Worker B5]
+    Hub1 --> Hub2
+    A1 --> B1
+    A2 --> B2
+    A3 --> B3
+    Hub3[Central Hub 3] --> C1[Worker C1]
+    Hub3 --> C2[Worker C2]
+    Hub3 --> C3[Worker C3]
+    Hub3 --> C4[Worker C4]
+    Hub2 --> Hub3
+    A4 --> C1
+    B3 --> C2

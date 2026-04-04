@@ -1,9 +1,11 @@
 pub mod assignment;
+pub mod auto;
 pub mod barycenter;
 pub mod common;
 pub mod crossing_greedy;
 pub mod iterative;
 pub mod median;
+pub mod stats;
 pub mod two_phase;
 
 use std::collections::HashMap;
@@ -14,6 +16,7 @@ pub use crossing_greedy::CrossingGreedyPortAssigner;
 pub use iterative::IterativeSwapAssigner;
 pub use median::MedianPortAssigner;
 pub use two_phase::TwoPhaseAssigner;
+pub use auto::AutoPortAssigner;
 
 use crate::config::PortAssignmentStrategy;
 
@@ -47,10 +50,15 @@ pub fn create_port_assigner(strategy: PortAssignmentStrategy) -> Box<dyn PortAss
             initial_strategy: PortAssignmentStrategy::CrossingGreedy,
         }),
         PortAssignmentStrategy::TwoPhase => Box::new(TwoPhaseAssigner),
+        PortAssignmentStrategy::Auto => Box::new(AutoPortAssigner),
     }
 }
 
 /// Returns true if the given strategy benefits from the pipeline refinement loop.
+///
+/// For `Auto`, the answer depends on the graph — use `auto::auto_needs_refinement()`
+/// instead. This function returns `false` for `Auto` to avoid unconditionally
+/// triggering the refinement loop; the pipeline checks Auto separately.
 pub fn needs_refinement(strategy: PortAssignmentStrategy) -> bool {
     matches!(
         strategy,
@@ -179,6 +187,7 @@ mod tests {
             PortAssignmentStrategy::CrossingGreedy,
             PortAssignmentStrategy::IterativeSwap,
             PortAssignmentStrategy::TwoPhase,
+            PortAssignmentStrategy::Auto,
         ];
 
         for strategy in &strategies {
@@ -211,5 +220,7 @@ mod tests {
         assert!(!needs_refinement(PortAssignmentStrategy::Barycenter));
         assert!(!needs_refinement(PortAssignmentStrategy::Median));
         assert!(!needs_refinement(PortAssignmentStrategy::CrossingGreedy));
+        // Auto handles refinement internally via auto_needs_refinement()
+        assert!(!needs_refinement(PortAssignmentStrategy::Auto));
     }
 }

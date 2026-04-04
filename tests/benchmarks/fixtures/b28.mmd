@@ -1,0 +1,21 @@
+%% Auto mode: dense mesh with multi-edges and bidirectional (should select CrossingGreedy)
+%% Bidirectional edges and multiple connections between same node pairs
+flowchart TD
+    A[Node A] --> B[Node B]
+    B --> A
+    A --> C[Node C]
+    C --> A
+    B --> C
+    C --> B
+    A --> D[Node D]
+    D --> B
+    B --> D
+    C --> D
+    D --> E[Node E]
+    E --> A
+    E --> B
+    E --> C
+    D --> F[Node F]
+    F --> A
+    F --> E
+    A --> F

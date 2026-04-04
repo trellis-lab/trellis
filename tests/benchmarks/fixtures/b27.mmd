@@ -1,0 +1,23 @@
+%% Auto mode: moderate complexity (should select CrossingGreedy)
+%% Multiple paths with some fan-out, high max degree
+flowchart TD
+    Router[Router] --> S1[Service 1]
+    Router --> S2[Service 2]
+    Router --> S3[Service 3]
+    Router --> S4[Service 4]
+    Router --> S5[Service 5]
+    S1 --> DB1[(Database 1)]
+    S2 --> DB1
+    S3 --> DB2[(Database 2)]
+    S4 --> DB2
+    S5 --> DB1
+    S5 --> DB2
+    S1 --> Cache[Cache]
+    S2 --> Cache
+    S3 --> Cache
+    S4 --> Queue[Queue]
+    S5 --> Queue
+    Cache --> Monitor[Monitor]
+    Queue --> Monitor
+    DB1 --> Backup[Backup]
+    DB2 --> Backup

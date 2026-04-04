@@ -1,0 +1,20 @@
+%% Auto mode: class diagram with inheritance hierarchy (ER/class lower hub threshold)
+classDiagram
+    Animal <|-- Dog
+    Animal <|-- Cat
+    Animal <|-- Bird
+    Animal <|-- Fish
+    Animal <|-- Reptile
+    Dog <|-- Labrador
+    Dog <|-- Poodle
+    Cat <|-- Siamese
+    Cat <|-- Persian
+    Bird <|-- Eagle
+    Bird <|-- Penguin
+    Animal : +String name
+    Animal : +int age
+    Animal : +eat()
+    Animal : +sleep()
+    Dog : +bark()
+    Cat : +meow()
+    Bird : +fly()

@@ -134,7 +134,7 @@ pub struct RoutingCosts {
 }
 
 /// Port assignment algorithm selection
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub enum PortAssignmentStrategy {
     #[default]
     Default,
@@ -148,6 +148,8 @@ pub enum PortAssignmentStrategy {
     IterativeSwap,
     /// Two-phase: fast crossing estimate + targeted re-route of crossing edges (multi-round)
     TwoPhase,
+    /// Auto: analyses graph stats and selects the best strategy automatically
+    Auto,
 }
 
 /// Decomposition mode for handling large graphs
