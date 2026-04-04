@@ -2,14 +2,18 @@ pub mod assignment;
 pub mod barycenter;
 pub mod common;
 pub mod crossing_greedy;
+pub mod iterative;
 pub mod median;
+pub mod two_phase;
 
 use std::collections::HashMap;
 
 pub use assignment::{assign_ports, DefaultPortAssigner, EdgePorts, Port, Side};
 pub use barycenter::BarycenterPortAssigner;
 pub use crossing_greedy::CrossingGreedyPortAssigner;
+pub use iterative::IterativeSwapAssigner;
 pub use median::MedianPortAssigner;
+pub use two_phase::TwoPhaseAssigner;
 
 use crate::config::PortAssignmentStrategy;
 
@@ -39,7 +43,19 @@ pub fn create_port_assigner(strategy: PortAssignmentStrategy) -> Box<dyn PortAss
         PortAssignmentStrategy::Barycenter => Box::new(BarycenterPortAssigner),
         PortAssignmentStrategy::Median => Box::new(MedianPortAssigner),
         PortAssignmentStrategy::CrossingGreedy => Box::new(CrossingGreedyPortAssigner),
+        PortAssignmentStrategy::IterativeSwap => Box::new(IterativeSwapAssigner {
+            initial_strategy: PortAssignmentStrategy::CrossingGreedy,
+        }),
+        PortAssignmentStrategy::TwoPhase => Box::new(TwoPhaseAssigner),
     }
+}
+
+/// Returns true if the given strategy benefits from the pipeline refinement loop.
+pub fn needs_refinement(strategy: PortAssignmentStrategy) -> bool {
+    matches!(
+        strategy,
+        PortAssignmentStrategy::IterativeSwap | PortAssignmentStrategy::TwoPhase
+    )
 }
 
 #[cfg(test)]
@@ -161,6 +177,8 @@ mod tests {
             PortAssignmentStrategy::Barycenter,
             PortAssignmentStrategy::Median,
             PortAssignmentStrategy::CrossingGreedy,
+            PortAssignmentStrategy::IterativeSwap,
+            PortAssignmentStrategy::TwoPhase,
         ];
 
         for strategy in &strategies {
@@ -179,5 +197,19 @@ mod tests {
                 strategy
             );
         }
+    }
+
+    #[test]
+    fn needs_refinement_true_for_multi_round() {
+        assert!(needs_refinement(PortAssignmentStrategy::IterativeSwap));
+        assert!(needs_refinement(PortAssignmentStrategy::TwoPhase));
+    }
+
+    #[test]
+    fn needs_refinement_false_for_single_round() {
+        assert!(!needs_refinement(PortAssignmentStrategy::Default));
+        assert!(!needs_refinement(PortAssignmentStrategy::Barycenter));
+        assert!(!needs_refinement(PortAssignmentStrategy::Median));
+        assert!(!needs_refinement(PortAssignmentStrategy::CrossingGreedy));
     }
 }

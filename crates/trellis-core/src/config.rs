@@ -32,6 +32,9 @@ fn default_decomposition_threshold() -> usize {
 fn default_port_assignment() -> PortAssignmentStrategy {
     PortAssignmentStrategy::Default
 }
+fn default_port_refinement_rounds() -> usize {
+    0
+}
 fn default_routing_costs() -> RoutingCosts {
     RoutingCosts::default()
 }
@@ -103,6 +106,12 @@ pub struct TrellisConfig {
     /// Port assignment algorithm
     #[serde(default = "default_port_assignment")]
     pub port_assignment: PortAssignmentStrategy,
+
+    /// Maximum port refinement rounds after routing (0 = disabled).
+    /// Used by multi-round strategies (IterativeSwap, TwoPhase) to
+    /// re-route edges after swapping crossing ports.
+    #[serde(default = "default_port_refinement_rounds")]
+    pub port_refinement_rounds: usize,
 }
 
 /// A* routing cost constants
@@ -135,6 +144,10 @@ pub enum PortAssignmentStrategy {
     Median,
     /// Crossing-count greedy — minimises port inversions that cause crossings
     CrossingGreedy,
+    /// Route-then-swap — routes, finds crossings, swaps ports, re-routes (multi-round)
+    IterativeSwap,
+    /// Two-phase: fast crossing estimate + targeted re-route of crossing edges (multi-round)
+    TwoPhase,
 }
 
 /// Decomposition mode for handling large graphs
@@ -160,6 +173,7 @@ impl Default for TrellisConfig {
             show_grid: default_show_grid(),
             show_edge_labels: default_show_edge_labels(),
             port_assignment: default_port_assignment(),
+            port_refinement_rounds: default_port_refinement_rounds(),
         }
     }
 }
@@ -197,6 +211,7 @@ pub fn configuration_factory(config_type: ConfigurationType) -> TrellisConfig {
             show_grid: false,
             show_edge_labels: true,
             port_assignment: PortAssignmentStrategy::Default,
+            port_refinement_rounds: 0,
         },
     }
 }

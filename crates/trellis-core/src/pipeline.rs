@@ -2,7 +2,7 @@ use crate::{
     config::TrellisConfig,
     grid::{build_grid, calculate_grid_extent},
     labels, placement,
-    ports::{create_port_assigner, PortAssignmentContext},
+    ports::{create_port_assigner, needs_refinement, PortAssignmentContext},
     routing,
     types::*,
 };
@@ -51,7 +51,6 @@ pub fn render(
 
     // Phase 3: Grid construction
     let extent = calculate_grid_extent(&graph, cell_size);
-    let mut grid = build_grid(&graph, cell_size, &extent);
 
     // Phase 4: Port assignment
     let assigner = create_port_assigner(config.port_assignment);
@@ -63,8 +62,24 @@ pub fn render(
     };
     let port_assignments = assigner.assign_ports(&port_ctx);
 
-    // Phase 5-6: Edge routing (A* pathfinding)
-    let routing_result = routing::route_all_edges(&graph, &mut grid, &port_assignments, config);
+    // Phase 5-6: Edge routing (A* pathfinding), with optional refinement loop
+    #[allow(unused_mut)]
+    let (port_assignments, mut grid, routing_result) =
+        if needs_refinement(config.port_assignment) && config.port_refinement_rounds > 0 {
+            // Multi-round: route → detect crossings → swap ports → re-route
+            crate::ports::iterative::refine_ports(
+                &graph,
+                config,
+                port_assignments,
+                config.port_refinement_rounds,
+            )
+        } else {
+            // Single-round: route once
+            let mut grid = build_grid(&graph, cell_size, &extent);
+            let result =
+                routing::route_all_edges(&graph, &mut grid, &port_assignments, config);
+            (port_assignments, grid, result)
+        };
 
     let render_ms = elapsed_ms(start);
 
