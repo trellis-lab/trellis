@@ -449,7 +449,79 @@ A C4 elhelyezés **nem gráfalgoritmus-alapú** – sorfolyásos (row-flow) elre
 
 ---
 
-## M18 – Dekompozíció (Fázis 13)
+## M18 – Edge Quality Validation Tooling (`trellis-validate`)
+
+> **Cél:** Új `trellis-validate` crate az él-minőség elemzéséhez és visszajelzés-gyűjtéshez. Lehetővé teszi az összes fixture vizuális átvizsgálását, a gyenge routing/port/elhelyezés azonosítását, és strukturált visszajelzés-fájl előállítását AI-alapú algoritmus-finomhangoláshoz.
+> **Smoke test:** `trellis evaluate-batch tests/benchmarks/fixtures/ -o reports/` → minden fixture-höz `.svg` (annotált) + `.json` (él-metrikák) fájl generálódik
+
+### Új crate: `crates/trellis-validate`
+
+* [ ] `Cargo.toml` felvétele a workspace-be (`crates/trellis-validate`)
+* [ ] Függőségek: `trellis-core`, `trellis-parser`, `serde`, `serde_json`
+* [ ] Dependency irány: `trellis-validate → trellis-core + trellis-parser` (fordítva sosem)
+
+### Él-minőség pontozás (`trellis-validate/src/scoring.rs`)
+
+* [ ] `EdgeQualityScore` struktúra: `detour_factor`, `bend_count`, `is_crossing`, `quality_score: f64` (0.0–1.0)
+* [ ] Pontozási heurisztikák:
+    * Detour factor ≤ 1.2 → jó; 1.2–2.0 → közepes; > 2.0 → rossz
+    * Bends ≤ 2 → jó; 3–4 → közepes; > 4 → rossz
+    * Crossing involvement → automatikusan csökkenti a pontszámot
+* [ ] `score_edge(path: &RoutedPath, ports: &EdgePorts) -> EdgeQualityScore`
+* [ ] `score_all_edges(routing_result: &RoutingResult, port_assignments: &HashMap<usize, EdgePorts>) -> Vec<EdgeQualityScore>`
+* [ ] Minőségi jelzők: `["high_detour", "avoidable_crossing", "excessive_bends"]`
+
+### JSON riport (`trellis-validate/src/report.rs`)
+
+* [ ] `EdgeReport` struktúra: `id`, `source`, `target`, `bends`, `detour_factor`, `crossings`, `port_side_source`, `port_side_target`, `path_cells`, `quality_score`, `flags`
+* [ ] `DiagramReport` struktúra: `fixture`, `edges: Vec<EdgeReport>`, `global_metrics: RenderMetrics`
+* [ ] `generate_report(graph, routing_result, port_assignments) -> DiagramReport`
+* [ ] JSON szerializáció (`serde_json`) → fájlba írás
+
+### Annotált SVG (`trellis-validate/src/annotated_svg.rs`)
+
+* [ ] Él-útvonalak színezése minőség szerint: zöld (≥ 0.8), sárga (0.5–0.8), piros (< 0.5)
+* [ ] `data-edge-id="A-->B"` attribútum minden él `<path>` elemén (kattintható a böngészőben)
+* [ ] `<title>` tooltip minden élre: `bends=N, detour=1.3x, score=0.72`
+* [ ] `annotate_svg(svg_bytes: &[u8], scores: &[EdgeQualityScore], graph: &Graph) -> Vec<u8>`
+
+### `diagnostics` feature flag (`trellis-core`)
+
+* [ ] `[features]` bővítés `trellis-core/Cargo.toml`-ban: `default = ["diagnostics"]`, `diagnostics = []`
+* [ ] `#[cfg(feature = "diagnostics")]` kapuzás a pipeline post-routing stats ciklusra (`pipeline.rs`): `max_path_length`, `max_bends_per_edge`, `sum_manhattan_distance`, `avg_detour_factor`
+* [ ] `#[cfg(feature = "diagnostics")]` kapuzás a `grid.utilization()` hívásra
+* [ ] `trellis-wasm/Cargo.toml` frissítés: `trellis-core` `default-features = false` (már meglévő minta a `png` feature-höz)
+* [ ] `cargo test --workspace` zöld mindkét feature-kombinációban: `--features diagnostics` és anélkül
+
+### CLI integráció (`trellis-cli`)
+
+* [ ] `evaluate` parancs: egyetlen `.mmd` fájl → `report.json` + annotált `.svg`
+* [ ] `evaluate-batch` parancs: könyvtár bejárás, párhuzamos feldolgozás (mint `render-batch`), `-o <output-dir>`
+* [ ] `--compare-strategies` kapcsoló: minden port-assignment stratégiával renderel (Default/Barycenter/Median/CrossingGreedy), összehasonlító CSV + oldal-összehasonlító SVG grid
+
+### Interaktív visszajelzés eszköz (`trellis-validate/src/review_html.rs`)
+
+* [ ] Önálló HTML fájl generálás (keretrendszer nélkül, vanilla JS)
+* [ ] Összes fixture SVG betöltése egy oldalon, egymás melletti összehasonlítással
+* [ ] Élek kattinthatók: "javítható" jelölő be/ki → `feedback.json` írás (localStorage → letöltés)
+* [ ] Szabad szöveges megjegyzés mezők (`textarea`) jelölt élekhez
+* [ ] `generate_review_html(diagram_reports: &[DiagramReport]) -> String`
+
+### `feedback.json` schema és AI agent bemenet
+
+* [ ] `feedback.json` struktúra: `{ fixture: { edges: { "A-->B": { improvable: bool, note: String } } } }`
+* [ ] AI agent prompt sablon (`docs/validation/ai-tuning-prompt.md`): fixture `.mmd` + `feedback.json` + jelenlegi algoritmus-konfig → javasolt konfig/algoritmus változtatások
+* [ ] `evaluate-batch --feedback feedback.json` kapcsoló: korábbi visszajelzések újra-rendereléshez
+
+### Tesztelés
+
+* [ ] Unit tesztek: `score_edge` különböző útvonal-típusokra (egyenes, L-alakú, U-alakú, crossing)
+* [ ] Integrációs teszt: `evaluate-batch` B01-B12 fixture-ökön fut le, minden kimeneti fájl létrejön
+* [ ] Feature flag teszt: `trellis-core` lefordul `diagnostics` nélkül, WASM build nem regredál
+
+---
+
+## M19 – Dekompozíció (Fázis 13)
 
 > **Cél:** Nagy gráfok (50+ node) kezelése klaszterezéssel.
 > **Smoke test:** B10 (50 node flowchart) és B11 (100 node ER) elfogadható idő alatt renderelődik
@@ -466,7 +538,7 @@ A C4 elhelyezés **nem gráfalgoritmus-alapú** – sorfolyásos (row-flow) elre
 
 ---
 
-## M19 – Kereskedelmi funkciók (Commercialisation)
+## M20 – Kereskedelmi funkciók (Commercialisation)
 
 > **Cél:** Licenckezelés és freemium korlátok implementálása a CLI-ben, VS Code extensionben és IntelliJ pluginban.
 > **Előfeltétel:** M14 (CLI teljes funkciókészlet), M15 (VS Code extension), M16 (IntelliJ plugin)
@@ -532,13 +604,14 @@ A C4 elhelyezés **nem gráfalgoritmus-alapú** – sorfolyásos (row-flow) elre
 | **M10**   | Fázis 1-2 (class) | Class diagram (hibrid Sugiyama+laterális) |
 | **M11**   | Fázis 1-2 (ER) | ER diagram (force-directed, crow's foot) |
 | **M12**   | – | C4 diagramtípusok (Context/Container/Component/Dynamic/Deployment) |
-| **M13**   | Fázis 13 | Dekompozíció |
+| **M13**   | Fázis 13 | Benchmark + optimalizáció |
 | **M14**   | CLI | Teljes CLI + Pandoc filter |
 | **M15**   | – | VS Code extension |
 | **M16**   | – | IntelliJ plugin |
 | **M17**   | – | Docker + CI/CD |
-| **M18**   | – | Benchmark + optimalizáció |
-| **M19**   | – | Kereskedelmi funkciók (licenckezelés, freemium korlátok) |
+| **M18**   | – | Edge Quality Validation Tooling (`trellis-validate` crate) |
+| **M19**   | Fázis 13 | Dekompozíció |
+| **M20**   | – | Kereskedelmi funkciók (licenckezelés, freemium korlátok) |
 
 ---
 
@@ -560,10 +633,10 @@ M1 → M2 → M3 → M4 → M5 → M6 (első vizuális eredmény)
                                   ├→ M14 (CLI teljes) → M17 (Docker/CI)
                                   │
                                   ├→ M15 (VS Code) ──┐
-                                  │                   ├→ M18 (benchmark) → Mc (commercialisation) → Release
+                                  │                   ├→ M18 (validate) → M19 (dekompozíció) → M20 (commercialisation) → Release
                                   └→ M16 (IntelliJ) ──┘
 
-M18 (benchmark) bármikor futtatható M6 után; Mc az összes többi mérföldkő után
+M13 (benchmark) bármikor futtatható M6 után; M18 (validate) M14 után javasolt (CLI infrastruktúrát használ); M20 az összes többi mérföldkő után
 ```
 
 A **legfontosabb mérföldkő az M6** – itt lesz először vizuálisan értékelhető kimenet. Minden ami utána jön, finomítás és platform-terjesztés.
