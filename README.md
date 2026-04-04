@@ -139,7 +139,7 @@ cargo build --workspace
 cargo test --workspace
 
 # Run benchmarks
-cargo bench -p benchmarks
+cargo bench -p trellis-benchmarks
 
 # Static analysis
 cargo clippy --workspace

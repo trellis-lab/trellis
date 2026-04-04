@@ -1,6 +1,17 @@
 use std::collections::HashMap;
 use trellis_parser::{Graph, Node};
 
+use super::{PortAssigner, PortAssignmentContext};
+
+/// The default (angle-based) port assignment algorithm.
+pub struct DefaultPortAssigner;
+
+impl PortAssigner for DefaultPortAssigner {
+    fn assign_ports(&self, ctx: &PortAssignmentContext) -> HashMap<usize, EdgePorts> {
+        assign_ports(ctx.graph, ctx.cell_size, ctx.offset_x, ctx.offset_y)
+    }
+}
+
 /// Side of a node where a port can be placed
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Side {

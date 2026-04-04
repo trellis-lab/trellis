@@ -2,7 +2,7 @@ use crate::{
     config::TrellisConfig,
     grid::{build_grid, calculate_grid_extent},
     labels, placement,
-    ports::assign_ports,
+    ports::{create_port_assigner, PortAssignmentContext},
     routing,
     types::*,
 };
@@ -54,7 +54,14 @@ pub fn render(
     let mut grid = build_grid(&graph, cell_size, &extent);
 
     // Phase 4: Port assignment
-    let port_assignments = assign_ports(&graph, cell_size, extent.offset_x, extent.offset_y);
+    let assigner = create_port_assigner(config.port_assignment);
+    let port_ctx = PortAssignmentContext {
+        graph: &graph,
+        cell_size,
+        offset_x: extent.offset_x,
+        offset_y: extent.offset_y,
+    };
+    let port_assignments = assigner.assign_ports(&port_ctx);
 
     // Phase 5-6: Edge routing (A* pathfinding)
     let routing_result = routing::route_all_edges(&graph, &mut grid, &port_assignments, config);

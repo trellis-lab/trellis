@@ -29,6 +29,9 @@ fn default_decomposition() -> DecompositionMode {
 fn default_decomposition_threshold() -> usize {
     50
 }
+fn default_port_assignment() -> PortAssignmentStrategy {
+    PortAssignmentStrategy::Default
+}
 fn default_routing_costs() -> RoutingCosts {
     RoutingCosts::default()
 }
@@ -96,6 +99,10 @@ pub struct TrellisConfig {
     /// Enable/disable displaying edge captions
     #[serde(default = "default_show_edge_labels")]
     pub show_edge_labels: bool,
+
+    /// Port assignment algorithm
+    #[serde(default = "default_port_assignment")]
+    pub port_assignment: PortAssignmentStrategy,
 }
 
 /// A* routing cost constants
@@ -115,6 +122,13 @@ pub struct RoutingCosts {
     /// Forces edges to approach/leave nodes perpendicularly.
     #[serde(default = "default_perpendicular_cost")]
     pub perpendicular_cost: f64,
+}
+
+/// Port assignment algorithm selection
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, Default)]
+pub enum PortAssignmentStrategy {
+    #[default]
+    Default,
 }
 
 /// Decomposition mode for handling large graphs
@@ -139,6 +153,7 @@ impl Default for TrellisConfig {
             render_crossings: default_render_crossings(),
             show_grid: default_show_grid(),
             show_edge_labels: default_show_edge_labels(),
+            port_assignment: default_port_assignment(),
         }
     }
 }
@@ -175,6 +190,31 @@ pub fn configuration_factory(config_type: ConfigurationType) -> TrellisConfig {
             render_crossings: true,
             show_grid: false,
             show_edge_labels: true,
+            port_assignment: PortAssignmentStrategy::Default,
         },
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn port_assignment_defaults_when_absent() {
+        let config: TrellisConfig = serde_json::from_str("{}").unwrap();
+        assert!(matches!(
+            config.port_assignment,
+            PortAssignmentStrategy::Default
+        ));
+    }
+
+    #[test]
+    fn port_assignment_parses_from_json() {
+        let config: TrellisConfig =
+            serde_json::from_str(r#"{"port_assignment": "Default"}"#).unwrap();
+        assert!(matches!(
+            config.port_assignment,
+            PortAssignmentStrategy::Default
+        ));
     }
 }
