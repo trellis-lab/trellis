@@ -7,8 +7,9 @@ license.workspace = true
 repository.workspace = true
 
 [features]
-default = ["png"]
+default = ["png", "diagnostics"]
 png = ["dep:resvg"]
+diagnostics = []
 
 [dependencies]
 trellis-parser = { path = "../trellis-parser" }

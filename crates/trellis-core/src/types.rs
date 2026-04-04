@@ -55,6 +55,7 @@ pub struct RenderMetrics {
     pub crossings: usize,
     pub bends: usize,
     pub render_ms: u64,
+    #[cfg(feature = "diagnostics")]
     pub grid_utilization: f64,
     pub grid_rows: usize,
     pub grid_cols: usize,
@@ -67,14 +68,18 @@ pub struct RenderMetrics {
     /// Average routed path length per edge (0.0 if no edges)
     pub avg_edge_length: f64,
     /// Average A* routing cost per edge (0.0 if no edges)
+    #[cfg(feature = "diagnostics")]
     pub avg_routing_cost: f64,
     /// Longest single routed path in grid steps
+    #[cfg(feature = "diagnostics")]
     pub max_edge_length: usize,
     /// Largest bend count on any single routed edge
+    #[cfg(feature = "diagnostics")]
     pub max_bends_per_edge: usize,
     /// Average detour factor: avg(actual_steps / manhattan_distance) per edge.
     /// 1.0 = theoretically shortest path; higher values indicate detour due to
     /// congestion or obstacles.  0.0 when all edges have zero manhattan distance.
+    #[cfg(feature = "diagnostics")]
     pub avg_detour_factor: f64,
     /// Number of edges that required the 3-level deadlock recovery handler
     pub deadlock_recoveries: usize,

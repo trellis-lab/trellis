@@ -454,8 +454,11 @@ mod tests {
             failed_routes: 0,
             total_path_length: 0,
             total_routing_cost: 0.0,
+            #[cfg(feature = "diagnostics")]
             max_path_length: 0,
+            #[cfg(feature = "diagnostics")]
             max_bends_per_edge: 0,
+            #[cfg(feature = "diagnostics")]
             sum_manhattan_distance: 0,
             deadlock_recoveries: 0,
         };

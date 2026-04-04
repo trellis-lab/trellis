@@ -32,11 +32,14 @@ pub struct RoutingResult {
     /// Sum of A* routing costs across all routed paths
     pub total_routing_cost: f64,
     /// Longest single routed path in grid steps
+    #[cfg(feature = "diagnostics")]
     pub max_path_length: usize,
     /// Largest bend count on any single routed path
+    #[cfg(feature = "diagnostics")]
     pub max_bends_per_edge: usize,
     /// Sum of source→target Manhattan distances for all routed edges
     /// (denominator for the average detour factor)
+    #[cfg(feature = "diagnostics")]
     pub sum_manhattan_distance: usize,
     /// Number of edges that required the 3-level deadlock recovery handler
     pub deadlock_recoveries: usize,
@@ -81,8 +84,11 @@ fn route_all_edges_inner(
         failed_routes: 0,
         total_path_length: 0,
         total_routing_cost: 0.0,
+        #[cfg(feature = "diagnostics")]
         max_path_length: 0,
+        #[cfg(feature = "diagnostics")]
         max_bends_per_edge: 0,
+        #[cfg(feature = "diagnostics")]
         sum_manhattan_distance: 0,
         deadlock_recoveries: 0,
     };
@@ -149,6 +155,8 @@ fn route_all_edges_inner(
     // Post-routing: derive per-path stats from the final committed paths.
     // Using the final result.paths (rather than incremental tracking) avoids
     // double-counting during rip-up-and-reroute rollbacks.
+    // Gated: O(edges) scan used only for display-only diagnostics metrics.
+    #[cfg(feature = "diagnostics")]
     for (&edge_idx, path) in &result.paths {
         let path_len = path.points.len().saturating_sub(1);
         result.max_path_length = result.max_path_length.max(path_len);

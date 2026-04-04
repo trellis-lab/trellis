@@ -103,6 +103,7 @@ pub fn render(
     } else {
         0.0
     };
+    #[cfg(feature = "diagnostics")]
     let avg_routing_cost = if routed_count > 0 {
         routing_result.total_routing_cost / routed_count as f64
     } else {
@@ -110,6 +111,7 @@ pub fn render(
     };
     // avg_detour_factor = total actual steps / total manhattan steps.
     // Using totals (not per-edge average) avoids division-by-zero on zero-length edges.
+    #[cfg(feature = "diagnostics")]
     let avg_detour_factor = if routing_result.sum_manhattan_distance > 0 {
         routing_result.total_path_length as f64 / routing_result.sum_manhattan_distance as f64
     } else {
@@ -122,6 +124,7 @@ pub fn render(
         crossings: routing_result.crossings,
         bends: routing_result.total_bends,
         render_ms,
+        #[cfg(feature = "diagnostics")]
         grid_utilization: grid.utilization(),
         grid_rows: grid.rows,
         grid_cols: grid.cols,
@@ -130,9 +133,13 @@ pub fn render(
         total_edge_length: routing_result.total_path_length,
         total_routing_cost: routing_result.total_routing_cost,
         avg_edge_length,
+        #[cfg(feature = "diagnostics")]
         avg_routing_cost,
+        #[cfg(feature = "diagnostics")]
         max_edge_length: routing_result.max_path_length,
+        #[cfg(feature = "diagnostics")]
         max_bends_per_edge: routing_result.max_bends_per_edge,
+        #[cfg(feature = "diagnostics")]
         avg_detour_factor,
         deadlock_recoveries: routing_result.deadlock_recoveries,
     };
