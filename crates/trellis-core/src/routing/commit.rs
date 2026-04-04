@@ -25,6 +25,7 @@ pub fn commit_path(grid: &mut Grid, path: &[GridPoint], edge_id: &str, costs: &R
                 // Two paths share this cell – mark it as a crossing so the
                 // renderer draws a bridge and the invariant check accepts it.
                 cell.crossing = true;
+                cell.crossed_by = Some(edge_id.to_string());
             }
         }
 

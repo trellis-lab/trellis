@@ -129,6 +129,12 @@ pub struct RoutingCosts {
 pub enum PortAssignmentStrategy {
     #[default]
     Default,
+    /// Barycenter ordering — orders by weighted average position of target neighbourhood
+    Barycenter,
+    /// Median ordering — orders by median position, robust to outliers
+    Median,
+    /// Crossing-count greedy — minimises port inversions that cause crossings
+    CrossingGreedy,
 }
 
 /// Decomposition mode for handling large graphs
