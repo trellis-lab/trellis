@@ -5,6 +5,7 @@ members = [
     "crates/trellis-core",
     "crates/trellis-wasm",
     "crates/trellis-cli",
+    "crates/trellis-validate",
     "tests/benchmarks",
     "tests/integration",
 ]

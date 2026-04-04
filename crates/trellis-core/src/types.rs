@@ -1,6 +1,9 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
+#[cfg(feature = "diagnostics")]
+use crate::{grid::Grid, ports::EdgePorts, routing::RoutingResult};
+
 /// Output format for rendered diagrams
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, Default)]
 pub enum OutputFormat {
@@ -36,6 +39,24 @@ pub struct SubgraphTree {
     pub nodes: HashMap<String, SubgraphTreeNode>,
     /// The root ID is always "ROOT"
     pub root_id: String,
+}
+
+/// Intermediate pipeline data needed for quality validation.
+///
+/// Returned alongside [`RenderResult`] by [`render_with_validation`].
+/// Only available when the `diagnostics` feature is enabled.
+#[cfg(feature = "diagnostics")]
+pub struct ValidationData {
+    /// The graph after placement (node positions resolved).
+    pub graph: trellis_parser::Graph,
+    /// Committed routing result (paths, crossings, bends).
+    pub routing_result: RoutingResult,
+    /// Source/target port assignment for every routed edge.
+    pub port_assignments: HashMap<usize, EdgePorts>,
+    /// Final committed routing grid.
+    pub grid: Grid,
+    /// Raw SVG bytes (always SVG regardless of the requested output format).
+    pub svg: Vec<u8>,
 }
 
 /// Rendering result containing the output data

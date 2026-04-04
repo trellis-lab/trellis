@@ -1,25 +1,13 @@
 [package]
-name = "trellis-cli"
+name = "trellis-validate"
 version.workspace = true
 edition.workspace = true
 authors.workspace = true
 license.workspace = true
 repository.workspace = true
 
-[[bin]]
-name = "trellis"
-path = "src/main.rs"
-
 [dependencies]
 trellis-parser = { path = "../trellis-parser" }
 trellis-core = { path = "../trellis-core" }
-trellis-validate = { path = "../trellis-validate" }
-clap = { workspace = true }
-anyhow = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
-toml = { workspace = true }
-walkdir = { workspace = true }
-rayon = { workspace = true }
-
-[dev-dependencies]

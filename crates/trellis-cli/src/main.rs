@@ -4,7 +4,7 @@ use std::ffi::OsStr;
 use std::fs;
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
-use trellis_core::TrellisConfig;
+use trellis_core::{PortAssignmentStrategy, TrellisConfig};
 
 // ─── CLI definition ───────────────────────────────────────────────────────────
 
@@ -96,6 +96,48 @@ EXAMPLES
         /// Output format for images: svg or png
         #[arg(short, long, default_value = "svg", value_name = "FMT")]
         format: String,
+    },
+
+    /// Render a diagram and produce a quality report (.svg + .json)
+    #[command(after_help = "\
+EXAMPLES
+  trellis evaluate diagram.mmd -o ./reports/
+  trellis evaluate diagram.mmd -o ./reports/ --annotated")]
+    Evaluate {
+        /// Input .mmd file
+        input: PathBuf,
+
+        /// Output directory (created if absent)
+        #[arg(short, long, value_name = "DIR")]
+        output_dir: PathBuf,
+
+        /// Also write an annotated SVG with quality colour overlay ({name}.annotated.svg)
+        #[arg(long)]
+        annotated: bool,
+    },
+
+    /// Evaluate all .mmd files in a directory, producing .svg + .json per fixture
+    #[command(after_help = "\
+EXAMPLES
+  trellis evaluate-batch ./fixtures/ -o ./reports/
+  trellis evaluate-batch ./fixtures/ -o ./reports/ --annotated
+  trellis evaluate-batch ./fixtures/ -o ./reports/ --compare-strategies")]
+    EvaluateBatch {
+        /// Directory containing .mmd source files (searched recursively)
+        input_dir: PathBuf,
+
+        /// Output directory (created if absent)
+        #[arg(short, long, value_name = "DIR")]
+        output_dir: PathBuf,
+
+        /// Also write annotated SVGs with quality colour overlay ({name}.annotated.svg)
+        #[arg(long)]
+        annotated: bool,
+
+        /// Run every port-assignment strategy and write per-strategy outputs +
+        /// a summary CSV ({name}_strategies.csv) for A/B comparison
+        #[arg(long)]
+        compare_strategies: bool,
     },
 
     /// Print a comprehensive usage reference for all commands
@@ -455,6 +497,301 @@ fn cmd_preprocess(
     Ok(())
 }
 
+// ─── evaluate commands ────────────────────────────────────────────────────────
+
+/// Evaluate a single diagram: render + quality report.
+/// Writes `{stem}.svg` and `{stem}.json` to `output_dir`.
+/// Optionally writes `{stem}.annotated.svg`.
+fn cmd_evaluate(
+    input: &PathBuf,
+    output_dir: &PathBuf,
+    annotated: bool,
+    config: &TrellisConfig,
+) -> Result<(), AppError> {
+    fs::create_dir_all(output_dir).map_err(|e| {
+        AppError::Render(format!("cannot create output dir {:?}: {}", output_dir, e))
+    })?;
+
+    let stem = input
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .unwrap_or("diagram");
+    let fixture_name = input
+        .file_name()
+        .and_then(|s| s.to_str())
+        .unwrap_or("diagram.mmd");
+
+    let content = read_input(input)?;
+    let graph = trellis_parser::parse(&content).map_err(|e| AppError::Parse(e.to_string()))?;
+
+    let (render_result, validation) =
+        trellis_core::render_with_validation(&graph, config, trellis_core::OutputFormat::Svg)
+            .map_err(|e| AppError::Render(e.to_string()))?;
+
+    // Write SVG
+    let svg_path = output_dir.join(format!("{}.svg", stem));
+    fs::write(&svg_path, &render_result.data)
+        .map_err(|e| AppError::Render(format!("cannot write {:?}: {}", svg_path, e)))?;
+
+    // Build and write JSON report
+    let report = trellis_validate::report::generate_report(
+        fixture_name,
+        &validation.graph,
+        &validation.routing_result,
+        &validation.port_assignments,
+        &validation.grid,
+    );
+    let json = serde_json::to_string_pretty(&report)
+        .map_err(|e| AppError::Render(format!("JSON serialisation failed: {}", e)))?;
+    let json_path = output_dir.join(format!("{}.json", stem));
+    fs::write(&json_path, json.as_bytes())
+        .map_err(|e| AppError::Render(format!("cannot write {:?}: {}", json_path, e)))?;
+
+    // Optionally write annotated SVG
+    if annotated {
+        let ann =
+            trellis_validate::annotated_svg::annotate_svg(&validation.svg, &report, &validation.grid);
+        let ann_path = output_dir.join(format!("{}.annotated.svg", stem));
+        fs::write(&ann_path, &ann)
+            .map_err(|e| AppError::Render(format!("cannot write {:?}: {}", ann_path, e)))?;
+        println!("  annotated SVG → {:?}", ann_path);
+    }
+
+    println!("  {:?} → {:?}", input, svg_path);
+    println!("  report     → {:?}", json_path);
+    println!(
+        "  {} edges | avg quality {:.2} | {} flagged",
+        report.global_metrics.routed_edges,
+        report.global_metrics.avg_quality_score,
+        report.global_metrics.flagged_edges,
+    );
+
+    Ok(())
+}
+
+/// All port-assignment strategies available for `--compare-strategies`.
+const COMPARE_STRATEGIES: &[(PortAssignmentStrategy, &str)] = &[
+    (PortAssignmentStrategy::Default, "default"),
+    (PortAssignmentStrategy::Barycenter, "barycenter"),
+    (PortAssignmentStrategy::Median, "median"),
+    (PortAssignmentStrategy::CrossingGreedy, "crossing_greedy"),
+];
+
+fn cmd_evaluate_batch(
+    input_dir: &PathBuf,
+    output_dir: &PathBuf,
+    annotated: bool,
+    compare_strategies: bool,
+    config: &TrellisConfig,
+) -> Result<(), AppError> {
+    fs::create_dir_all(output_dir).map_err(|e| {
+        AppError::Render(format!("cannot create output dir {:?}: {}", output_dir, e))
+    })?;
+
+    let files: Vec<PathBuf> = walkdir::WalkDir::new(input_dir)
+        .into_iter()
+        .filter_map(|e| e.ok())
+        .filter(|e| e.path().extension() == Some(OsStr::new("mmd")))
+        .map(|e| e.path().to_path_buf())
+        .collect();
+
+    if files.is_empty() {
+        eprintln!("No .mmd files found in {:?}", input_dir);
+        return Ok(());
+    }
+
+    println!(
+        "Evaluating {} file(s){}…",
+        files.len(),
+        if compare_strategies { " × 4 strategies" } else { "" }
+    );
+
+    let errors: Vec<String> = files
+        .par_iter()
+        .flat_map(|file| {
+            let mut errs = Vec::new();
+
+            let stem = file
+                .file_stem()
+                .and_then(|s| s.to_str())
+                .unwrap_or("diagram");
+            let fixture_name = file
+                .file_name()
+                .and_then(|s| s.to_str())
+                .unwrap_or("diagram.mmd");
+
+            let content = match fs::read_to_string(file) {
+                Ok(c) => c,
+                Err(e) => {
+                    errs.push(format!("cannot read {:?}: {}", file, e));
+                    return errs;
+                }
+            };
+            let graph = match trellis_parser::parse(&content) {
+                Ok(g) => g,
+                Err(e) => {
+                    errs.push(format!("parse error in {:?}: {}", file, e));
+                    return errs;
+                }
+            };
+
+            if compare_strategies {
+                // Run every strategy and collect per-strategy results for the CSV
+                let mut csv_rows: Vec<String> = Vec::new();
+
+                for &(strategy, label) in COMPARE_STRATEGIES {
+                    let mut cfg = config.clone();
+                    cfg.port_assignment = strategy;
+
+                    match trellis_core::render_with_validation(
+                        &graph,
+                        &cfg,
+                        trellis_core::OutputFormat::Svg,
+                    ) {
+                        Err(e) => errs.push(format!(
+                            "render error {:?} ({}): {}",
+                            file, label, e
+                        )),
+                        Ok((result, validation)) => {
+                            let report = trellis_validate::report::generate_report(
+                                fixture_name,
+                                &validation.graph,
+                                &validation.routing_result,
+                                &validation.port_assignments,
+                                &validation.grid,
+                            );
+
+                            // Write {stem}_{strategy}.svg
+                            let svg_path =
+                                output_dir.join(format!("{}_{}.svg", stem, label));
+                            if let Err(e) = fs::write(&svg_path, &result.data) {
+                                errs.push(format!("cannot write {:?}: {}", svg_path, e));
+                            }
+
+                            // Write {stem}_{strategy}.json
+                            if let Ok(json) = serde_json::to_string_pretty(&report) {
+                                let json_path =
+                                    output_dir.join(format!("{}_{}.json", stem, label));
+                                if let Err(e) = fs::write(&json_path, json.as_bytes()) {
+                                    errs.push(format!("cannot write {:?}: {}", json_path, e));
+                                }
+                            }
+
+                            // Write annotated SVG if requested
+                            if annotated {
+                                let ann = trellis_validate::annotated_svg::annotate_svg(
+                                    &validation.svg,
+                                    &report,
+                                    &validation.grid,
+                                );
+                                let ann_path = output_dir
+                                    .join(format!("{}_{}.annotated.svg", stem, label));
+                                if let Err(e) = fs::write(&ann_path, &ann) {
+                                    errs.push(format!(
+                                        "cannot write {:?}: {}",
+                                        ann_path, e
+                                    ));
+                                }
+                            }
+
+                            csv_rows.push(format!(
+                                "{},{},{:.4},{},{},{}",
+                                stem,
+                                label,
+                                report.global_metrics.avg_quality_score,
+                                report.global_metrics.total_crossings,
+                                report.global_metrics.total_bends,
+                                report.global_metrics.flagged_edges,
+                            ));
+                        }
+                    }
+                }
+
+                // Write summary CSV
+                if !csv_rows.is_empty() {
+                    let header =
+                        "fixture,strategy,avg_quality,crossings,bends,flagged_edges";
+                    let csv = format!("{}\n{}\n", header, csv_rows.join("\n"));
+                    let csv_path = output_dir.join(format!("{}_strategies.csv", stem));
+                    if let Err(e) = fs::write(&csv_path, csv.as_bytes()) {
+                        errs.push(format!("cannot write {:?}: {}", csv_path, e));
+                    } else {
+                        println!("  {:?} comparison → {:?}", file, csv_path);
+                    }
+                }
+            } else {
+                // Single-strategy mode
+                match trellis_core::render_with_validation(
+                    &graph,
+                    config,
+                    trellis_core::OutputFormat::Svg,
+                ) {
+                    Err(e) => errs.push(format!("render error in {:?}: {}", file, e)),
+                    Ok((result, validation)) => {
+                        let report = trellis_validate::report::generate_report(
+                            fixture_name,
+                            &validation.graph,
+                            &validation.routing_result,
+                            &validation.port_assignments,
+                            &validation.grid,
+                        );
+
+                        let svg_path = output_dir.join(format!("{}.svg", stem));
+                        if let Err(e) = fs::write(&svg_path, &result.data) {
+                            errs.push(format!("cannot write {:?}: {}", svg_path, e));
+                            return errs;
+                        }
+
+                        if let Ok(json) = serde_json::to_string_pretty(&report) {
+                            let json_path = output_dir.join(format!("{}.json", stem));
+                            if let Err(e) = fs::write(&json_path, json.as_bytes()) {
+                                errs.push(format!("cannot write {:?}: {}", json_path, e));
+                                return errs;
+                            }
+                        }
+
+                        if annotated {
+                            let ann = trellis_validate::annotated_svg::annotate_svg(
+                                &validation.svg,
+                                &report,
+                                &validation.grid,
+                            );
+                            let ann_path =
+                                output_dir.join(format!("{}.annotated.svg", stem));
+                            if let Err(e) = fs::write(&ann_path, &ann) {
+                                errs.push(format!("cannot write {:?}: {}", ann_path, e));
+                            }
+                        }
+
+                        println!(
+                            "  {:?} → {}.svg + {}.json (quality {:.2})",
+                            file,
+                            stem,
+                            stem,
+                            report.global_metrics.avg_quality_score
+                        );
+                    }
+                }
+            }
+
+            errs
+        })
+        .collect();
+
+    if errors.is_empty() {
+        println!("Done – {} file(s) evaluated.", files.len());
+        Ok(())
+    } else {
+        for e in &errors {
+            eprintln!("Error: {}", e);
+        }
+        Err(AppError::Render(format!(
+            "{} file(s) failed",
+            errors.len()
+        )))
+    }
+}
+
 // ─── help ─────────────────────────────────────────────────────────────────────
 
 fn cmd_help() {
@@ -529,6 +866,54 @@ COMMAND: validate
   EXAMPLES
     trellis validate diagram.mmd
     echo $?   # 0 = valid, 1 = parse error
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+COMMAND: evaluate
+  Render a diagram and produce a per-edge quality report.
+  Writes <stem>.svg and <stem>.json to the output directory.
+  Quality scores: 1.0 = perfect, 0.0 = worst.
+  Flags: high_detour (>=2x Manhattan), excessive_bends (>=4), avoidable_crossing.
+
+  USAGE
+    trellis evaluate [OPTIONS] <INPUT>
+
+  ARGUMENTS
+    <INPUT>                  Input .mmd file
+
+  OPTIONS
+    -o, --output-dir <DIR>   Output directory (created if absent)    [required]
+        --annotated          Also write <stem>.annotated.svg with
+                             colour-coded quality overlay
+
+  EXAMPLES
+    trellis evaluate diagram.mmd -o ./reports/
+    trellis evaluate diagram.mmd -o ./reports/ --annotated
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+COMMAND: evaluate-batch
+  Evaluate all .mmd files in a directory, writing .svg + .json per fixture.
+  Run with --compare-strategies to produce per-strategy outputs and a
+  summary CSV suitable for A/B algorithm comparison.
+
+  USAGE
+    trellis evaluate-batch [OPTIONS] <INPUT_DIR>
+
+  ARGUMENTS
+    <INPUT_DIR>              Source directory (searched recursively for .mmd files)
+
+  OPTIONS
+    -o, --output-dir <DIR>   Output directory (created if absent)    [required]
+        --annotated          Also write annotated SVGs
+        --compare-strategies Run Default/Barycenter/Median/CrossingGreedy and
+                             write <stem>_<strategy>.svg + .json + a
+                             <stem>_strategies.csv summary
+
+  EXAMPLES
+    trellis evaluate-batch ./fixtures/ -o ./reports/
+    trellis evaluate-batch ./fixtures/ -o ./reports/ --annotated
+    trellis evaluate-batch ./fixtures/ -o ./reports/ --compare-strategies
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -612,6 +997,19 @@ fn run() -> i32 {
         } => cmd_render_batch(input_dir, output_dir, format, &config),
 
         Commands::Validate { input } => cmd_validate(input),
+
+        Commands::Evaluate {
+            input,
+            output_dir,
+            annotated,
+        } => cmd_evaluate(input, output_dir, *annotated, &config),
+
+        Commands::EvaluateBatch {
+            input_dir,
+            output_dir,
+            annotated,
+            compare_strategies,
+        } => cmd_evaluate_batch(input_dir, output_dir, *annotated, *compare_strategies, &config),
 
         Commands::Preprocess {
             input,

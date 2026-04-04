@@ -86,6 +86,85 @@ Build the Pandoc Docker image locally:
 ./scripts/build-pandoc-docker.sh
 ```
 
+### Diagram quality validation
+
+The `trellis-validate` crate analyses routed diagrams and produces per-edge
+quality reports.  The `evaluate` and `evaluate-batch` CLI commands (step 6)
+are the primary interface; the library API is described below for embedding.
+
+```bash
+# Render and evaluate a single diagram (produces diagram.svg + diagram.json)
+trellis evaluate diagram.mmd -o ./reports/
+
+# Evaluate every fixture in a directory
+trellis evaluate-batch ./fixtures/ -o ./reports/
+```
+
+The library exposes three functions for programmatic use:
+
+```rust
+// 1. Score every routed edge (detour factor, bends, crossings → 0–1 score + flags)
+trellis_validate::scoring::score_all_edges(&graph, &routing_result, &port_assignments, &grid)
+
+// 2. Build the full JSON report (stable AI-agent contract)
+trellis_validate::report::generate_report("diagram.mmd", &graph, &routing_result, &port_assignments, &grid)
+
+// 3. Inject a colour-coded quality overlay into a rendered SVG
+trellis_validate::annotated_svg::annotate_svg(&svg_bytes, &report, &grid)
+```
+
+**Quality score** (0.0 – 1.0, higher is better):
+
+| Score   | Overlay colour | Meaning |
+|---------|---------------|---------|
+| ≥ 0.80  | Green          | Edge routes cleanly |
+| 0.50 – 0.79 | Yellow    | Suboptimal — detour or extra bends |
+| < 0.50  | Red            | Poor — high detour, many bends, or crossing |
+
+**Flags** on individual edges:
+
+| Flag | Condition |
+|---|---|
+| `high_detour` | Routed path ≥ 2× the Manhattan distance |
+| `excessive_bends` | ≥ 4 direction changes |
+| `avoidable_crossing` | Edge passes through a grid cell shared with another edge |
+
+**JSON report schema** (`{name}.json`):
+
+```json
+{
+  "fixture": "diagram.mmd",
+  "edges": [
+    {
+      "id": "A-->B",
+      "source": "A",
+      "target": "B",
+      "bends": 2,
+      "detour_factor": 1.4,
+      "crossings": 0,
+      "port_side_source": "South",
+      "port_side_target": "North",
+      "path_cells": [[3,4],[4,4],[5,4]],
+      "quality_score": 0.87,
+      "flags": []
+    }
+  ],
+  "global_metrics": {
+    "total_edges": 5,
+    "routed_edges": 5,
+    "failed_edges": 0,
+    "total_crossings": 0,
+    "total_bends": 6,
+    "avg_quality_score": 0.84,
+    "avg_detour_factor": 1.3,
+    "flagged_edges": 0
+  }
+}
+```
+
+The `evaluate` and `evaluate-batch` CLI commands that produce `{name}.svg` +
+`{name}.json` pairs are wired up to this library in the next step.
+
 ### Configuration
 
 Use a TOML config file for custom settings:
@@ -102,7 +181,8 @@ trellis/
 │   ├── trellis-parser/    # Mermaid syntax parser (nom-based)
 │   ├── trellis-core/      # Core rendering pipeline (placement → grid → routing → SVG)
 │   ├── trellis-wasm/      # WASM bindings (wasm-bindgen)
-│   └── trellis-cli/       # Command-line interface
+│   ├── trellis-cli/       # Command-line interface
+│   └── trellis-validate/  # Edge quality scoring, JSON reports, annotated SVG
 ├── docker/
 │   ├── Dockerfile.wasm-builder      # Builds WASM (Rust + wasm-pack)
 │   ├── Dockerfile.vscode-builder    # Builds the VS Code .vsix (Node.js + vsce)
