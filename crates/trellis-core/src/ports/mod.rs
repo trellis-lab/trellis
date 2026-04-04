@@ -29,6 +29,8 @@ pub struct PortAssignmentContext<'a> {
     pub cell_size: i32,
     pub offset_x: i32,
     pub offset_y: i32,
+    /// When true, strategies may emit diagnostic info to stderr.
+    pub print_metrics: bool,
 }
 
 /// Trait for port assignment strategies.
@@ -113,6 +115,7 @@ mod tests {
             cell_size: 10,
             offset_x: 0,
             offset_y: 0,
+            print_metrics: false,
         };
         let trait_result = assigner.assign_ports(&ctx);
 
@@ -197,6 +200,7 @@ mod tests {
                 cell_size: 10,
                 offset_x: 0,
                 offset_y: 0,
+                print_metrics: false,
             };
             let ports = assigner.assign_ports(&ctx);
             assert_eq!(

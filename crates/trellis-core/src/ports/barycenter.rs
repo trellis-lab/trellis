@@ -175,6 +175,7 @@ mod tests {
             cell_size: 10,
             offset_x: 0,
             offset_y: 0,
+            print_metrics: false,
         };
         let ports = assigner.assign_ports(&ctx);
         assert_eq!(ports.len(), 3);
@@ -212,6 +213,7 @@ mod tests {
             cell_size: 10,
             offset_x: 0,
             offset_y: 0,
+            print_metrics: false,
         };
         let ports = assigner.assign_ports(&ctx);
         assert_eq!(ports.len(), 4);

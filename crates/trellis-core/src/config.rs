@@ -112,6 +112,11 @@ pub struct TrellisConfig {
     /// re-route edges after swapping crossing ports.
     #[serde(default = "default_port_refinement_rounds")]
     pub port_refinement_rounds: usize,
+
+    /// When true, emit diagnostic messages (e.g. Auto strategy selection) to stderr.
+    /// Controlled by the CLI `--metrics` flag.
+    #[serde(default)]
+    pub print_metrics: bool,
 }
 
 /// A* routing cost constants
@@ -176,6 +181,7 @@ impl Default for TrellisConfig {
             show_edge_labels: default_show_edge_labels(),
             port_assignment: default_port_assignment(),
             port_refinement_rounds: default_port_refinement_rounds(),
+            print_metrics: false,
         }
     }
 }
@@ -214,6 +220,7 @@ pub fn configuration_factory(config_type: ConfigurationType) -> TrellisConfig {
             show_edge_labels: true,
             port_assignment: PortAssignmentStrategy::Default,
             port_refinement_rounds: 0,
+            print_metrics: false,
         },
     }
 }

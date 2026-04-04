@@ -59,6 +59,7 @@ pub fn render(
         cell_size,
         offset_x: extent.offset_x,
         offset_y: extent.offset_y,
+        print_metrics: config.print_metrics,
     };
     let port_assignments = assigner.assign_ports(&port_ctx);
 

@@ -56,7 +56,9 @@ impl PortAssigner for AutoPortAssigner {
         let selected = select_strategy_with_hub_count(&stats, effective_hubs);
 
         #[cfg(not(target_arch = "wasm32"))]
-        log_selection(&stats, selected);
+        if ctx.print_metrics {
+            log_selection(&stats, selected);
+        }
 
         let assigner: Box<dyn PortAssigner> = match selected {
             SelectedStrategy::Default => Box::new(DefaultPortAssigner),

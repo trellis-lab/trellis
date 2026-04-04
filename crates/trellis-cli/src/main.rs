@@ -224,7 +224,10 @@ fn cmd_render(
 
     let output_format = parse_format(format)?;
 
-    let result = trellis_core::render(&graph, config, output_format)
+    let mut config = config.clone();
+    config.print_metrics = print_metrics;
+
+    let result = trellis_core::render(&graph, &config, output_format)
         .map_err(|e| AppError::Render(e.to_string()))?;
 
     write_output(output, &result.data)?;
