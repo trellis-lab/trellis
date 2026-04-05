@@ -841,6 +841,10 @@ fn cmd_generate_review(
     // Load each report + matching SVG
     struct Entry {
         fixture_name: String,
+        /// Strategy label derived from the JSON filename, e.g. "barycenter"
+        /// for `b01_barycenter.json` when the fixture is `b01.mmd`.
+        /// `None` when the JSON filename matches the fixture name exactly.
+        strategy_label: Option<String>,
         svg: String,
         report: trellis_validate::report::DiagramReport,
     }
@@ -861,6 +865,23 @@ fn cmd_generate_review(
                 AppError::Render(format!("cannot parse {:?}: {}", json_path, e))
             })?;
 
+        // Detect strategy label: if the JSON stem is `{fixture_stem}_{strategy}`,
+        // extract the suffix. e.g. "b01_barycenter" with fixture "b01.mmd" → "barycenter".
+        let fixture_stem = report
+            .fixture
+            .trim_end_matches(".mmd")
+            .trim_end_matches(".mermaid");
+        let strategy_label = if stem != fixture_stem {
+            let prefix = format!("{}_", fixture_stem);
+            if stem.starts_with(&prefix) {
+                Some(stem[prefix.len()..].to_string())
+            } else {
+                None
+            }
+        } else {
+            None
+        };
+
         // Prefer annotated SVG; fall back to plain SVG
         let svg_path = {
             let ann = input_dir.join(format!("{}.annotated.svg", stem));
@@ -875,7 +896,6 @@ fn cmd_generate_review(
             fs::read_to_string(&svg_path)
                 .map_err(|e| AppError::Render(format!("cannot read {:?}: {}", svg_path, e)))?
         } else {
-            // No SVG found — use a minimal placeholder so the page still renders
             eprintln!(
                 "  Warning: no SVG found for {:?} (expected {:?})",
                 json_path, svg_path
@@ -889,11 +909,15 @@ fn cmd_generate_review(
         };
 
         let fixture_name = report.fixture.clone();
-        entries.push(Entry { fixture_name, svg, report });
+        entries.push(Entry { fixture_name, strategy_label, svg, report });
     }
 
-    // Sort by fixture name for deterministic output
-    entries.sort_by(|a, b| a.fixture_name.cmp(&b.fixture_name));
+    // Sort: primary key = fixture_name, secondary = strategy_label (None first)
+    entries.sort_by(|a, b| {
+        a.fixture_name
+            .cmp(&b.fixture_name)
+            .then_with(|| a.strategy_label.cmp(&b.strategy_label))
+    });
 
     // Build review entries
     let review_entries: Vec<trellis_validate::review_html::ReviewEntry<'_>> = entries
@@ -902,6 +926,7 @@ fn cmd_generate_review(
             fixture_name: &e.fixture_name,
             annotated_svg: &e.svg,
             report: &e.report,
+            strategy_label: e.strategy_label.as_deref(),
         })
         .collect();
 

@@ -37,3 +37,6 @@ editors/intellij/.intellijPlatform/
 # PDF outputs
 *.pdf
 images/bugs/
+
+# Benchmarking & validation
+temp/

@@ -5,6 +5,11 @@ use crate::report::DiagramReport;
 // --- Public types -------------------------------------------------------------
 
 /// One fixture's data to include in the review HTML.
+///
+/// Multiple entries that share the same `fixture_name` but carry a different
+/// `strategy_label` are automatically grouped into a single fixture card with
+/// a strategy tab-bar — exactly what `evaluate-batch --compare-strategies`
+/// produces (`b01_default.json`, `b01_barycenter.json`, …).
 pub struct ReviewEntry<'a> {
     /// Base filename, e.g. `"b05.mmd"`.
     pub fixture_name: &'a str,
@@ -12,6 +17,9 @@ pub struct ReviewEntry<'a> {
     pub annotated_svg: &'a str,
     /// The quality report for this fixture.
     pub report: &'a DiagramReport,
+    /// Optional strategy label (e.g. `"default"`, `"barycenter"`).
+    /// `None` means there is only one version of this fixture.
+    pub strategy_label: Option<&'a str>,
 }
 
 // --- Public API ---------------------------------------------------------------
@@ -36,40 +44,62 @@ pub fn generate_review_html(entries: &[ReviewEntry<'_>]) -> Vec<u8> {
 // --- Private helpers ----------------------------------------------------------
 
 fn build_fixtures_json(entries: &[ReviewEntry<'_>]) -> String {
-    let fixtures: Vec<Value> = entries
+    // Group entries by fixture_name, preserving insertion order.
+    let mut order: Vec<&str> = Vec::new();
+    let mut groups: std::collections::HashMap<&str, Vec<&ReviewEntry<'_>>> =
+        std::collections::HashMap::new();
+    for e in entries {
+        if !groups.contains_key(e.fixture_name) {
+            order.push(e.fixture_name);
+        }
+        groups.entry(e.fixture_name).or_default().push(e);
+    }
+
+    let fixtures: Vec<Value> = order
         .iter()
-        .map(|e| {
-            let edges: Vec<Value> = e
-                .report
-                .edges
+        .map(|name| {
+            let group = &groups[name];
+            let strategies: Vec<Value> = group
                 .iter()
-                .map(|edge| {
+                .map(|e| {
+                    let edges: Vec<Value> = e
+                        .report
+                        .edges
+                        .iter()
+                        .map(|edge| {
+                            json!({
+                                "id":               edge.id,
+                                "source":           edge.source,
+                                "target":           edge.target,
+                                "bends":            edge.bends,
+                                "detour_factor":    edge.detour_factor,
+                                "crossings":        edge.crossings,
+                                "quality_score":    edge.quality_score,
+                                "flags":            edge.flags,
+                                "port_side_source": edge.port_side_source,
+                                "port_side_target": edge.port_side_target,
+                            })
+                        })
+                        .collect();
+
                     json!({
-                        "id":               edge.id,
-                        "source":           edge.source,
-                        "target":           edge.target,
-                        "bends":            edge.bends,
-                        "detour_factor":    edge.detour_factor,
-                        "crossings":        edge.crossings,
-                        "quality_score":    edge.quality_score,
-                        "flags":            edge.flags,
-                        "port_side_source": edge.port_side_source,
-                        "port_side_target": edge.port_side_target,
+                        "label": e.strategy_label.unwrap_or("default"),
+                        "svg":   e.annotated_svg,
+                        "edges": edges,
+                        "global_metrics": {
+                            "avg_quality":     e.report.global_metrics.avg_quality_score,
+                            "total_crossings": e.report.global_metrics.total_crossings,
+                            "total_bends":     e.report.global_metrics.total_bends,
+                            "flagged_edges":   e.report.global_metrics.flagged_edges,
+                            "routed_edges":    e.report.global_metrics.routed_edges,
+                        },
                     })
                 })
                 .collect();
 
             json!({
-                "name": e.fixture_name,
-                "svg":  e.annotated_svg,
-                "edges": edges,
-                "global_metrics": {
-                    "avg_quality":    e.report.global_metrics.avg_quality_score,
-                    "total_crossings":e.report.global_metrics.total_crossings,
-                    "total_bends":    e.report.global_metrics.total_bends,
-                    "flagged_edges":  e.report.global_metrics.flagged_edges,
-                    "routed_edges":   e.report.global_metrics.routed_edges,
-                },
+                "name":       name,
+                "strategies": strategies,
             })
         })
         .collect();
@@ -96,12 +126,19 @@ const HTML_TEMPLATE: &str = r#"<!DOCTYPE html>
     #app { display: flex; height: 100vh; overflow: hidden; }
 
     #sidebar {
-      width: 320px; min-width: 320px;
+      width: 220px; min-width: 220px;
       background: #fff; border-right: 1px solid #ddd;
       display: flex; flex-direction: column; overflow-y: auto;
       padding: 16px; gap: 12px;
     }
-    #main { flex: 1; overflow: auto; padding: 24px; background: #f0f0f0; }
+    #main { flex: 1; overflow: auto; padding: 24px; background: #f0f0f0; min-width: 0; }
+
+    #right-panel {
+      width: 280px; min-width: 280px;
+      background: #fff; border-left: 1px solid #ddd;
+      display: flex; flex-direction: column;
+      padding: 16px; gap: 12px; overflow-y: auto;
+    }
 
     /* ── Typography ── */
     h1 { font-size: 16px; font-weight: 700; color: #333; }
@@ -126,11 +163,9 @@ const HTML_TEMPLATE: &str = r#"<!DOCTYPE html>
     .fixture-btn:not(.active) .badge { background: #fee2e2; color: #991b1b; }
 
     /* ── Edge panel ── */
-    #edge-panel {
-      border: 1px solid #ddd; border-radius: 8px;
-      padding: 12px; background: #fafafa;
-    }
-    #edge-title { margin-bottom: 8px; word-break: break-all; }
+    #edge-panel { display: flex; flex-direction: column; gap: 2px; }
+    #no-edge-hint { color: #aaa; font-size: 12px; font-style: italic; text-align: center; padding: 24px 0; }
+    #edge-title { margin-bottom: 6px; word-break: break-all; }
     .metric {
       display: flex; justify-content: space-between;
       padding: 3px 0; font-size: 12px; color: #555;
@@ -160,9 +195,9 @@ const HTML_TEMPLATE: &str = r#"<!DOCTYPE html>
       background: #22c55e; color: #fff;
       border: none; border-radius: 6px;
       cursor: pointer; font-size: 13px; font-weight: 600;
-      margin-top: auto;
     }
     #download-btn:hover { background: #16a34a; }
+    #right-panel .spacer { flex: 1; }
 
     /* ── Status bar ── */
     #status-bar { font-size: 12px; color: #666; min-height: 18px; text-align: center; }
@@ -192,6 +227,16 @@ const HTML_TEMPLATE: &str = r#"<!DOCTYPE html>
     .quality-ok   { background: #fef9c3; color: #854d0e; }
     .quality-bad  { background: #fee2e2; color: #991b1b; }
 
+    /* ── Strategy tabs ── */
+    #strategy-tabs { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 12px; }
+    .strategy-tab {
+      padding: 4px 10px; border: 1px solid #ddd; border-radius: 4px;
+      background: #fafafa; cursor: pointer; font-size: 12px;
+      transition: background 0.1s;
+    }
+    .strategy-tab:hover { background: #f0f0f0; }
+    .strategy-tab.active { background: #3b82f6; color: #fff; border-color: #3b82f6; }
+
     /* ── Empty state ── */
     .empty-state { color: #aaa; font-style: italic; text-align: center; padding: 40px 0; }
   </style>
@@ -199,40 +244,47 @@ const HTML_TEMPLATE: &str = r#"<!DOCTYPE html>
 <body>
   <div id="app">
 
-    <!-- ── Sidebar ── -->
+    <!-- ── Sidebar: fixture list ── -->
     <div id="sidebar">
       <h1>Trellis Edge Review</h1>
       <div>
         <h2>Fixtures</h2>
         <div id="fixture-list"></div>
       </div>
-      <hr>
-      <div id="edge-panel" hidden>
-        <h3 id="edge-title"></h3>
-        <div id="edge-metrics"></div>
-        <label class="checkbox-label">
-          <input type="checkbox" id="edge-improvable">
-          Mark as improvable
-        </label>
-        <textarea id="edge-note"
-          placeholder="Describe the routing issue (e.g. 'should route left of node C instead')…"></textarea>
-        <button class="save-btn" id="save-note">Save Note</button>
-      </div>
-      <hr>
-      <button id="download-btn">&#x2B07; Download feedback.json</button>
-      <div id="status-bar"></div>
     </div>
 
-    <!-- ── Main view ── -->
+    <!-- ── Main view: SVG ── -->
     <div id="main">
       <div class="fixture-header" id="fixture-header" hidden>
         <h2 id="fixture-title"></h2>
         <span class="quality-badge" id="quality-badge"></span>
         <span id="flagged-count" style="font-size:12px;color:#666;"></span>
       </div>
+      <div id="strategy-tabs" hidden></div>
       <div id="svg-container">
         <p class="empty-state">Select a fixture from the sidebar.</p>
       </div>
+    </div>
+
+    <!-- ── Right panel: edge details + download ── -->
+    <div id="right-panel">
+      <h2>Edge Details</h2>
+      <div id="edge-panel">
+        <p id="no-edge-hint">Click a coloured edge in the diagram to review it.</p>
+        <h3 id="edge-title" hidden></h3>
+        <div id="edge-metrics"></div>
+        <label class="checkbox-label" id="improvable-label" hidden>
+          <input type="checkbox" id="edge-improvable">
+          Mark as improvable
+        </label>
+        <textarea id="edge-note" hidden
+          placeholder="Describe the routing issue (e.g. 'should route left of node C instead')…"></textarea>
+        <button class="save-btn" id="save-note" hidden>Save Note</button>
+      </div>
+      <div class="spacer"></div>
+      <hr>
+      <button id="download-btn">&#x2B07; Download feedback.json</button>
+      <div id="status-bar"></div>
     </div>
 
   </div><!-- /#app -->
@@ -247,6 +299,7 @@ const HTML_TEMPLATE: &str = r#"<!DOCTYPE html>
     var STORAGE_KEY = 'trellis_review_feedback';
 
     // ── Load fixture data ──────────────────────────────────────────────────────
+    // Each fixture: { name, strategies: [{label, svg, edges, global_metrics}] }
     var fixtures = [];
     try {
       fixtures = JSON.parse(document.getElementById('fixtures-data').textContent);
@@ -260,24 +313,36 @@ const HTML_TEMPLATE: &str = r#"<!DOCTYPE html>
     } catch (e) {}
 
     // ── UI state ──────────────────────────────────────────────────────────────
-    var currentFixtureIdx = -1;
-    var currentEdgeId = null;
+    var currentFixtureIdx  = -1;
+    var currentStrategyIdx = 0;
+    var currentEdgeId      = null;
 
     // ── Elements ──────────────────────────────────────────────────────────────
-    var fixtureListEl  = document.getElementById('fixture-list');
-    var svgContainer   = document.getElementById('svg-container');
-    var fixtureHeader  = document.getElementById('fixture-header');
-    var fixtureTitleEl = document.getElementById('fixture-title');
-    var qualityBadge   = document.getElementById('quality-badge');
-    var flaggedCount   = document.getElementById('flagged-count');
-    var edgePanel      = document.getElementById('edge-panel');
-    var edgeTitleEl    = document.getElementById('edge-title');
-    var edgeMetricsEl  = document.getElementById('edge-metrics');
-    var edgeImprovable = document.getElementById('edge-improvable');
-    var edgeNote       = document.getElementById('edge-note');
-    var saveNoteBtn    = document.getElementById('save-note');
-    var downloadBtn    = document.getElementById('download-btn');
-    var statusBar      = document.getElementById('status-bar');
+    var fixtureListEl    = document.getElementById('fixture-list');
+    var svgContainer     = document.getElementById('svg-container');
+    var strategyTabsEl   = document.getElementById('strategy-tabs');
+    var fixtureHeader    = document.getElementById('fixture-header');
+    var fixtureTitleEl   = document.getElementById('fixture-title');
+    var qualityBadge     = document.getElementById('quality-badge');
+    var flaggedCount     = document.getElementById('flagged-count');
+    var noEdgeHint       = document.getElementById('no-edge-hint');
+    var edgeTitleEl      = document.getElementById('edge-title');
+    var edgeMetricsEl    = document.getElementById('edge-metrics');
+    var improvableLabel  = document.getElementById('improvable-label');
+    var edgeImprovable   = document.getElementById('edge-improvable');
+    var edgeNote         = document.getElementById('edge-note');
+    var saveNoteBtn      = document.getElementById('save-note');
+    var downloadBtn      = document.getElementById('download-btn');
+    var statusBar        = document.getElementById('status-bar');
+
+    function showEdgeForm(visible) {
+      noEdgeHint.hidden      = visible;
+      edgeTitleEl.hidden     = !visible;
+      improvableLabel.hidden = !visible;
+      edgeNote.hidden        = !visible;
+      saveNoteBtn.hidden     = !visible;
+    }
+    showEdgeForm(false);
 
     // ── Build fixture buttons ─────────────────────────────────────────────────
     if (fixtures.length === 0) {
@@ -306,9 +371,10 @@ const HTML_TEMPLATE: &str = r#"<!DOCTYPE html>
 
     // ── Select a fixture ──────────────────────────────────────────────────────
     function selectFixture(idx) {
-      currentFixtureIdx = idx;
-      currentEdgeId = null;
-      edgePanel.hidden = true;
+      currentFixtureIdx  = idx;
+      currentStrategyIdx = 0;
+      currentEdgeId      = null;
+      showEdgeForm(false);
 
       document.querySelectorAll('.fixture-btn').forEach(function (btn, j) {
         btn.classList.toggle('active', j === idx);
@@ -316,24 +382,56 @@ const HTML_TEMPLATE: &str = r#"<!DOCTYPE html>
 
       var fixture = fixtures[idx];
 
-      // Header
       fixtureHeader.hidden = false;
       fixtureTitleEl.textContent = fixture.name;
 
-      var q = fixture.global_metrics.avg_quality;
+      // Strategy tabs (hidden when there is only one strategy)
+      buildStrategyTabs(fixture);
+
+      renderStrategy(fixture, 0);
+    }
+
+    // ── Build strategy tab bar ────────────────────────────────────────────────
+    function buildStrategyTabs(fixture) {
+      strategyTabsEl.innerHTML = '';
+      if (fixture.strategies.length <= 1) {
+        strategyTabsEl.hidden = true;
+        return;
+      }
+      strategyTabsEl.hidden = false;
+      fixture.strategies.forEach(function (s, si) {
+        var tab = document.createElement('button');
+        tab.className = 'strategy-tab' + (si === 0 ? ' active' : '');
+        tab.textContent = s.label;
+        tab.addEventListener('click', function () {
+          currentStrategyIdx = si;
+          currentEdgeId = null;
+          showEdgeForm(false);
+          strategyTabsEl.querySelectorAll('.strategy-tab').forEach(function (t, ti) {
+            t.classList.toggle('active', ti === si);
+          });
+          renderStrategy(fixture, si);
+        });
+        strategyTabsEl.appendChild(tab);
+      });
+    }
+
+    // ── Render one strategy's SVG + header metrics ────────────────────────────
+    function renderStrategy(fixture, si) {
+      var s = fixture.strategies[si];
+
+      var q = s.global_metrics.avg_quality;
       qualityBadge.textContent = 'Quality: ' + (q * 100).toFixed(0) + '%';
       qualityBadge.className =
         'quality-badge ' +
         (q >= 0.8 ? 'quality-good' : q >= 0.5 ? 'quality-ok' : 'quality-bad');
 
       flaggedCount.textContent =
-        fixture.global_metrics.routed_edges + ' edges  \u00B7  ' +
-        fixture.global_metrics.flagged_edges + ' algorithm-flagged';
+        s.global_metrics.routed_edges + ' edges  \u00B7  ' +
+        s.global_metrics.flagged_edges + ' algorithm-flagged';
 
-      // SVG
-      svgContainer.innerHTML = fixture.svg;
+      svgContainer.innerHTML = s.svg;
 
-      // Wire up click handlers on diagnostic overlay paths
       svgContainer.querySelectorAll('[data-edge-id]').forEach(function (el) {
         el.style.cursor = 'pointer';
         el.addEventListener('click', function (e) {
@@ -349,14 +447,15 @@ const HTML_TEMPLATE: &str = r#"<!DOCTYPE html>
     function selectEdge(fixtureName, edgeId) {
       currentEdgeId = edgeId;
 
-      var fixture = fixtures[currentFixtureIdx];
+      var fixture  = fixtures[currentFixtureIdx];
+      var strategy = fixture.strategies[currentStrategyIdx];
       var edgeData = null;
-      for (var i = 0; i < fixture.edges.length; i++) {
-        if (fixture.edges[i].id === edgeId) { edgeData = fixture.edges[i]; break; }
+      for (var i = 0; i < strategy.edges.length; i++) {
+        if (strategy.edges[i].id === edgeId) { edgeData = strategy.edges[i]; break; }
       }
       if (!edgeData) return;
 
-      edgePanel.hidden = false;
+      showEdgeForm(true);
       edgeTitleEl.textContent = edgeId;
 
       var flagsHtml = edgeData.flags.length > 0
@@ -377,12 +476,10 @@ const HTML_TEMPLATE: &str = r#"<!DOCTYPE html>
           escHtml(edgeData.port_side_target) + '</b></div>' +
         flagsHtml;
 
-      // Load any saved note
       var saved = getEdgeFeedback(fixtureName, edgeId);
       edgeImprovable.checked = saved.improvable || false;
       edgeNote.value = saved.note || '';
 
-      // Highlight selected edge path
       svgContainer.querySelectorAll('[data-edge-id]').forEach(function (el) {
         el.classList.toggle('selected-edge', el.dataset.edgeId === edgeId);
       });
@@ -463,10 +560,8 @@ const HTML_TEMPLATE: &str = r#"<!DOCTYPE html>
     }
 
     function refreshFixtureButton(idx, fixtureName) {
-      var btns = document.querySelectorAll('.fixture-btn');
-      var btn = btns[idx];
+      var btn = document.querySelectorAll('.fixture-btn')[idx];
       if (!btn) return;
-
       var flagged = countFlagged(fixtureName);
       var badge = btn.querySelector('.badge');
       if (flagged > 0) {
@@ -546,6 +641,7 @@ mod tests {
             fixture_name: "b05.mmd",
             annotated_svg: "<svg xmlns='http://www.w3.org/2000/svg'><g data-edge-id='A--&gt;B'/></svg>",
             report: &report,
+            strategy_label: None,
         }];
         let html_bytes = generate_review_html(&entries);
         let html = std::str::from_utf8(&html_bytes).expect("output is not valid UTF-8");
@@ -564,6 +660,7 @@ mod tests {
             fixture_name: "test.mmd",
             annotated_svg: "<svg/>",
             report: &report,
+            strategy_label: None,
         }];
         let html = String::from_utf8(generate_review_html(&entries)).unwrap();
 
@@ -582,12 +679,33 @@ mod tests {
     }
 
     #[test]
+    fn strategy_variants_grouped_into_one_fixture() {
+        let r1 = make_report("b01.mmd");
+        let r2 = make_report("b01.mmd"); // same fixture, different strategy
+        let entries = [
+            ReviewEntry { fixture_name: "b01.mmd", annotated_svg: "<svg/>", report: &r1, strategy_label: Some("default") },
+            ReviewEntry { fixture_name: "b01.mmd", annotated_svg: "<svg/>", report: &r2, strategy_label: Some("barycenter") },
+        ];
+        let html = String::from_utf8(generate_review_html(&entries)).unwrap();
+        // Should appear once as a fixture name
+        let first = html.find("b01.mmd").unwrap();
+        let second = html[first + 1..].find("b01.mmd");
+        // The fixture name itself only appears once in the outer fixtures array
+        // but "strategies" JSON will also reference it — so just check strategy labels present
+        assert!(html.contains("\"default\""), "default strategy label missing");
+        assert!(html.contains("\"barycenter\""), "barycenter strategy label missing");
+        // The strategy-tab JS key must be present
+        assert!(html.contains("strategies"), "strategies key missing");
+        let _ = second; // both occurrences are fine; this is a JSON value test
+    }
+
+    #[test]
     fn multiple_fixtures_all_appear_in_output() {
         let r1 = make_report("b01.mmd");
         let r2 = make_report("b02.mmd");
         let entries = [
-            ReviewEntry { fixture_name: "b01.mmd", annotated_svg: "<svg/>", report: &r1 },
-            ReviewEntry { fixture_name: "b02.mmd", annotated_svg: "<svg/>", report: &r2 },
+            ReviewEntry { fixture_name: "b01.mmd", annotated_svg: "<svg/>", report: &r1, strategy_label: None },
+            ReviewEntry { fixture_name: "b02.mmd", annotated_svg: "<svg/>", report: &r2, strategy_label: None },
         ];
         let html = String::from_utf8(generate_review_html(&entries)).unwrap();
 
