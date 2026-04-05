@@ -89,18 +89,41 @@ Build the Pandoc Docker image locally:
 ### Diagram quality validation
 
 The `trellis-validate` crate analyses routed diagrams and produces per-edge
-quality reports.  The `evaluate` and `evaluate-batch` CLI commands (step 6)
-are the primary interface; the library API is described below for embedding.
+quality reports.  Use `evaluate` / `evaluate-batch` to generate reports, then
+`generate-review` to open an interactive browser-based annotation tool.
 
 ```bash
 # Render and evaluate a single diagram (produces diagram.svg + diagram.json)
 trellis evaluate diagram.mmd -o ./reports/
 
+# Also write a colour-coded diagnostic overlay
+trellis evaluate diagram.mmd -o ./reports/ --annotated
+
 # Evaluate every fixture in a directory
 trellis evaluate-batch ./fixtures/ -o ./reports/
+
+# Annotated SVGs + run all four port-assignment strategies, write a comparison CSV
+trellis evaluate-batch ./fixtures/ -o ./reports/ --annotated --compare-strategies
+
+# Generate an interactive HTML review tool from a reports directory
+trellis generate-review ./reports/
+trellis generate-review ./reports/ -o custom-review.html
 ```
 
-The library exposes three functions for programmatic use:
+The `generate-review` command reads each `*.json` report and pairs it with the
+matching `*.annotated.svg` (falling back to `*.svg`), then writes a
+self-contained `review.html` file.  Open it in any browser to:
+
+- Browse all fixtures side-by-side.
+- Click a coloured edge overlay to view quality metrics and write a review note.
+- Toggle **Mark as improvable** to flag edges for improvement.
+- **Download feedback.json** to export structured feedback for an AI agent.
+
+Feedback is persisted in the browser's `localStorage` across page reloads.
+See [`docs/validation/ai-tuning-prompt.md`](docs/validation/ai-tuning-prompt.md)
+for the full AI-agent tuning workflow.
+
+The library exposes four functions for programmatic use:
 
 ```rust
 // 1. Score every routed edge (detour factor, bends, crossings → 0–1 score + flags)
@@ -111,6 +134,9 @@ trellis_validate::report::generate_report("diagram.mmd", &graph, &routing_result
 
 // 3. Inject a colour-coded quality overlay into a rendered SVG
 trellis_validate::annotated_svg::annotate_svg(&svg_bytes, &report, &grid)
+
+// 4. Generate a self-contained interactive HTML review tool
+trellis_validate::review_html::generate_review_html(&entries)
 ```
 
 **Quality score** (0.0 – 1.0, higher is better):
@@ -161,9 +187,6 @@ trellis_validate::annotated_svg::annotate_svg(&svg_bytes, &report, &grid)
   }
 }
 ```
-
-The `evaluate` and `evaluate-batch` CLI commands that produce `{name}.svg` +
-`{name}.json` pairs are wired up to this library in the next step.
 
 ### Configuration
 

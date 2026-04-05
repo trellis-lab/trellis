@@ -140,6 +140,27 @@ EXAMPLES
         compare_strategies: bool,
     },
 
+    /// Generate an interactive HTML review tool from a reports directory
+    #[command(after_help = "\
+EXAMPLES
+  trellis generate-review ./reports/
+  trellis generate-review ./reports/ -o custom-review.html
+
+The input directory must contain .json reports produced by `evaluate` or
+`evaluate-batch`.  For each .json file a matching .annotated.svg is used when
+present; otherwise the plain .svg is used as a fallback.
+
+Open the output HTML in any browser, click coloured edge overlays to annotate
+them, then download feedback.json for the AI tuning agent.")]
+    GenerateReview {
+        /// Directory containing .json (and optionally .annotated.svg) files
+        input_dir: PathBuf,
+
+        /// Output HTML file [default: <input_dir>/review.html]
+        #[arg(short, long, value_name = "FILE")]
+        output: Option<PathBuf>,
+    },
+
     /// Print a comprehensive usage reference for all commands
     Help,
 }
@@ -792,6 +813,115 @@ fn cmd_evaluate_batch(
     }
 }
 
+// ─── generate-review ──────────────────────────────────────────────────────────
+
+/// Load every `*.json` report from `input_dir`, pair with the matching
+/// `*.annotated.svg` (falling back to `*.svg`), then write a self-contained
+/// `review.html` that the reviewer opens in a browser.
+fn cmd_generate_review(
+    input_dir: &PathBuf,
+    output: Option<&PathBuf>,
+) -> Result<(), AppError> {
+    // Collect all JSON report files
+    let json_files: Vec<PathBuf> = walkdir::WalkDir::new(input_dir)
+        .max_depth(1)
+        .into_iter()
+        .filter_map(|e| e.ok())
+        .filter(|e| e.path().extension() == Some(OsStr::new("json")))
+        .map(|e| e.path().to_path_buf())
+        .collect();
+
+    if json_files.is_empty() {
+        eprintln!("No .json report files found in {:?}", input_dir);
+        return Ok(());
+    }
+
+    println!("Loading {} report(s)…", json_files.len());
+
+    // Load each report + matching SVG
+    struct Entry {
+        fixture_name: String,
+        svg: String,
+        report: trellis_validate::report::DiagramReport,
+    }
+
+    let mut entries: Vec<Entry> = Vec::new();
+
+    for json_path in &json_files {
+        let stem = json_path
+            .file_stem()
+            .and_then(|s| s.to_str())
+            .unwrap_or("diagram");
+
+        // Parse report
+        let json_content = fs::read_to_string(json_path)
+            .map_err(|e| AppError::Render(format!("cannot read {:?}: {}", json_path, e)))?;
+        let report: trellis_validate::report::DiagramReport =
+            serde_json::from_str(&json_content).map_err(|e| {
+                AppError::Render(format!("cannot parse {:?}: {}", json_path, e))
+            })?;
+
+        // Prefer annotated SVG; fall back to plain SVG
+        let svg_path = {
+            let ann = input_dir.join(format!("{}.annotated.svg", stem));
+            if ann.exists() {
+                ann
+            } else {
+                input_dir.join(format!("{}.svg", stem))
+            }
+        };
+
+        let svg = if svg_path.exists() {
+            fs::read_to_string(&svg_path)
+                .map_err(|e| AppError::Render(format!("cannot read {:?}: {}", svg_path, e)))?
+        } else {
+            // No SVG found — use a minimal placeholder so the page still renders
+            eprintln!(
+                "  Warning: no SVG found for {:?} (expected {:?})",
+                json_path, svg_path
+            );
+            format!(
+                "<svg xmlns='http://www.w3.org/2000/svg' width='200' height='60'>\
+                 <text x='10' y='30' font-family='sans-serif' font-size='12' fill='#888'>\
+                 SVG not found for {}</text></svg>",
+                stem
+            )
+        };
+
+        let fixture_name = report.fixture.clone();
+        entries.push(Entry { fixture_name, svg, report });
+    }
+
+    // Sort by fixture name for deterministic output
+    entries.sort_by(|a, b| a.fixture_name.cmp(&b.fixture_name));
+
+    // Build review entries
+    let review_entries: Vec<trellis_validate::review_html::ReviewEntry<'_>> = entries
+        .iter()
+        .map(|e| trellis_validate::review_html::ReviewEntry {
+            fixture_name: &e.fixture_name,
+            annotated_svg: &e.svg,
+            report: &e.report,
+        })
+        .collect();
+
+    let html = trellis_validate::review_html::generate_review_html(&review_entries);
+
+    let out_path = output
+        .cloned()
+        .unwrap_or_else(|| input_dir.join("review.html"));
+
+    fs::write(&out_path, &html)
+        .map_err(|e| AppError::Render(format!("cannot write {:?}: {}", out_path, e)))?;
+
+    println!(
+        "Review tool written to {:?}  ({} fixture(s))",
+        out_path,
+        entries.len()
+    );
+    Ok(())
+}
+
 // ─── help ─────────────────────────────────────────────────────────────────────
 
 fn cmd_help() {
@@ -917,6 +1047,35 @@ COMMAND: evaluate-batch
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
+COMMAND: generate-review
+  Generate a self-contained HTML review tool from a reports directory.
+  Load .json reports produced by `evaluate` or `evaluate-batch`, pair
+  each with the matching .annotated.svg (or plain .svg as fallback), and
+  write a single review.html file.
+
+  Open the HTML in a browser to:
+    - Browse all fixtures side-by-side.
+    - Click a coloured edge overlay to open the review panel.
+    - Toggle 'improvable' and write a free-text routing note.
+    - Download feedback.json for the AI tuning agent.
+
+  USAGE
+    trellis generate-review [OPTIONS] <INPUT_DIR>
+
+  ARGUMENTS
+    <INPUT_DIR>              Directory containing .json + .svg files
+
+  OPTIONS
+    -o, --output <FILE>      Output HTML file
+                             [default: <input_dir>/review.html]
+
+  EXAMPLES
+    trellis evaluate-batch ./fixtures/ -o ./reports/ --annotated
+    trellis generate-review ./reports/
+    trellis generate-review ./reports/ -o review.html
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 COMMAND: preprocess
   Scan a Markdown file for fenced ```mermaid ... ``` blocks, render
   each to an image file, and replace the block with a Markdown
@@ -1017,6 +1176,10 @@ fn run() -> i32 {
             image_dir,
             format,
         } => cmd_preprocess(input, output, image_dir, format, &config),
+
+        Commands::GenerateReview { input_dir, output } => {
+            cmd_generate_review(input_dir, output.as_ref())
+        }
 
         Commands::Help => {
             cmd_help();
