@@ -36,9 +36,24 @@ pub struct ReviewEntry<'a> {
 /// If `entries` is empty the page renders a "no fixtures" placeholder.
 pub fn generate_review_html(entries: &[ReviewEntry<'_>]) -> Vec<u8> {
     let fixtures_json = build_fixtures_json(entries);
+    let storage_key = unique_storage_key();
     HTML_TEMPLATE
         .replace("__FIXTURES_JSON__", &fixtures_json)
+        .replace("__STORAGE_KEY__", &storage_key)
         .into_bytes()
+}
+
+/// Generate a localStorage key that is stable for this HTML file but unique
+/// across different `generate-review` runs, so separate report directories
+/// do not share saved feedback.
+fn unique_storage_key() -> String {
+    use std::time::{SystemTime, UNIX_EPOCH};
+    let seed = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.subsec_nanos())
+        .unwrap_or(0xdead_beef);
+    // Simple 6-character hex suffix — no external RNG crate needed.
+    format!("trellis_review_feedback_{:06x}", seed & 0x00ff_ffff)
 }
 
 // --- Private helpers ----------------------------------------------------------
@@ -202,7 +217,22 @@ const HTML_TEMPLATE: &str = r#"<!DOCTYPE html>
     /* ── Status bar ── */
     #status-bar { font-size: 12px; color: #666; min-height: 18px; text-align: center; }
 
+    /* ── Zoom bar ── */
+    #zoom-bar {
+      display: flex; align-items: center; gap: 6px;
+      margin-bottom: 10px;
+    }
+    #zoom-bar button {
+      padding: 3px 10px; border: 1px solid #ddd; border-radius: 4px;
+      background: #fafafa; cursor: pointer; font-size: 13px; font-weight: 600;
+      transition: background 0.1s; user-select: none;
+    }
+    #zoom-bar button:hover { background: #e5e7eb; }
+    #zoom-label { font-size: 12px; color: #666; min-width: 42px; text-align: center; }
+
     /* ── SVG display ── */
+    #svg-scroll { overflow: auto; }
+    #svg-viewport { transform-origin: top left; display: inline-block; }
     #svg-container svg {
       background: #fff; border-radius: 8px;
       box-shadow: 0 1px 4px rgba(0,0,0,0.1); display: block;
@@ -261,8 +291,18 @@ const HTML_TEMPLATE: &str = r#"<!DOCTYPE html>
         <span id="flagged-count" style="font-size:12px;color:#666;"></span>
       </div>
       <div id="strategy-tabs" hidden></div>
-      <div id="svg-container">
-        <p class="empty-state">Select a fixture from the sidebar.</p>
+      <div id="zoom-bar" hidden>
+        <button id="zoom-out">&#x2212;</button>
+        <span id="zoom-label">100%</span>
+        <button id="zoom-in">&#x2B;</button>
+        <button id="zoom-reset">Reset</button>
+      </div>
+      <div id="svg-scroll">
+        <div id="svg-viewport">
+          <div id="svg-container">
+            <p class="empty-state">Select a fixture from the sidebar.</p>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -296,7 +336,7 @@ const HTML_TEMPLATE: &str = r#"<!DOCTYPE html>
   (function () {
     'use strict';
 
-    var STORAGE_KEY = 'trellis_review_feedback';
+    var STORAGE_KEY = '__STORAGE_KEY__';
 
     // ── Load fixture data ──────────────────────────────────────────────────────
     // Each fixture: { name, strategies: [{label, svg, edges, global_metrics}] }
@@ -334,6 +374,31 @@ const HTML_TEMPLATE: &str = r#"<!DOCTYPE html>
     var saveNoteBtn      = document.getElementById('save-note');
     var downloadBtn      = document.getElementById('download-btn');
     var statusBar        = document.getElementById('status-bar');
+    var zoomBar          = document.getElementById('zoom-bar');
+    var zoomLabel        = document.getElementById('zoom-label');
+    var svgViewport      = document.getElementById('svg-viewport');
+
+    // ── Zoom ──────────────────────────────────────────────────────────────────
+    var ZOOM_STEP = 0.25;
+    var ZOOM_MIN  = 0.25;
+    var ZOOM_MAX  = 4.0;
+    var zoomLevel = 1.0;
+
+    function applyZoom(z) {
+      zoomLevel = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, z));
+      svgViewport.style.transform = 'scale(' + zoomLevel + ')';
+      zoomLabel.textContent = Math.round(zoomLevel * 100) + '%';
+    }
+
+    function resetZoom() { applyZoom(1.0); }
+
+    document.getElementById('zoom-in').addEventListener('click', function () {
+      applyZoom(zoomLevel + ZOOM_STEP);
+    });
+    document.getElementById('zoom-out').addEventListener('click', function () {
+      applyZoom(zoomLevel - ZOOM_STEP);
+    });
+    document.getElementById('zoom-reset').addEventListener('click', resetZoom);
 
     function showEdgeForm(visible) {
       noEdgeHint.hidden      = visible;
@@ -384,6 +449,8 @@ const HTML_TEMPLATE: &str = r#"<!DOCTYPE html>
 
       fixtureHeader.hidden = false;
       fixtureTitleEl.textContent = fixture.name;
+      zoomBar.hidden = false;
+      resetZoom();
 
       // Strategy tabs (hidden when there is only one strategy)
       buildStrategyTabs(fixture);
@@ -484,6 +551,11 @@ const HTML_TEMPLATE: &str = r#"<!DOCTYPE html>
         el.classList.toggle('selected-edge', el.dataset.edgeId === edgeId);
       });
     }
+
+    // ── Auto-toggle improvable when typing ───────────────────────────────────
+    edgeNote.addEventListener('input', function () {
+      edgeImprovable.checked = edgeNote.value.trim().length > 0;
+    });
 
     // ── Save note ─────────────────────────────────────────────────────────────
     saveNoteBtn.addEventListener('click', function () {
