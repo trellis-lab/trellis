@@ -1,9 +1,8 @@
 use std::collections::HashMap;
 use trellis_parser::Graph;
 
-use super::common::{
-    assign_connectors, build_edge_side_map, sort_edges_on_side,
-};
+use super::common::{assign_connectors, build_edge_side_map, sort_edges_on_side};
+use super::prepass::apply_pinned;
 use super::{PortAssigner, PortAssignmentContext};
 
 /// The default (angle-based) port assignment algorithm.
@@ -11,7 +10,9 @@ pub struct DefaultPortAssigner;
 
 impl PortAssigner for DefaultPortAssigner {
     fn assign_ports(&self, ctx: &PortAssignmentContext) -> HashMap<usize, EdgePorts> {
-        assign_ports(ctx.graph, ctx.cell_size, ctx.offset_x, ctx.offset_y)
+        let mut ports = assign_ports(ctx.graph, ctx.cell_size, ctx.offset_x, ctx.offset_y);
+        apply_pinned(&mut ports, &ctx.pinned_ports);
+        ports
     }
 }
 

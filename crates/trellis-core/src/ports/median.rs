@@ -1,10 +1,9 @@
 use std::collections::HashMap;
 use trellis_parser::Graph;
 
-use super::common::{
-    assign_connectors, build_edge_side_map, rebalance_sides, NodeEdgeInfo,
-};
 use super::assignment::{EdgePorts, Side};
+use super::common::{assign_connectors, build_edge_side_map, rebalance_sides, NodeEdgeInfo};
+use super::prepass::apply_pinned;
 use super::{PortAssigner, PortAssignmentContext};
 
 /// Median port assignment algorithm.
@@ -15,7 +14,9 @@ pub struct MedianPortAssigner;
 
 impl PortAssigner for MedianPortAssigner {
     fn assign_ports(&self, ctx: &PortAssignmentContext) -> HashMap<usize, EdgePorts> {
-        assign_ports_median(ctx.graph, ctx.cell_size, ctx.offset_x, ctx.offset_y)
+        let mut ports = assign_ports_median(ctx.graph, ctx.cell_size, ctx.offset_x, ctx.offset_y);
+        apply_pinned(&mut ports, &ctx.pinned_ports);
+        ports
     }
 }
 
@@ -121,6 +122,8 @@ fn compute_median(
 mod tests {
     use super::*;
     use super::super::PortAssignmentContext;
+    use crate::grid::Grid;
+    use std::collections::HashMap;
     use trellis_parser::{ArrowHead, Edge, EdgeStyle, Node, NodeShape};
 
     fn make_node(id: &str, w: f64, h: f64, x: f64, y: f64) -> Node {
@@ -163,11 +166,14 @@ mod tests {
         ];
 
         let assigner = MedianPortAssigner;
+        let grid = Grid::new(50, 50, 10, 0, 0);
         let ctx = PortAssignmentContext {
             graph: &graph,
             cell_size: 10,
             offset_x: 0,
             offset_y: 0,
+            grid: &grid,
+            pinned_ports: HashMap::new(),
             print_metrics: false,
         };
         let ports = assigner.assign_ports(&ctx);
@@ -197,11 +203,14 @@ mod tests {
         ];
 
         let assigner = MedianPortAssigner;
+        let grid = Grid::new(50, 50, 10, 0, 0);
         let ctx = PortAssignmentContext {
             graph: &graph,
             cell_size: 10,
             offset_x: 0,
             offset_y: 0,
+            grid: &grid,
+            pinned_ports: HashMap::new(),
             print_metrics: false,
         };
         let ports = assigner.assign_ports(&ctx);

@@ -4,7 +4,10 @@ use crate::{
     config::TrellisConfig,
     grid::{build_grid, calculate_grid_extent, Grid},
     labels, placement,
-    ports::{create_port_assigner, needs_refinement, EdgePorts, PortAssignmentContext},
+    ports::{
+        create_port_assigner, needs_refinement, straight_edge_prepass, EdgePorts,
+        PortAssignmentContext,
+    },
     routing::{self, RoutingResult},
     types::*,
 };
@@ -63,8 +66,18 @@ fn run_pipeline(
         }
     }
 
-    // Phase 3: Grid construction
+    // Phase 3: Grid construction (node footprints only — no edges yet)
     let extent = calculate_grid_extent(&graph, cell_size);
+    let prepass_grid = build_grid(&graph, cell_size, &extent);
+
+    // Phase 3a: Straight-edge pre-pass — pin ports for axis-aligned node pairs
+    let pinned = straight_edge_prepass(
+        &graph,
+        &prepass_grid,
+        cell_size,
+        extent.offset_x,
+        extent.offset_y,
+    );
 
     // Phase 4: Port assignment
     let assigner = create_port_assigner(config.port_assignment);
@@ -73,6 +86,8 @@ fn run_pipeline(
         cell_size,
         offset_x: extent.offset_x,
         offset_y: extent.offset_y,
+        grid: &prepass_grid,
+        pinned_ports: pinned,
         print_metrics: config.print_metrics,
     };
     let port_assignments = assigner.assign_ports(&port_ctx);
@@ -99,7 +114,8 @@ fn run_pipeline(
             config.port_refinement_rounds,
         )
     } else {
-        let mut grid = build_grid(&graph, cell_size, &extent);
+        // Reuse the pre-pass grid for routing (still has only node footprints).
+        let mut grid = prepass_grid;
         let result = routing::route_all_edges(&graph, &mut grid, &port_assignments, config);
         (port_assignments, grid, result)
     };

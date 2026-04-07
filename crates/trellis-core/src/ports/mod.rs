@@ -5,30 +5,39 @@ pub mod common;
 pub mod crossing_greedy;
 pub mod iterative;
 pub mod median;
+pub mod prepass;
 pub mod stats;
 pub mod two_phase;
 
 use std::collections::HashMap;
 
 pub use assignment::{assign_ports, DefaultPortAssigner, EdgePorts, Port, Side};
+pub use auto::AutoPortAssigner;
 pub use barycenter::BarycenterPortAssigner;
 pub use crossing_greedy::CrossingGreedyPortAssigner;
 pub use iterative::IterativeSwapAssigner;
 pub use median::MedianPortAssigner;
+pub use prepass::{apply_pinned, straight_edge_prepass, PinnedPortMap, PinnedPorts};
 pub use two_phase::TwoPhaseAssigner;
-pub use auto::AutoPortAssigner;
 
 use crate::config::PortAssignmentStrategy;
+use crate::grid::Grid;
 
 /// Context provided to port assignment strategies.
 ///
 /// Bundled as a struct so future strategies can receive additional data
-/// (e.g. Grid, diagram direction) without breaking the trait signature.
+/// without breaking the trait signature.
 pub struct PortAssignmentContext<'a> {
     pub graph: &'a trellis_parser::Graph,
     pub cell_size: i32,
     pub offset_x: i32,
     pub offset_y: i32,
+    /// Grid with node footprints committed (no edges yet).
+    /// Used by the straight-edge pre-pass and available to strategies.
+    pub grid: &'a Grid,
+    /// Edges whose ports were locked in by the straight-edge pre-pass.
+    /// Each `PortAssigner` must apply these after its normal logic.
+    pub pinned_ports: PinnedPortMap,
     /// When true, strategies may emit diagnostic info to stderr.
     pub print_metrics: bool,
 }
@@ -71,6 +80,7 @@ pub fn needs_refinement(strategy: PortAssignmentStrategy) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::grid::Grid;
     use trellis_parser::{ArrowHead, Edge, EdgeStyle, Graph, Node, NodeShape};
 
     #[test]
@@ -110,11 +120,14 @@ mod tests {
         let free_fn_result = assign_ports(&graph, 10, 0, 0);
 
         let assigner = DefaultPortAssigner;
+        let grid = Grid::new(50, 50, 10, 0, 0);
         let ctx = PortAssignmentContext {
             graph: &graph,
             cell_size: 10,
             offset_x: 0,
             offset_y: 0,
+            grid: &grid,
+            pinned_ports: HashMap::new(),
             print_metrics: false,
         };
         let trait_result = assigner.assign_ports(&ctx);
@@ -193,6 +206,7 @@ mod tests {
             PortAssignmentStrategy::Auto,
         ];
 
+        let grid = Grid::new(50, 50, 10, 0, 0);
         for strategy in &strategies {
             let assigner = create_port_assigner(*strategy);
             let ctx = PortAssignmentContext {
@@ -200,6 +214,8 @@ mod tests {
                 cell_size: 10,
                 offset_x: 0,
                 offset_y: 0,
+                grid: &grid,
+                pinned_ports: HashMap::new(),
                 print_metrics: false,
             };
             let ports = assigner.assign_ports(&ctx);
