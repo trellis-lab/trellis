@@ -254,7 +254,7 @@ pub fn estimate_inversions(
     offset_y: i32,
 ) -> usize {
     let (node_map, per_node_sides) =
-        build_edge_side_map(graph, cell_size, offset_x, offset_y);
+        build_edge_side_map(graph, cell_size, offset_x, offset_y, None, &std::collections::HashMap::new());
 
     let mut total = 0;
     for sides in per_node_sides.values() {

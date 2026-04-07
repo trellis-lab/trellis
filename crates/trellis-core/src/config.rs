@@ -35,6 +35,9 @@ fn default_port_assignment() -> PortAssignmentStrategy {
 fn default_port_refinement_rounds() -> usize {
     0
 }
+fn default_flow_bias() -> FlowBias {
+    FlowBias::None
+}
 fn default_routing_costs() -> RoutingCosts {
     RoutingCosts::default()
 }
@@ -113,6 +116,11 @@ pub struct TrellisConfig {
     #[serde(default = "default_port_refinement_rounds")]
     pub port_refinement_rounds: usize,
 
+    /// Flow-direction bias for port side selection.
+    /// Auto applies bias when graph direction is TB or LR.
+    #[serde(default = "default_flow_bias")]
+    pub flow_bias: FlowBias,
+
     /// When true, emit diagnostic messages (e.g. Auto strategy selection) to stderr.
     /// Controlled by the CLI `--metrics` flag.
     #[serde(default)]
@@ -157,6 +165,18 @@ pub enum PortAssignmentStrategy {
     Auto,
 }
 
+/// How strongly to bias port side selection toward the layout flow direction.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+pub enum FlowBias {
+    /// Apply bias for Sugiyama (TB/LR/BT/RL), not for force-directed or C4.
+    #[default]
+    Auto,
+    /// Always apply directional bias regardless of diagram type.
+    Strong,
+    /// Use original uniform 90° quadrants (old behaviour).
+    None,
+}
+
 /// Decomposition mode for handling large graphs
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, Default)]
 pub enum DecompositionMode {
@@ -181,6 +201,7 @@ impl Default for TrellisConfig {
             show_edge_labels: default_show_edge_labels(),
             port_assignment: default_port_assignment(),
             port_refinement_rounds: default_port_refinement_rounds(),
+            flow_bias: FlowBias::None,
             print_metrics: false,
         }
     }
@@ -220,6 +241,7 @@ pub fn configuration_factory(config_type: ConfigurationType) -> TrellisConfig {
             show_edge_labels: true,
             port_assignment: PortAssignmentStrategy::Default,
             port_refinement_rounds: 0,
+            flow_bias: FlowBias::Auto,
             print_metrics: false,
         },
     }

@@ -3,14 +3,22 @@ use trellis_parser::Graph;
 
 use super::common::{assign_connectors, build_edge_side_map, sort_edges_on_side};
 use super::prepass::apply_pinned;
-use super::{PortAssigner, PortAssignmentContext};
+use super::{effective_direction, PortAssigner, PortAssignmentContext};
 
 /// The default (angle-based) port assignment algorithm.
 pub struct DefaultPortAssigner;
 
 impl PortAssigner for DefaultPortAssigner {
     fn assign_ports(&self, ctx: &PortAssignmentContext) -> HashMap<usize, EdgePorts> {
-        let mut ports = assign_ports(ctx.graph, ctx.cell_size, ctx.offset_x, ctx.offset_y);
+        let direction = effective_direction(ctx);
+        let mut ports = assign_ports_with_direction(
+            ctx.graph,
+            ctx.cell_size,
+            ctx.offset_x,
+            ctx.offset_y,
+            direction,
+            &ctx.topo_rank,
+        );
         apply_pinned(&mut ports, &ctx.pinned_ports);
         ports
     }
@@ -46,16 +54,20 @@ pub struct EdgePorts {
 ///
 /// For each node, edges are grouped by side (based on the angle to the connected node),
 /// overflow is handled, edges are sorted within each side, and connector positions are assigned.
-pub fn assign_ports(
+///
+/// `direction` controls flow-aware sector widths. Pass `None` for uniform 90° sectors.
+pub fn assign_ports_with_direction(
     graph: &Graph,
     cell_size: i32,
     offset_x: i32,
     offset_y: i32,
+    direction: Option<trellis_parser::Direction>,
+    topo_rank: &HashMap<String, usize>,
 ) -> HashMap<usize, EdgePorts> {
     let mut port_assignments: HashMap<usize, EdgePorts> = HashMap::new();
 
     let (node_map, mut per_node_sides) =
-        build_edge_side_map(graph, cell_size, offset_x, offset_y);
+        build_edge_side_map(graph, cell_size, offset_x, offset_y, direction, topo_rank);
 
     for node in &graph.nodes {
         let sides = match per_node_sides.get_mut(node.id.as_str()) {
@@ -80,6 +92,16 @@ pub fn assign_ports(
     }
 
     port_assignments
+}
+
+/// Backward-compatible free function — uses uniform 90° sectors (no flow bias).
+pub fn assign_ports(
+    graph: &Graph,
+    cell_size: i32,
+    offset_x: i32,
+    offset_y: i32,
+) -> HashMap<usize, EdgePorts> {
+    assign_ports_with_direction(graph, cell_size, offset_x, offset_y, None, &HashMap::new())
 }
 
 // Re-export angle_to_side for backward compatibility and tests

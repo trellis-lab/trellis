@@ -1,5 +1,5 @@
-use std::collections::HashMap;
-use trellis_parser::Node;
+use std::collections::{HashMap, HashSet, VecDeque};
+use trellis_parser::{Direction, Graph, Node};
 
 use super::assignment::Side;
 
@@ -10,6 +10,9 @@ pub struct NodeEdgeInfo {
     pub angle_deg: f64,
     pub other_node_id: String,
     pub is_source: bool,
+    /// Pre-computed side assignment (set by flow-aware or back-edge logic).
+    /// When `None`, the side is computed from `angle_deg` at grouping time.
+    pub side_override: Option<Side>,
 }
 
 /// A connector: a grid point on a node boundary available for edge routing.
@@ -23,7 +26,7 @@ pub struct Connector {
 
 /// Convert an angle (degrees, 0=right, 90=down) to a side of a node.
 ///
-/// Uses 4 sectors of 90 degrees each.
+/// Uses uniform 4 sectors of 90 degrees each.
 pub fn angle_to_side(angle_deg: f64) -> Side {
     let angle = ((angle_deg % 360.0) + 360.0) % 360.0;
     if !(45.0..315.0).contains(&angle) {
@@ -34,6 +37,190 @@ pub fn angle_to_side(angle_deg: f64) -> Side {
         Side::Left
     } else {
         Side::Top
+    }
+}
+
+/// Convert an angle to a side using flow-aware sector widths.
+///
+/// For TB graphs the Bottom sector widens from 90° to 135°
+/// (112.5°..247.5°) so edges near quadrant boundaries go South rather
+/// than East/West.  For LR graphs the same widening applies to the Right
+/// sector.  For no-direction graphs the uniform 90° sectors are used.
+pub fn angle_to_side_flow_aware(angle_deg: f64, direction: Direction) -> Side {
+    let angle = ((angle_deg % 360.0) + 360.0) % 360.0;
+    match direction {
+        Direction::TB => {
+            // North: 315..360 | 0..45   (45° arc — unchanged)
+            // East:  45..112.5          (67.5° arc — narrowed from 90°)
+            // South: 112.5..247.5       (135° arc — widened, dominant downward flow)
+            // West:  247.5..315         (67.5° arc — narrowed from 90°)
+            if (45.0..112.5).contains(&angle) {
+                Side::Right // East
+            } else if (112.5..247.5).contains(&angle) {
+                Side::Bottom // South (dominant)
+            } else if (247.5..315.0).contains(&angle) {
+                Side::Left // West (narrowed)
+            } else {
+                // 315..360 | 0..45 — North
+                Side::Top // North (back-edge direction)
+            }
+        }
+        Direction::BT => {
+            // Mirror of TB: Top/North sector widens (flow goes upward)
+            // South: 315..360 | 0..45  (45° arc)
+            // East:  45..112.5         (67.5°)
+            // North: 112.5..247.5      (widened to 135°)
+            // West:  247.5..315        (67.5°)
+            if (45.0..112.5).contains(&angle) {
+                Side::Right // East
+            } else if (112.5..247.5).contains(&angle) {
+                Side::Top // North widens for BT flow
+            } else if (247.5..315.0).contains(&angle) {
+                Side::Left // West
+            } else {
+                // 315..360 | 0..45 — South (downstream direction in BT)
+                Side::Bottom // South
+            }
+        }
+        Direction::LR => {
+            // 90° rotation of TB: Right/East sector widens (dominant rightward flow)
+            // North: 247.5..315   (67.5° arc)
+            // East:  315..360 | 0..67.5  (135° arc — widened, dominant)
+            // South: 67.5..157.5  (67.5° arc — narrowed)
+            // West:  157.5..247.5 (67.5° arc — narrowed)
+            if (315.0..360.0).contains(&angle) || angle < 67.5 {
+                Side::Right // East dominant for LR
+            } else if (67.5..157.5).contains(&angle) {
+                Side::Bottom // South
+            } else if (157.5..247.5).contains(&angle) {
+                Side::Left // West
+            } else {
+                Side::Top // North
+            }
+        }
+        Direction::RL => {
+            // Mirror of LR: Left/West sector widens (dominant leftward flow)
+            // East:  315..360 | 0..45    (45° arc)
+            // South: 45..112.5           (67.5° arc)
+            // West:  112.5..247.5        (135° arc — widened, dominant)
+            // North: 247.5..315          (67.5° arc)
+            if (112.5..247.5).contains(&angle) {
+                Side::Left // West dominant for RL
+            } else if (247.5..315.0).contains(&angle) {
+                Side::Top // North
+            } else if (45.0..112.5).contains(&angle) {
+                Side::Bottom // South
+            } else {
+                Side::Right // East
+            }
+        }
+    }
+}
+
+/// Compute a topological rank for each node (BFS from roots).
+///
+/// Nodes with no incoming edges get rank 0; their successors get rank 1, etc.
+/// For cyclic graphs (back-edges), nodes reachable only via cycles get the
+/// rank of their predecessor + 1 on the first BFS visit.
+pub fn compute_topo_rank(graph: &Graph) -> HashMap<String, usize> {
+    let mut in_degree: HashMap<&str, usize> = HashMap::new();
+    let mut adjacency: HashMap<&str, Vec<&str>> = HashMap::new();
+
+    for node in &graph.nodes {
+        in_degree.entry(node.id.as_str()).or_insert(0);
+        adjacency.entry(node.id.as_str()).or_default();
+    }
+    for edge in &graph.edges {
+        *in_degree.entry(edge.to.as_str()).or_insert(0) += 1;
+        adjacency
+            .entry(edge.from.as_str())
+            .or_default()
+            .push(edge.to.as_str());
+    }
+
+    let mut rank: HashMap<String, usize> = HashMap::new();
+    let mut queue: VecDeque<&str> = VecDeque::new();
+
+    // Seed with nodes that have no incoming edges
+    for (node_id, &deg) in &in_degree {
+        if deg == 0 {
+            queue.push_back(node_id);
+            rank.insert(node_id.to_string(), 0);
+        }
+    }
+
+    // BFS
+    let mut visited: HashSet<&str> = HashSet::new();
+    while let Some(node_id) = queue.pop_front() {
+        if visited.contains(node_id) {
+            continue;
+        }
+        visited.insert(node_id);
+        let current_rank = *rank.get(node_id).unwrap_or(&0);
+        if let Some(successors) = adjacency.get(node_id) {
+            for &succ in successors {
+                if visited.contains(succ) {
+                    // Back-edge or cross-edge — do not update rank of already-settled node
+                    continue;
+                }
+                let new_rank = current_rank + 1;
+                let entry = rank.entry(succ.to_string()).or_insert(new_rank);
+                if new_rank > *entry {
+                    *entry = new_rank;
+                }
+                queue.push_back(succ);
+            }
+        }
+    }
+
+    // Assign rank 0 to any nodes not yet visited (isolated or in pure cycles)
+    for node in &graph.nodes {
+        rank.entry(node.id.clone()).or_insert(0);
+    }
+
+    rank
+}
+
+/// Returns true if this edge goes against the primary flow direction
+/// (i.e. the source has a higher topological rank than the target).
+pub fn is_back_edge(from: &str, to: &str, topo_rank: &HashMap<String, usize>) -> bool {
+    let src_rank = topo_rank.get(from).copied().unwrap_or(0);
+    let tgt_rank = topo_rank.get(to).copied().unwrap_or(0);
+    src_rank > tgt_rank
+}
+
+/// For a back-edge, override the side assignment so the source exits via the
+/// upstream side and the target is entered from the downstream side.
+pub fn override_side_for_back_edge(is_source: bool, direction: Direction) -> Side {
+    match direction {
+        Direction::TB => {
+            if is_source {
+                Side::Top
+            } else {
+                Side::Bottom
+            }
+        }
+        Direction::BT => {
+            if is_source {
+                Side::Bottom
+            } else {
+                Side::Top
+            }
+        }
+        Direction::LR => {
+            if is_source {
+                Side::Left
+            } else {
+                Side::Right
+            }
+        }
+        Direction::RL => {
+            if is_source {
+                Side::Right
+            } else {
+                Side::Left
+            }
+        }
     }
 }
 
@@ -186,17 +373,22 @@ pub fn sort_edges_on_side(
 
 /// Build the node lookup, edge grouping, and side assignment that all algorithms share.
 ///
+/// `direction` controls whether flow-aware sector widths are used.
+/// Pass `None` to use uniform 90° sectors (backwards-compatible).
+///
 /// Returns `(node_map, per_node_sides)` where `per_node_sides` maps each node id
 /// to a side→edges mapping.
 #[allow(clippy::type_complexity)]
-pub fn build_edge_side_map(
-    graph: &trellis_parser::Graph,
+pub fn build_edge_side_map<'a>(
+    graph: &'a Graph,
     cell_size: i32,
     offset_x: i32,
     offset_y: i32,
+    direction: Option<Direction>,
+    topo_rank: &HashMap<String, usize>,
 ) -> (
-    HashMap<&str, &Node>,
-    HashMap<&str, HashMap<Side, Vec<NodeEdgeInfo>>>,
+    HashMap<&'a str, &'a Node>,
+    HashMap<&'a str, HashMap<Side, Vec<NodeEdgeInfo>>>,
 ) {
     let node_map: HashMap<&str, &Node> =
         graph.nodes.iter().map(|n| (n.id.as_str(), n)).collect();
@@ -209,6 +401,29 @@ pub fn build_edge_side_map(
             node_map.get(edge.to.as_str()),
         ) {
             let angle_from_source = calculate_angle(source, target);
+            let angle_from_target = calculate_angle(target, source);
+
+            // Determine sides using flow-aware sectors if direction is set,
+            // with back-edge override applied first.
+            let (src_side, tgt_side) = if let Some(dir) = direction {
+                if is_back_edge(edge.from.as_str(), edge.to.as_str(), topo_rank) {
+                    (
+                        override_side_for_back_edge(true, dir),
+                        override_side_for_back_edge(false, dir),
+                    )
+                } else {
+                    (
+                        angle_to_side_flow_aware(angle_from_source, dir),
+                        angle_to_side_flow_aware(angle_from_target, dir),
+                    )
+                }
+            } else {
+                (
+                    angle_to_side(angle_from_source),
+                    angle_to_side(angle_from_target),
+                )
+            };
+
             node_edges
                 .entry(edge.from.as_str())
                 .or_default()
@@ -217,9 +432,9 @@ pub fn build_edge_side_map(
                     angle_deg: angle_from_source,
                     other_node_id: edge.to.clone(),
                     is_source: true,
+                    side_override: Some(src_side),
                 });
 
-            let angle_from_target = calculate_angle(target, source);
             node_edges
                 .entry(edge.to.as_str())
                 .or_default()
@@ -228,6 +443,7 @@ pub fn build_edge_side_map(
                     angle_deg: angle_from_target,
                     other_node_id: edge.from.clone(),
                     is_source: false,
+                    side_override: Some(tgt_side),
                 });
         }
     }
@@ -242,7 +458,9 @@ pub fn build_edge_side_map(
 
         let mut sides: HashMap<Side, Vec<NodeEdgeInfo>> = HashMap::new();
         for info in edges {
-            let side = angle_to_side(info.angle_deg);
+            let side = info
+                .side_override
+                .unwrap_or_else(|| angle_to_side(info.angle_deg));
             sides.entry(side).or_default().push(info);
         }
 
@@ -512,5 +730,180 @@ fn counter_clockwise_neighbor(side: Side) -> Side {
         Side::Left => Side::Bottom,
         Side::Bottom => Side::Right,
         Side::Right => Side::Top,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // ─── Flow-aware side selection tests ────────────────────────────────────────
+
+    #[test]
+    fn flow_aware_south_wins_near_boundary_tb() {
+        // 113° is just inside the East quadrant with uniform sectors (45..135)
+        // but with TB bias, 113° is in South (112.5..247.5)
+        assert_eq!(
+            angle_to_side_flow_aware(113.0, Direction::TB),
+            Side::Bottom
+        );
+        // Deep into South sector — still Bottom
+        assert_eq!(
+            angle_to_side_flow_aware(180.0, Direction::TB),
+            Side::Bottom
+        );
+        // East side (narrowed): 45..112.5
+        assert_eq!(angle_to_side_flow_aware(80.0, Direction::TB), Side::Right);
+        // West side (narrowed): 247.5..315 → Side::Left
+        assert_eq!(angle_to_side_flow_aware(280.0, Direction::TB), Side::Left);
+        // North sector: 315..360 | 0..45 → Side::Top
+        assert_eq!(angle_to_side_flow_aware(0.0, Direction::TB), Side::Top);
+        assert_eq!(angle_to_side_flow_aware(350.0, Direction::TB), Side::Top);
+    }
+
+    #[test]
+    fn flow_aware_boundary_angles_tb() {
+        // At exactly 112.5 — starts South sector
+        assert_eq!(
+            angle_to_side_flow_aware(112.5, Direction::TB),
+            Side::Bottom
+        );
+        // At 247.4 — still South
+        assert_eq!(
+            angle_to_side_flow_aware(247.4, Direction::TB),
+            Side::Bottom
+        );
+        // At 247.5 — starts West sector
+        assert_eq!(
+            angle_to_side_flow_aware(247.5, Direction::TB),
+            Side::Left
+        );
+    }
+
+    #[test]
+    fn flow_aware_lr_east_dominant() {
+        // LR: angles near 0/360 → Right (East dominant)
+        assert_eq!(angle_to_side_flow_aware(0.0, Direction::LR), Side::Right);
+        assert_eq!(angle_to_side_flow_aware(50.0, Direction::LR), Side::Right); // within 22.5..67.5
+        // South: 67.5..157.5
+        assert_eq!(
+            angle_to_side_flow_aware(100.0, Direction::LR),
+            Side::Bottom
+        );
+        // West: 157.5..247.5
+        assert_eq!(
+            angle_to_side_flow_aware(200.0, Direction::LR),
+            Side::Left
+        );
+        // North: 247.5..315
+        assert_eq!(angle_to_side_flow_aware(280.0, Direction::LR), Side::Top);
+    }
+
+    #[test]
+    fn flow_aware_bt_top_dominant() {
+        // BT: Top (North) sector widens — 112.5..247.5 → Top
+        assert_eq!(
+            angle_to_side_flow_aware(180.0, Direction::BT),
+            Side::Top
+        );
+        // Near 0° → South/Bottom (downstream direction in BT)
+        assert_eq!(angle_to_side_flow_aware(0.0, Direction::BT), Side::Bottom);
+    }
+
+    #[test]
+    fn uniform_sectors_unchanged() {
+        // angle_to_side should remain unchanged from original behavior
+        assert_eq!(angle_to_side(0.0), Side::Right);
+        assert_eq!(angle_to_side(90.0), Side::Bottom);
+        assert_eq!(angle_to_side(180.0), Side::Left);
+        assert_eq!(angle_to_side(270.0), Side::Top);
+        assert_eq!(angle_to_side(113.0), Side::Bottom); // 113° > 45 and < 135 → Bottom
+    }
+
+    // ─── Back-edge detection tests ───────────────────────────────────────────────
+
+    #[test]
+    fn back_edge_detected_by_rank() {
+        let mut rank = HashMap::new();
+        rank.insert("A".to_string(), 0usize);
+        rank.insert("B".to_string(), 1usize);
+        rank.insert("C".to_string(), 2usize);
+
+        // Forward edges
+        assert!(!is_back_edge("A", "B", &rank));
+        assert!(!is_back_edge("B", "C", &rank));
+        // Back-edge
+        assert!(is_back_edge("C", "A", &rank));
+        assert!(is_back_edge("B", "A", &rank));
+    }
+
+    #[test]
+    fn back_edge_override_tb() {
+        // TB back-edge: source exits Top, target enters Bottom
+        assert_eq!(override_side_for_back_edge(true, Direction::TB), Side::Top);
+        assert_eq!(
+            override_side_for_back_edge(false, Direction::TB),
+            Side::Bottom
+        );
+    }
+
+    #[test]
+    fn back_edge_override_lr() {
+        // LR back-edge: source exits Left, target enters Right
+        assert_eq!(override_side_for_back_edge(true, Direction::LR), Side::Left);
+        assert_eq!(
+            override_side_for_back_edge(false, Direction::LR),
+            Side::Right
+        );
+    }
+
+    // ─── Topological rank tests ──────────────────────────────────────────────────
+
+    #[test]
+    fn topo_rank_linear_chain() {
+        use trellis_parser::{ArrowHead, Edge, EdgeStyle, Graph, Node, NodeShape};
+
+        let mut graph = Graph::new();
+        graph.nodes = vec![
+            Node { id: "A".into(), label: "A".into(), shape: NodeShape::Rectangle, width: 40.0, height: 20.0, x: 0.0, y: 0.0, ..Default::default() },
+            Node { id: "B".into(), label: "B".into(), shape: NodeShape::Rectangle, width: 40.0, height: 20.0, x: 0.0, y: 50.0, ..Default::default() },
+            Node { id: "C".into(), label: "C".into(), shape: NodeShape::Rectangle, width: 40.0, height: 20.0, x: 0.0, y: 100.0, ..Default::default() },
+        ];
+        graph.edges = vec![
+            Edge { from: "A".into(), to: "B".into(), style: EdgeStyle::Solid, arrow_head: ArrowHead::Arrow, ..Default::default() },
+            Edge { from: "B".into(), to: "C".into(), style: EdgeStyle::Solid, arrow_head: ArrowHead::Arrow, ..Default::default() },
+        ];
+
+        let rank = compute_topo_rank(&graph);
+        assert_eq!(rank["A"], 0);
+        assert_eq!(rank["B"], 1);
+        assert_eq!(rank["C"], 2);
+    }
+
+    #[test]
+    fn topo_rank_back_edge_in_chain_plus_cycle() {
+        use trellis_parser::{ArrowHead, Edge, EdgeStyle, Graph, Node, NodeShape};
+
+        // A → B → C, plus C → B (back-edge from layer 2 to layer 1)
+        let mut graph = Graph::new();
+        graph.nodes = vec![
+            Node { id: "A".into(), label: "A".into(), shape: NodeShape::Rectangle, width: 40.0, height: 20.0, x: 0.0, y: 0.0, ..Default::default() },
+            Node { id: "B".into(), label: "B".into(), shape: NodeShape::Rectangle, width: 40.0, height: 20.0, x: 0.0, y: 50.0, ..Default::default() },
+            Node { id: "C".into(), label: "C".into(), shape: NodeShape::Rectangle, width: 40.0, height: 20.0, x: 0.0, y: 100.0, ..Default::default() },
+        ];
+        graph.edges = vec![
+            Edge { from: "A".into(), to: "B".into(), style: EdgeStyle::Solid, arrow_head: ArrowHead::Arrow, ..Default::default() },
+            Edge { from: "B".into(), to: "C".into(), style: EdgeStyle::Solid, arrow_head: ArrowHead::Arrow, ..Default::default() },
+            Edge { from: "C".into(), to: "B".into(), style: EdgeStyle::Solid, arrow_head: ArrowHead::Arrow, ..Default::default() },
+        ];
+
+        let rank = compute_topo_rank(&graph);
+        // A has rank 0, B has rank >= 1, C has rank >= 2
+        // C → B is a back-edge (rank[C] > rank[B])
+        assert!(rank["C"] > rank["B"], "C should have higher rank than B");
+        assert!(is_back_edge("C", "B", &rank));
+        // Forward edges are not back-edges
+        assert!(!is_back_edge("A", "B", &rank));
+        assert!(!is_back_edge("B", "C", &rank));
     }
 }

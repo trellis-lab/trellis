@@ -7,7 +7,7 @@ use super::common::{
     NodeEdgeInfo,
 };
 use super::prepass::apply_pinned;
-use super::{PortAssigner, PortAssignmentContext};
+use super::{effective_direction, PortAssigner, PortAssignmentContext};
 
 /// Crossing-count greedy port assignment algorithm.
 ///
@@ -18,8 +18,15 @@ pub struct CrossingGreedyPortAssigner;
 
 impl PortAssigner for CrossingGreedyPortAssigner {
     fn assign_ports(&self, ctx: &PortAssignmentContext) -> HashMap<usize, EdgePorts> {
-        let mut ports =
-            assign_ports_crossing_greedy(ctx.graph, ctx.cell_size, ctx.offset_x, ctx.offset_y);
+        let direction = effective_direction(ctx);
+        let mut ports = assign_ports_crossing_greedy(
+            ctx.graph,
+            ctx.cell_size,
+            ctx.offset_x,
+            ctx.offset_y,
+            direction,
+            &ctx.topo_rank,
+        );
         apply_pinned(&mut ports, &ctx.pinned_ports);
         ports
     }
@@ -30,11 +37,13 @@ fn assign_ports_crossing_greedy(
     cell_size: i32,
     offset_x: i32,
     offset_y: i32,
+    direction: Option<trellis_parser::Direction>,
+    topo_rank: &HashMap<String, usize>,
 ) -> HashMap<usize, EdgePorts> {
     let mut port_assignments: HashMap<usize, EdgePorts> = HashMap::new();
 
     let (node_map, mut per_node_sides) =
-        build_edge_side_map(graph, cell_size, offset_x, offset_y);
+        build_edge_side_map(graph, cell_size, offset_x, offset_y, direction, topo_rank);
 
     for node in &graph.nodes {
         let sides = match per_node_sides.get_mut(node.id.as_str()) {
@@ -209,6 +218,8 @@ mod tests {
             offset_y: 0,
             grid: &grid,
             pinned_ports: HashMap::new(),
+            flow_bias: crate::config::FlowBias::None,
+            topo_rank: HashMap::new(),
             print_metrics: false,
         };
         let ports = assigner.assign_ports(&ctx);
@@ -251,6 +262,8 @@ mod tests {
             offset_y: 0,
             grid: &grid,
             pinned_ports: HashMap::new(),
+            flow_bias: crate::config::FlowBias::None,
+            topo_rank: HashMap::new(),
             print_metrics: false,
         };
         let ports = assigner.assign_ports(&ctx);

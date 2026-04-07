@@ -5,8 +5,8 @@ use crate::{
     grid::{build_grid, calculate_grid_extent, Grid},
     labels, placement,
     ports::{
-        create_port_assigner, needs_refinement, straight_edge_prepass, EdgePorts,
-        PortAssignmentContext,
+        compute_topo_rank, create_port_assigner, needs_refinement, straight_edge_prepass,
+        EdgePorts, PortAssignmentContext,
     },
     routing::{self, RoutingResult},
     types::*,
@@ -80,6 +80,7 @@ fn run_pipeline(
     );
 
     // Phase 4: Port assignment
+    let topo_rank = compute_topo_rank(&graph);
     let assigner = create_port_assigner(config.port_assignment);
     let port_ctx = PortAssignmentContext {
         graph: &graph,
@@ -88,6 +89,8 @@ fn run_pipeline(
         offset_y: extent.offset_y,
         grid: &prepass_grid,
         pinned_ports: pinned,
+        flow_bias: config.flow_bias,
+        topo_rank,
         print_metrics: config.print_metrics,
     };
     let port_assignments = assigner.assign_ports(&port_ctx);

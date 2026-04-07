@@ -9,6 +9,8 @@ pub mod prepass;
 pub mod stats;
 pub mod two_phase;
 
+pub use common::compute_topo_rank;
+
 use std::collections::HashMap;
 
 pub use assignment::{assign_ports, DefaultPortAssigner, EdgePorts, Port, Side};
@@ -20,7 +22,7 @@ pub use median::MedianPortAssigner;
 pub use prepass::{apply_pinned, straight_edge_prepass, PinnedPortMap, PinnedPorts};
 pub use two_phase::TwoPhaseAssigner;
 
-use crate::config::PortAssignmentStrategy;
+use crate::config::{FlowBias, PortAssignmentStrategy};
 use crate::grid::Grid;
 
 /// Context provided to port assignment strategies.
@@ -38,6 +40,11 @@ pub struct PortAssignmentContext<'a> {
     /// Edges whose ports were locked in by the straight-edge pre-pass.
     /// Each `PortAssigner` must apply these after its normal logic.
     pub pinned_ports: PinnedPortMap,
+    /// Flow-direction bias setting from config.
+    pub flow_bias: FlowBias,
+    /// Topological rank per node (BFS from roots).
+    /// Used for back-edge detection when `flow_bias` is active.
+    pub topo_rank: std::collections::HashMap<String, usize>,
     /// When true, strategies may emit diagnostic info to stderr.
     pub print_metrics: bool,
 }
@@ -48,6 +55,24 @@ pub struct PortAssignmentContext<'a> {
 /// to all edges in a graph, returning a map from edge index to port pair.
 pub trait PortAssigner {
     fn assign_ports(&self, ctx: &PortAssignmentContext) -> HashMap<usize, EdgePorts>;
+}
+
+/// Resolve the effective layout direction for flow-aware port assignment.
+///
+/// Returns `Some(direction)` when the bias should be applied, `None` for uniform sectors.
+pub fn effective_direction(ctx: &PortAssignmentContext) -> Option<trellis_parser::Direction> {
+    match ctx.flow_bias {
+        FlowBias::None => None,
+        FlowBias::Strong => Some(ctx.graph.direction),
+        FlowBias::Auto => {
+            // Apply bias only for Flowchart (Sugiyama) diagrams; not ER/C4/Class
+            if ctx.graph.diagram_type == trellis_parser::DiagramType::Flowchart {
+                Some(ctx.graph.direction)
+            } else {
+                None
+            }
+        }
+    }
 }
 
 /// Resolve a config enum value to a concrete port assigner.
@@ -128,6 +153,8 @@ mod tests {
             offset_y: 0,
             grid: &grid,
             pinned_ports: HashMap::new(),
+            flow_bias: FlowBias::None,
+            topo_rank: HashMap::new(),
             print_metrics: false,
         };
         let trait_result = assigner.assign_ports(&ctx);
@@ -216,6 +243,8 @@ mod tests {
                 offset_y: 0,
                 grid: &grid,
                 pinned_ports: HashMap::new(),
+                flow_bias: FlowBias::None,
+                topo_rank: HashMap::new(),
                 print_metrics: false,
             };
             let ports = assigner.assign_ports(&ctx);
