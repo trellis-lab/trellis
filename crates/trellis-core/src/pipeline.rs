@@ -80,6 +80,10 @@ fn run_pipeline(
     );
 
     // Phase 4: Port assignment
+    // Collect pinned edge indices before moving the map into the context so
+    // Phase 5b (port_swap) can use them to guard straight edges.
+    let pinned_indices: std::collections::HashSet<usize> =
+        pinned.keys().cloned().collect();
     let topo_rank = compute_topo_rank(&graph);
     let assigner = create_port_assigner(config.port_assignment);
     let port_ctx = PortAssignmentContext {
@@ -136,6 +140,19 @@ fn run_pipeline(
         // Recompute aggregate bend count from the (possibly updated) paths.
         routing_result.total_bends = routing_result.paths.values().map(|p| p.bend_count).sum();
     }
+
+    // Phase 5b: Port-swap pass — for each node side, detect adjacent port pairs
+    // whose edges geometrically cross and swap them if doing so reduces bends.
+    // Straight edges (pinned by the pre-pass) are never disturbed.
+    routing::port_swap::port_swap(
+        &graph,
+        &mut grid,
+        &mut port_assignments,
+        &mut routing_result.paths,
+        config,
+        &pinned_indices,
+    );
+    routing_result.total_bends = routing_result.paths.values().map(|p| p.bend_count).sum();
 
     // Collect metrics
     let routed_count = routing_result.paths.len();

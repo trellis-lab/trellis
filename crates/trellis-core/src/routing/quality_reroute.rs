@@ -126,6 +126,7 @@ pub fn quality_reroute(
                     config.cell_size,
                     grid.offset_x,
                     grid.offset_y,
+                    grid,
                 );
                 let candidate = match candidate {
                     Some(c) => c,
@@ -171,9 +172,11 @@ pub fn quality_reroute(
     improved
 }
 
-/// Pick the median connector on each requested side as a neutral starting port.
+/// Pick a connector on each side, preferring grid cells not already occupied by
+/// another edge's path.  Falls back to the median connector when all cells on
+/// the side are taken.
 ///
-/// Returns `None` if either side has no connectors (node is too narrow/short).
+/// Returns `None` if the side has no connectors at all (node too narrow/short).
 fn ports_for_sides(
     src_node: &trellis_parser::Node,
     tgt_node: &trellis_parser::Node,
@@ -182,6 +185,7 @@ fn ports_for_sides(
     cell_size: i32,
     offset_x: i32,
     offset_y: i32,
+    grid: &Grid,
 ) -> Option<EdgePorts> {
     let src_connectors = enumerate_connectors(src_node, src_side, cell_size, offset_x, offset_y);
     let tgt_connectors = enumerate_connectors(tgt_node, tgt_side, cell_size, offset_x, offset_y);
@@ -190,8 +194,8 @@ fn ports_for_sides(
         return None;
     }
 
-    let sc = &src_connectors[src_connectors.len() / 2];
-    let tc = &tgt_connectors[tgt_connectors.len() / 2];
+    let sc = pick_connector(&src_connectors, grid);
+    let tc = pick_connector(&tgt_connectors, grid);
 
     Some(EdgePorts {
         source_port: Port {
@@ -209,6 +213,40 @@ fn ports_for_sides(
             side: tgt_side,
         },
     })
+}
+
+/// From a list of connectors on one node side, return the best available one.
+///
+/// Preference order:
+/// 1. Any connector whose grid cell is not `Occupied` (i.e. not already used
+///    as a port by another committed edge).  Among free connectors, the median
+///    index is chosen for geometric neutrality.
+/// 2. If every connector is occupied, fall back to the median (no choice).
+fn pick_connector<'a>(
+    connectors: &'a [crate::ports::common::Connector],
+    grid: &Grid,
+) -> &'a crate::ports::common::Connector {
+    use crate::grid::CellState;
+
+    // Collect indices that are not Occupied.
+    let free_indices: Vec<usize> = connectors
+        .iter()
+        .enumerate()
+        .filter(|(_, c)| {
+            grid.get(c.grid_row as usize, c.grid_col as usize)
+                .map(|cell| cell.state != CellState::Occupied)
+                .unwrap_or(true)
+        })
+        .map(|(i, _)| i)
+        .collect();
+
+    if free_indices.is_empty() {
+        // All occupied — use median as fallback.
+        &connectors[connectors.len() / 2]
+    } else {
+        // Median of the free indices for geometric neutrality.
+        &connectors[free_indices[free_indices.len() / 2]]
+    }
 }
 
 /// Temporarily free a boundary cell so routing can start/end there.
