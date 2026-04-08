@@ -426,8 +426,7 @@ mod tests {
         placement::place_nodes(&mut graph, cell_size);
         let extent = calculate_grid_extent(&graph, cell_size);
         let mut grid = build_grid(&graph, cell_size, &extent);
-        let mut port_assignments =
-            assign_ports(&graph, cell_size, extent.offset_x, extent.offset_y);
+        let port_assignments = assign_ports(&graph, cell_size, extent.offset_x, extent.offset_y);
         let result = route_all_edges(&graph, &mut grid, &port_assignments, &config);
         (result.paths, grid, port_assignments, graph)
     }
