@@ -171,8 +171,7 @@ pub fn compute_graph_stats(
 
             max_edges_per_side = max_edges_per_side.max(edge_count_on_side);
 
-            let connectors =
-                enumerate_connectors(node, side, cell_size, offset_x, offset_y).len();
+            let connectors = enumerate_connectors(node, side, cell_size, offset_x, offset_y).len();
             if edge_count_on_side > connectors {
                 overflow_count += edge_count_on_side - connectors;
             }

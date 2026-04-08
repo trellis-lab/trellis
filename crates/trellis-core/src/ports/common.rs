@@ -336,11 +336,7 @@ pub fn handle_overflow(
 }
 
 /// Sort edges on a given side by the perpendicular axis center position of the other node.
-pub fn sort_edges_on_side(
-    edges: &mut [NodeEdgeInfo],
-    side: Side,
-    node_map: &HashMap<&str, &Node>,
-) {
+pub fn sort_edges_on_side(edges: &mut [NodeEdgeInfo], side: Side, node_map: &HashMap<&str, &Node>) {
     match side {
         Side::Top | Side::Bottom => {
             edges.sort_by(|a, b| {
@@ -390,8 +386,7 @@ pub fn build_edge_side_map<'a>(
     HashMap<&'a str, &'a Node>,
     HashMap<&'a str, HashMap<Side, Vec<NodeEdgeInfo>>>,
 ) {
-    let node_map: HashMap<&str, &Node> =
-        graph.nodes.iter().map(|n| (n.id.as_str(), n)).collect();
+    let node_map: HashMap<&str, &Node> = graph.nodes.iter().map(|n| (n.id.as_str(), n)).collect();
 
     // Group edges by node
     let mut node_edges: HashMap<&str, Vec<NodeEdgeInfo>> = HashMap::new();
@@ -743,15 +738,9 @@ mod tests {
     fn flow_aware_south_wins_near_boundary_tb() {
         // 113° is just inside the East quadrant with uniform sectors (45..135)
         // but with TB bias, 113° is in South (112.5..247.5)
-        assert_eq!(
-            angle_to_side_flow_aware(113.0, Direction::TB),
-            Side::Bottom
-        );
+        assert_eq!(angle_to_side_flow_aware(113.0, Direction::TB), Side::Bottom);
         // Deep into South sector — still Bottom
-        assert_eq!(
-            angle_to_side_flow_aware(180.0, Direction::TB),
-            Side::Bottom
-        );
+        assert_eq!(angle_to_side_flow_aware(180.0, Direction::TB), Side::Bottom);
         // East side (narrowed): 45..112.5
         assert_eq!(angle_to_side_flow_aware(80.0, Direction::TB), Side::Right);
         // West side (narrowed): 247.5..315 → Side::Left
@@ -764,20 +753,11 @@ mod tests {
     #[test]
     fn flow_aware_boundary_angles_tb() {
         // At exactly 112.5 — starts South sector
-        assert_eq!(
-            angle_to_side_flow_aware(112.5, Direction::TB),
-            Side::Bottom
-        );
+        assert_eq!(angle_to_side_flow_aware(112.5, Direction::TB), Side::Bottom);
         // At 247.4 — still South
-        assert_eq!(
-            angle_to_side_flow_aware(247.4, Direction::TB),
-            Side::Bottom
-        );
+        assert_eq!(angle_to_side_flow_aware(247.4, Direction::TB), Side::Bottom);
         // At 247.5 — starts West sector
-        assert_eq!(
-            angle_to_side_flow_aware(247.5, Direction::TB),
-            Side::Left
-        );
+        assert_eq!(angle_to_side_flow_aware(247.5, Direction::TB), Side::Left);
     }
 
     #[test]
@@ -785,16 +765,10 @@ mod tests {
         // LR: angles near 0/360 → Right (East dominant)
         assert_eq!(angle_to_side_flow_aware(0.0, Direction::LR), Side::Right);
         assert_eq!(angle_to_side_flow_aware(50.0, Direction::LR), Side::Right); // within 22.5..67.5
-        // South: 67.5..157.5
-        assert_eq!(
-            angle_to_side_flow_aware(100.0, Direction::LR),
-            Side::Bottom
-        );
+                                                                                // South: 67.5..157.5
+        assert_eq!(angle_to_side_flow_aware(100.0, Direction::LR), Side::Bottom);
         // West: 157.5..247.5
-        assert_eq!(
-            angle_to_side_flow_aware(200.0, Direction::LR),
-            Side::Left
-        );
+        assert_eq!(angle_to_side_flow_aware(200.0, Direction::LR), Side::Left);
         // North: 247.5..315
         assert_eq!(angle_to_side_flow_aware(280.0, Direction::LR), Side::Top);
     }
@@ -802,10 +776,7 @@ mod tests {
     #[test]
     fn flow_aware_bt_top_dominant() {
         // BT: Top (North) sector widens — 112.5..247.5 → Top
-        assert_eq!(
-            angle_to_side_flow_aware(180.0, Direction::BT),
-            Side::Top
-        );
+        assert_eq!(angle_to_side_flow_aware(180.0, Direction::BT), Side::Top);
         // Near 0° → South/Bottom (downstream direction in BT)
         assert_eq!(angle_to_side_flow_aware(0.0, Direction::BT), Side::Bottom);
     }
@@ -865,13 +836,52 @@ mod tests {
 
         let mut graph = Graph::new();
         graph.nodes = vec![
-            Node { id: "A".into(), label: "A".into(), shape: NodeShape::Rectangle, width: 40.0, height: 20.0, x: 0.0, y: 0.0, ..Default::default() },
-            Node { id: "B".into(), label: "B".into(), shape: NodeShape::Rectangle, width: 40.0, height: 20.0, x: 0.0, y: 50.0, ..Default::default() },
-            Node { id: "C".into(), label: "C".into(), shape: NodeShape::Rectangle, width: 40.0, height: 20.0, x: 0.0, y: 100.0, ..Default::default() },
+            Node {
+                id: "A".into(),
+                label: "A".into(),
+                shape: NodeShape::Rectangle,
+                width: 40.0,
+                height: 20.0,
+                x: 0.0,
+                y: 0.0,
+                ..Default::default()
+            },
+            Node {
+                id: "B".into(),
+                label: "B".into(),
+                shape: NodeShape::Rectangle,
+                width: 40.0,
+                height: 20.0,
+                x: 0.0,
+                y: 50.0,
+                ..Default::default()
+            },
+            Node {
+                id: "C".into(),
+                label: "C".into(),
+                shape: NodeShape::Rectangle,
+                width: 40.0,
+                height: 20.0,
+                x: 0.0,
+                y: 100.0,
+                ..Default::default()
+            },
         ];
         graph.edges = vec![
-            Edge { from: "A".into(), to: "B".into(), style: EdgeStyle::Solid, arrow_head: ArrowHead::Arrow, ..Default::default() },
-            Edge { from: "B".into(), to: "C".into(), style: EdgeStyle::Solid, arrow_head: ArrowHead::Arrow, ..Default::default() },
+            Edge {
+                from: "A".into(),
+                to: "B".into(),
+                style: EdgeStyle::Solid,
+                arrow_head: ArrowHead::Arrow,
+                ..Default::default()
+            },
+            Edge {
+                from: "B".into(),
+                to: "C".into(),
+                style: EdgeStyle::Solid,
+                arrow_head: ArrowHead::Arrow,
+                ..Default::default()
+            },
         ];
 
         let rank = compute_topo_rank(&graph);
@@ -887,14 +897,59 @@ mod tests {
         // A → B → C, plus C → B (back-edge from layer 2 to layer 1)
         let mut graph = Graph::new();
         graph.nodes = vec![
-            Node { id: "A".into(), label: "A".into(), shape: NodeShape::Rectangle, width: 40.0, height: 20.0, x: 0.0, y: 0.0, ..Default::default() },
-            Node { id: "B".into(), label: "B".into(), shape: NodeShape::Rectangle, width: 40.0, height: 20.0, x: 0.0, y: 50.0, ..Default::default() },
-            Node { id: "C".into(), label: "C".into(), shape: NodeShape::Rectangle, width: 40.0, height: 20.0, x: 0.0, y: 100.0, ..Default::default() },
+            Node {
+                id: "A".into(),
+                label: "A".into(),
+                shape: NodeShape::Rectangle,
+                width: 40.0,
+                height: 20.0,
+                x: 0.0,
+                y: 0.0,
+                ..Default::default()
+            },
+            Node {
+                id: "B".into(),
+                label: "B".into(),
+                shape: NodeShape::Rectangle,
+                width: 40.0,
+                height: 20.0,
+                x: 0.0,
+                y: 50.0,
+                ..Default::default()
+            },
+            Node {
+                id: "C".into(),
+                label: "C".into(),
+                shape: NodeShape::Rectangle,
+                width: 40.0,
+                height: 20.0,
+                x: 0.0,
+                y: 100.0,
+                ..Default::default()
+            },
         ];
         graph.edges = vec![
-            Edge { from: "A".into(), to: "B".into(), style: EdgeStyle::Solid, arrow_head: ArrowHead::Arrow, ..Default::default() },
-            Edge { from: "B".into(), to: "C".into(), style: EdgeStyle::Solid, arrow_head: ArrowHead::Arrow, ..Default::default() },
-            Edge { from: "C".into(), to: "B".into(), style: EdgeStyle::Solid, arrow_head: ArrowHead::Arrow, ..Default::default() },
+            Edge {
+                from: "A".into(),
+                to: "B".into(),
+                style: EdgeStyle::Solid,
+                arrow_head: ArrowHead::Arrow,
+                ..Default::default()
+            },
+            Edge {
+                from: "B".into(),
+                to: "C".into(),
+                style: EdgeStyle::Solid,
+                arrow_head: ArrowHead::Arrow,
+                ..Default::default()
+            },
+            Edge {
+                from: "C".into(),
+                to: "B".into(),
+                style: EdgeStyle::Solid,
+                arrow_head: ArrowHead::Arrow,
+                ..Default::default()
+            },
         ];
 
         let rank = compute_topo_rank(&graph);

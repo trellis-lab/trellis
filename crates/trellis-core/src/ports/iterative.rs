@@ -7,7 +7,7 @@ use crate::routing;
 
 use super::assignment::EdgePorts;
 use super::common::build_edge_side_map;
-use super::{create_port_assigner, PortAssignmentContext, PortAssigner};
+use super::{create_port_assigner, PortAssigner, PortAssignmentContext};
 
 /// Route-Then-Swap port assigner.
 ///
@@ -43,9 +43,7 @@ pub fn find_crossing_edge_pairs(grid: &Grid) -> Vec<(String, String)> {
         for col in 0..grid.cols {
             if let Some(cell) = grid.get(row, col) {
                 if cell.crossing {
-                    if let (Some(owner), Some(crossed_by)) =
-                        (&cell.owner, &cell.crossed_by)
-                    {
+                    if let (Some(owner), Some(crossed_by)) = (&cell.owner, &cell.crossed_by) {
                         // Canonical ordering to avoid duplicates
                         let pair = if owner < crossed_by {
                             (owner.clone(), crossed_by.clone())
@@ -71,11 +69,7 @@ fn parse_edge_index(edge_id: &str) -> Option<usize> {
 ///
 /// Two edges share a node if one edge's source or target equals
 /// the other edge's source or target.
-fn find_shared_node(
-    edge_a_idx: usize,
-    edge_b_idx: usize,
-    graph: &Graph,
-) -> Option<String> {
+fn find_shared_node(edge_a_idx: usize, edge_b_idx: usize, graph: &Graph) -> Option<String> {
     let a = graph.edges.get(edge_a_idx)?;
     let b = graph.edges.get(edge_b_idx)?;
 
@@ -167,11 +161,7 @@ pub fn refine_ports(
     config: &TrellisConfig,
     initial_ports: HashMap<usize, EdgePorts>,
     max_rounds: usize,
-) -> (
-    HashMap<usize, EdgePorts>,
-    Grid,
-    routing::RoutingResult,
-) {
+) -> (HashMap<usize, EdgePorts>, Grid, routing::RoutingResult) {
     let cell_size = config.cell_size;
     let extent = calculate_grid_extent(graph, cell_size);
 
@@ -247,14 +237,15 @@ pub fn refine_ports(
 /// Estimate total inversion count across all nodes/sides without routing.
 ///
 /// This is the fast cost function used by TwoPhase (phase 1) and Annealing.
-pub fn estimate_inversions(
-    graph: &Graph,
-    cell_size: i32,
-    offset_x: i32,
-    offset_y: i32,
-) -> usize {
-    let (node_map, per_node_sides) =
-        build_edge_side_map(graph, cell_size, offset_x, offset_y, None, &std::collections::HashMap::new());
+pub fn estimate_inversions(graph: &Graph, cell_size: i32, offset_x: i32, offset_y: i32) -> usize {
+    let (node_map, per_node_sides) = build_edge_side_map(
+        graph,
+        cell_size,
+        offset_x,
+        offset_y,
+        None,
+        &std::collections::HashMap::new(),
+    );
 
     let mut total = 0;
     for sides in per_node_sides.values() {

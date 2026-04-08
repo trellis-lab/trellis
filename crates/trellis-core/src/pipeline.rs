@@ -82,8 +82,7 @@ fn run_pipeline(
     // Phase 4: Port assignment
     // Collect pinned edge indices before moving the map into the context so
     // Phase 5b (port_swap) can use them to guard straight edges.
-    let pinned_indices: std::collections::HashSet<usize> =
-        pinned.keys().cloned().collect();
+    let pinned_indices: std::collections::HashSet<usize> = pinned.keys().cloned().collect();
     let topo_rank = compute_topo_rank(&graph);
     let assigner = create_port_assigner(config.port_assignment);
     let port_ctx = PortAssignmentContext {
@@ -280,7 +279,14 @@ pub fn render_with_validation(
         svg: svg_bytes,
     };
 
-    Ok((RenderResult { format, data, metrics: pipeline.metrics }, validation))
+    Ok((
+        RenderResult {
+            format,
+            data,
+            metrics: pipeline.metrics,
+        },
+        validation,
+    ))
 }
 
 // ─── Private helpers ──────────────────────────────────────────────────────────
@@ -289,11 +295,9 @@ fn format_output(svg_data: Vec<u8>, format: OutputFormat) -> Result<Vec<u8>, Ren
     match format {
         OutputFormat::Svg => Ok(svg_data),
         #[cfg(feature = "png")]
-        OutputFormat::Png => {
-            crate::render::png::svg_to_png(&svg_data).map_err(|e| RenderError {
-                message: format!("PNG conversion failed: {}", e),
-            })
-        }
+        OutputFormat::Png => crate::render::png::svg_to_png(&svg_data).map_err(|e| RenderError {
+            message: format!("PNG conversion failed: {}", e),
+        }),
         #[cfg(not(feature = "png"))]
         OutputFormat::Png => Err(RenderError {
             message: "PNG output is not supported in this build (compile with feature 'png')"

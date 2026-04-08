@@ -190,7 +190,7 @@ pub enum FlowBias {
 }
 
 /// Bend count threshold that controls quality rerouting.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub enum BendThreshold {
     /// Quality reroute is disabled.
     Disabled,
@@ -198,13 +198,8 @@ pub enum BendThreshold {
     Fixed(usize),
     /// Compute threshold as `max(2, median_bends + 2)` from the routed paths.
     /// Targets only the long tail of outliers while leaving well-routed edges alone.
+    #[default]
     Auto,
-}
-
-impl Default for BendThreshold {
-    fn default() -> Self {
-        BendThreshold::Auto
-    }
 }
 
 /// Decomposition mode for handling large graphs

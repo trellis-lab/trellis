@@ -153,8 +153,20 @@ fn dir_sign(from: (f64, f64), to: (f64, f64)) -> (i8, i8) {
     let eps = 0.001;
     let dx = to.0 - from.0;
     let dy = to.1 - from.1;
-    let sx = if dx.abs() < eps { 0 } else if dx > 0.0 { 1 } else { -1 };
-    let sy = if dy.abs() < eps { 0 } else if dy > 0.0 { 1 } else { -1 };
+    let sx = if dx.abs() < eps {
+        0
+    } else if dx > 0.0 {
+        1
+    } else {
+        -1
+    };
+    let sy = if dy.abs() < eps {
+        0
+    } else if dy > 0.0 {
+        1
+    } else {
+        -1
+    };
     (sx, sy)
 }
 
@@ -363,6 +375,9 @@ mod tests {
         let out = String::from_utf8(annotate_svg(&svg, &report, &grid)).unwrap();
 
         assert!(out.contains("&amp;"), "& must be escaped");
-        assert!(!out.contains("data-edge-id=\"A&B"), "raw & must not appear in attribute");
+        assert!(
+            !out.contains("data-edge-id=\"A&B"),
+            "raw & must not appear in attribute"
+        );
     }
 }

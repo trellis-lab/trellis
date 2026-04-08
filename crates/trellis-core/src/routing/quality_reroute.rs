@@ -30,8 +30,7 @@ pub fn resolve_threshold(
             if paths.is_empty() {
                 return None;
             }
-            let mut bend_counts: Vec<usize> =
-                paths.values().map(|p| p.bend_count).collect();
+            let mut bend_counts: Vec<usize> = paths.values().map(|p| p.bend_count).collect();
             bend_counts.sort_unstable();
             let median = bend_counts[bend_counts.len() / 2];
             Some(median.saturating_add(2).max(2))
@@ -177,6 +176,7 @@ pub fn quality_reroute(
 /// the side are taken.
 ///
 /// Returns `None` if the side has no connectors at all (node too narrow/short).
+#[allow(clippy::too_many_arguments)]
 fn ports_for_sides(
     src_node: &trellis_parser::Node,
     tgt_node: &trellis_parser::Node,
@@ -275,11 +275,7 @@ fn save_and_free_cell(
 }
 
 /// Restore a cell's original state after routing.
-fn restore_cell(
-    grid: &mut Grid,
-    point: GridPoint,
-    original_state: Option<crate::grid::CellState>,
-) {
+fn restore_cell(grid: &mut Grid, point: GridPoint, original_state: Option<crate::grid::CellState>) {
     if let Some(state) = original_state {
         if state == crate::grid::CellState::Blocked && grid.in_bounds(point.row, point.col) {
             if let Some(cell) = grid.get_mut(point.row as usize, point.col as usize) {
@@ -302,7 +298,10 @@ mod tests {
     use crate::routing::route_all_edges;
 
     fn make_config(threshold: BendThreshold) -> TrellisConfig {
-        TrellisConfig { bend_threshold: threshold, ..TrellisConfig::default() }
+        TrellisConfig {
+            bend_threshold: threshold,
+            ..TrellisConfig::default()
+        }
     }
 
     // ── resolve_threshold ────────────────────────────────────────────────────
@@ -329,8 +328,22 @@ mod tests {
     fn resolve_auto_all_zero_bends_gives_floor() {
         // median=0 → max(2, 0+2) = 2
         let mut paths = HashMap::new();
-        paths.insert(0, RoutedPath { points: vec![], total_cost: 0.0, bend_count: 0 });
-        paths.insert(1, RoutedPath { points: vec![], total_cost: 0.0, bend_count: 0 });
+        paths.insert(
+            0,
+            RoutedPath {
+                points: vec![],
+                total_cost: 0.0,
+                bend_count: 0,
+            },
+        );
+        paths.insert(
+            1,
+            RoutedPath {
+                points: vec![],
+                total_cost: 0.0,
+                bend_count: 0,
+            },
+        );
         assert_eq!(resolve_threshold(BendThreshold::Auto, &paths), Some(2));
     }
 
@@ -339,7 +352,14 @@ mod tests {
         // median=2 → max(2, 2+2) = 4
         let mut paths = HashMap::new();
         for i in 0..5usize {
-            paths.insert(i, RoutedPath { points: vec![], total_cost: 0.0, bend_count: 2 });
+            paths.insert(
+                i,
+                RoutedPath {
+                    points: vec![],
+                    total_cost: 0.0,
+                    bend_count: 2,
+                },
+            );
         }
         assert_eq!(resolve_threshold(BendThreshold::Auto, &paths), Some(4));
     }
@@ -350,9 +370,23 @@ mod tests {
         // bend_counts = [0, 0, 0, 0, 20] → sorted median = 0 → threshold = 2
         let mut paths = HashMap::new();
         for i in 0..4usize {
-            paths.insert(i, RoutedPath { points: vec![], total_cost: 0.0, bend_count: 0 });
+            paths.insert(
+                i,
+                RoutedPath {
+                    points: vec![],
+                    total_cost: 0.0,
+                    bend_count: 0,
+                },
+            );
         }
-        paths.insert(4, RoutedPath { points: vec![], total_cost: 0.0, bend_count: 20 });
+        paths.insert(
+            4,
+            RoutedPath {
+                points: vec![],
+                total_cost: 0.0,
+                bend_count: 20,
+            },
+        );
         assert_eq!(resolve_threshold(BendThreshold::Auto, &paths), Some(2));
         // The outlier (20 bends) is above threshold=2 → it will be a candidate.
     }
@@ -363,21 +397,37 @@ mod tests {
         // this is a global routing problem, not individual outliers.
         let mut paths = HashMap::new();
         for i in 0..4usize {
-            paths.insert(i, RoutedPath { points: vec![], total_cost: 0.0, bend_count: 6 });
+            paths.insert(
+                i,
+                RoutedPath {
+                    points: vec![],
+                    total_cost: 0.0,
+                    bend_count: 6,
+                },
+            );
         }
         assert_eq!(resolve_threshold(BendThreshold::Auto, &paths), Some(8));
     }
 
     // ── quality_reroute integration ──────────────────────────────────────────
 
-    fn route_fixture(mermaid: &str, threshold: BendThreshold) -> (HashMap<usize, RoutedPath>, Grid, HashMap<usize, EdgePorts>, trellis_parser::Graph) {
+    fn route_fixture(
+        mermaid: &str,
+        threshold: BendThreshold,
+    ) -> (
+        HashMap<usize, RoutedPath>,
+        Grid,
+        HashMap<usize, EdgePorts>,
+        trellis_parser::Graph,
+    ) {
         let mut graph = trellis_parser::parse(mermaid).expect("parse failed");
         let config = make_config(threshold);
         let cell_size = config.cell_size;
         placement::place_nodes(&mut graph, cell_size);
         let extent = calculate_grid_extent(&graph, cell_size);
         let mut grid = build_grid(&graph, cell_size, &extent);
-        let mut port_assignments = assign_ports(&graph, cell_size, extent.offset_x, extent.offset_y);
+        let mut port_assignments =
+            assign_ports(&graph, cell_size, extent.offset_x, extent.offset_y);
         let result = route_all_edges(&graph, &mut grid, &port_assignments, &config);
         (result.paths, grid, port_assignments, graph)
     }
@@ -412,12 +462,14 @@ mod tests {
         // On a well-routed chain the auto threshold should be above the actual
         // bend counts, so nothing is rerouted and bends cannot increase.
         let mermaid = "graph TB\n    A --> B\n    B --> C\n    C --> D";
-        let (mut paths, mut grid, mut ports, graph) =
-            route_fixture(mermaid, BendThreshold::Auto);
+        let (mut paths, mut grid, mut ports, graph) = route_fixture(mermaid, BendThreshold::Auto);
         let config = make_config(BendThreshold::Auto);
         let bends_before: usize = paths.values().map(|p| p.bend_count).sum();
         quality_reroute(&graph, &mut grid, &mut ports, &mut paths, &config);
         let bends_after: usize = paths.values().map(|p| p.bend_count).sum();
-        assert!(bends_after <= bends_before, "bends increased after quality reroute");
+        assert!(
+            bends_after <= bends_before,
+            "bends increased after quality reroute"
+        );
     }
 }

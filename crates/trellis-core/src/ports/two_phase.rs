@@ -202,8 +202,7 @@ fn minimize_crossings_greedy(
             }
         }
 
-        let ordered: Vec<NodeEdgeInfo> =
-            best_perm.iter().map(|&idx| edges[idx].clone()).collect();
+        let ordered: Vec<NodeEdgeInfo> = best_perm.iter().map(|&idx| edges[idx].clone()).collect();
         edges.clone_from_slice(&ordered);
     } else {
         // Greedy adjacent-swap for larger k
@@ -224,8 +223,8 @@ fn minimize_crossings_greedy(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use super::super::PortAssignmentContext;
+    use super::*;
     use crate::grid::Grid;
     use std::collections::HashMap;
     use trellis_parser::{ArrowHead, Edge, EdgeStyle, Node, NodeShape};

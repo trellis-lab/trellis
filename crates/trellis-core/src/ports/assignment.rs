@@ -109,8 +109,8 @@ pub use super::common::angle_to_side;
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use super::super::common::enumerate_connectors;
+    use super::*;
     use trellis_parser::{ArrowHead, Edge, EdgeStyle, Node, NodeShape};
 
     fn make_node(id: &str, w: f64, h: f64, x: f64, y: f64) -> Node {

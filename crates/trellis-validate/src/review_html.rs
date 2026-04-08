@@ -711,7 +711,8 @@ mod tests {
         let report = make_report("b05.mmd");
         let entries = [ReviewEntry {
             fixture_name: "b05.mmd",
-            annotated_svg: "<svg xmlns='http://www.w3.org/2000/svg'><g data-edge-id='A--&gt;B'/></svg>",
+            annotated_svg:
+                "<svg xmlns='http://www.w3.org/2000/svg'><g data-edge-id='A--&gt;B'/></svg>",
             report: &report,
             strategy_label: None,
         }];
@@ -755,8 +756,18 @@ mod tests {
         let r1 = make_report("b01.mmd");
         let r2 = make_report("b01.mmd"); // same fixture, different strategy
         let entries = [
-            ReviewEntry { fixture_name: "b01.mmd", annotated_svg: "<svg/>", report: &r1, strategy_label: Some("default") },
-            ReviewEntry { fixture_name: "b01.mmd", annotated_svg: "<svg/>", report: &r2, strategy_label: Some("barycenter") },
+            ReviewEntry {
+                fixture_name: "b01.mmd",
+                annotated_svg: "<svg/>",
+                report: &r1,
+                strategy_label: Some("default"),
+            },
+            ReviewEntry {
+                fixture_name: "b01.mmd",
+                annotated_svg: "<svg/>",
+                report: &r2,
+                strategy_label: Some("barycenter"),
+            },
         ];
         let html = String::from_utf8(generate_review_html(&entries)).unwrap();
         // Should appear once as a fixture name
@@ -764,8 +775,14 @@ mod tests {
         let second = html[first + 1..].find("b01.mmd");
         // The fixture name itself only appears once in the outer fixtures array
         // but "strategies" JSON will also reference it — so just check strategy labels present
-        assert!(html.contains("\"default\""), "default strategy label missing");
-        assert!(html.contains("\"barycenter\""), "barycenter strategy label missing");
+        assert!(
+            html.contains("\"default\""),
+            "default strategy label missing"
+        );
+        assert!(
+            html.contains("\"barycenter\""),
+            "barycenter strategy label missing"
+        );
         // The strategy-tab JS key must be present
         assert!(html.contains("strategies"), "strategies key missing");
         let _ = second; // both occurrences are fine; this is a JSON value test
@@ -776,8 +793,18 @@ mod tests {
         let r1 = make_report("b01.mmd");
         let r2 = make_report("b02.mmd");
         let entries = [
-            ReviewEntry { fixture_name: "b01.mmd", annotated_svg: "<svg/>", report: &r1, strategy_label: None },
-            ReviewEntry { fixture_name: "b02.mmd", annotated_svg: "<svg/>", report: &r2, strategy_label: None },
+            ReviewEntry {
+                fixture_name: "b01.mmd",
+                annotated_svg: "<svg/>",
+                report: &r1,
+                strategy_label: None,
+            },
+            ReviewEntry {
+                fixture_name: "b02.mmd",
+                annotated_svg: "<svg/>",
+                report: &r2,
+                strategy_label: None,
+            },
         ];
         let html = String::from_utf8(generate_review_html(&entries)).unwrap();
 

@@ -42,17 +42,13 @@ pub fn port_swap(
 
         for (edge_idx, edge) in graph.edges.iter().enumerate() {
             let touches = if edge.from == node.id {
-                paths.contains_key(&edge_idx).then(|| {
-                    port_assignments
-                        .get(&edge_idx)
-                        .map(|p| p.source_port.side)
-                })
+                paths
+                    .contains_key(&edge_idx)
+                    .then(|| port_assignments.get(&edge_idx).map(|p| p.source_port.side))
             } else if edge.to == node.id {
-                paths.contains_key(&edge_idx).then(|| {
-                    port_assignments
-                        .get(&edge_idx)
-                        .map(|p| p.target_port.side)
-                })
+                paths
+                    .contains_key(&edge_idx)
+                    .then(|| port_assignments.get(&edge_idx).map(|p| p.target_port.side))
             } else {
                 None
             };
@@ -85,8 +81,20 @@ pub fn port_swap(
                 }
 
                 // Only attempt a swap if the two paths actually cross each other.
-                let path_a = match paths.get(&idx_a) { Some(p) => p, None => { i += 1; continue; } };
-                let path_b = match paths.get(&idx_b) { Some(p) => p, None => { i += 1; continue; } };
+                let path_a = match paths.get(&idx_a) {
+                    Some(p) => p,
+                    None => {
+                        i += 1;
+                        continue;
+                    }
+                };
+                let path_b = match paths.get(&idx_b) {
+                    Some(p) => p,
+                    None => {
+                        i += 1;
+                        continue;
+                    }
+                };
                 if path_crossings(&path_a.points, &path_b.points) == 0 {
                     i += 1;
                     continue;
@@ -120,6 +128,7 @@ pub fn port_swap(
 /// commit.  Keeps the swap only if combined bends do not increase.
 ///
 /// Returns `true` if the swap was accepted.
+#[allow(clippy::too_many_arguments)]
 fn try_swap(
     _graph: &Graph,
     grid: &mut Grid,
@@ -201,8 +210,7 @@ fn try_swap(
 /// Count the number of grid cells shared between two paths (i.e. how many
 /// times they cross each other).  Uses a HashSet for O(n+m) performance.
 fn path_crossings(a: &[GridPoint], b: &[GridPoint]) -> usize {
-    let a_set: std::collections::HashSet<(i64, i64)> =
-        a.iter().map(|p| (p.row, p.col)).collect();
+    let a_set: std::collections::HashSet<(i64, i64)> = a.iter().map(|p| (p.row, p.col)).collect();
     b.iter().filter(|p| a_set.contains(&(p.row, p.col))).count()
 }
 
@@ -214,11 +222,7 @@ fn path_crossings(a: &[GridPoint], b: &[GridPoint]) -> usize {
 /// If `edge` uses `node` as its source and the source port is on `side`,
 /// the source port is replaced with `donor`'s source port on `side`.
 /// The same logic applies to the target port.  The other end is unchanged.
-fn swap_port_on_node(
-    edge: &EdgePorts,
-    donor: &EdgePorts,
-    side: Side,
-) -> EdgePorts {
+fn swap_port_on_node(edge: &EdgePorts, donor: &EdgePorts, side: Side) -> EdgePorts {
     // We know the port on `node`/`side` is either the source or the target,
     // depending on which end of the edge `node` is.  Since we only have the
     // `EdgePorts` struct (not the graph edge), we identify the relevant port
@@ -244,7 +248,7 @@ fn swap_port_on_node(
 
     // Build the replacement port at the donor's connector position.
     let replacement = Port {
-        x: donor_connector_pos.1 as f64,  // placeholder; overwritten below
+        x: donor_connector_pos.1 as f64, // placeholder; overwritten below
         y: donor_connector_pos.0 as f64,
         grid_row: donor_connector_pos.0,
         grid_col: donor_connector_pos.1,
@@ -325,7 +329,9 @@ fn sort_by_port_position(
         let pb = port_assignments.get(&b);
         let coord_a = port_coord_on_side(pa, side);
         let coord_b = port_coord_on_side(pb, side);
-        coord_a.partial_cmp(&coord_b).unwrap_or(std::cmp::Ordering::Equal)
+        coord_a
+            .partial_cmp(&coord_b)
+            .unwrap_or(std::cmp::Ordering::Equal)
     });
 }
 
@@ -378,11 +384,7 @@ fn save_and_free_cell(
     }
 }
 
-fn restore_cell(
-    grid: &mut Grid,
-    point: GridPoint,
-    original_state: Option<crate::grid::CellState>,
-) {
+fn restore_cell(grid: &mut Grid, point: GridPoint, original_state: Option<crate::grid::CellState>) {
     if let Some(state) = original_state {
         if state == crate::grid::CellState::Blocked && grid.in_bounds(point.row, point.col) {
             if let Some(cell) = grid.get_mut(point.row as usize, point.col as usize) {
@@ -422,12 +424,20 @@ mod tests {
         placement::place_nodes(&mut graph, cell_size);
         let extent = calculate_grid_extent(&graph, cell_size);
         let grid = build_grid(&graph, cell_size, &extent);
-        let pinned = straight_edge_prepass(&graph, &grid, cell_size, extent.offset_x, extent.offset_y);
+        let pinned =
+            straight_edge_prepass(&graph, &grid, cell_size, extent.offset_x, extent.offset_y);
         let pinned_indices: HashSet<usize> = pinned.keys().cloned().collect();
         let port_assignments = assign_ports(&graph, cell_size, extent.offset_x, extent.offset_y);
         let mut grid2 = build_grid(&graph, cell_size, &extent);
         let result = route_all_edges(&graph, &mut grid2, &port_assignments, &config);
-        (result.paths, grid2, port_assignments, graph, pinned_indices, config)
+        (
+            result.paths,
+            grid2,
+            port_assignments,
+            graph,
+            pinned_indices,
+            config,
+        )
     }
 
     #[test]
@@ -523,7 +533,10 @@ mod tests {
         let mermaid = "graph TB\n    Hub --> A\n    Hub --> B\n    Hub --> C\n    Hub --> D\n    Hub --> E\n    Hub --> F\n    A --> Out\n    B --> Out\n    C --> Out\n    D --> Out\n    E --> Out\n    F --> Out";
         let (mut paths, mut grid, mut ports, graph, pinned, config) = route_fixture(mermaid);
 
-        let crossings_before: usize = graph.edges.iter().enumerate()
+        let crossings_before: usize = graph
+            .edges
+            .iter()
+            .enumerate()
             .flat_map(|(i, _)| graph.edges.iter().enumerate().map(move |(j, _)| (i, j)))
             .filter(|&(i, j)| i < j)
             .filter_map(|(i, j)| {
@@ -535,7 +548,10 @@ mod tests {
 
         port_swap(&graph, &mut grid, &mut ports, &mut paths, &config, &pinned);
 
-        let crossings_after: usize = graph.edges.iter().enumerate()
+        let crossings_after: usize = graph
+            .edges
+            .iter()
+            .enumerate()
             .flat_map(|(i, _)| graph.edges.iter().enumerate().map(move |(j, _)| (i, j)))
             .filter(|&(i, j)| i < j)
             .filter_map(|(i, j)| {

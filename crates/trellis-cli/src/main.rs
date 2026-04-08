@@ -570,8 +570,11 @@ fn cmd_evaluate(
 
     // Optionally write annotated SVG
     if annotated {
-        let ann =
-            trellis_validate::annotated_svg::annotate_svg(&validation.svg, &report, &validation.grid);
+        let ann = trellis_validate::annotated_svg::annotate_svg(
+            &validation.svg,
+            &report,
+            &validation.grid,
+        );
         let ann_path = output_dir.join(format!("{}.annotated.svg", stem));
         fs::write(&ann_path, &ann)
             .map_err(|e| AppError::Render(format!("cannot write {:?}: {}", ann_path, e)))?;
@@ -624,7 +627,11 @@ fn cmd_evaluate_batch(
     println!(
         "Evaluating {} file(s){}…",
         files.len(),
-        if compare_strategies { " × 4 strategies" } else { "" }
+        if compare_strategies {
+            " × 4 strategies"
+        } else {
+            ""
+        }
     );
 
     let errors: Vec<String> = files
@@ -669,10 +676,7 @@ fn cmd_evaluate_batch(
                         &cfg,
                         trellis_core::OutputFormat::Svg,
                     ) {
-                        Err(e) => errs.push(format!(
-                            "render error {:?} ({}): {}",
-                            file, label, e
-                        )),
+                        Err(e) => errs.push(format!("render error {:?} ({}): {}", file, label, e)),
                         Ok((result, validation)) => {
                             let report = trellis_validate::report::generate_report(
                                 fixture_name,
@@ -683,16 +687,14 @@ fn cmd_evaluate_batch(
                             );
 
                             // Write {stem}_{strategy}.svg
-                            let svg_path =
-                                output_dir.join(format!("{}_{}.svg", stem, label));
+                            let svg_path = output_dir.join(format!("{}_{}.svg", stem, label));
                             if let Err(e) = fs::write(&svg_path, &result.data) {
                                 errs.push(format!("cannot write {:?}: {}", svg_path, e));
                             }
 
                             // Write {stem}_{strategy}.json
                             if let Ok(json) = serde_json::to_string_pretty(&report) {
-                                let json_path =
-                                    output_dir.join(format!("{}_{}.json", stem, label));
+                                let json_path = output_dir.join(format!("{}_{}.json", stem, label));
                                 if let Err(e) = fs::write(&json_path, json.as_bytes()) {
                                     errs.push(format!("cannot write {:?}: {}", json_path, e));
                                 }
@@ -705,13 +707,10 @@ fn cmd_evaluate_batch(
                                     &report,
                                     &validation.grid,
                                 );
-                                let ann_path = output_dir
-                                    .join(format!("{}_{}.annotated.svg", stem, label));
+                                let ann_path =
+                                    output_dir.join(format!("{}_{}.annotated.svg", stem, label));
                                 if let Err(e) = fs::write(&ann_path, &ann) {
-                                    errs.push(format!(
-                                        "cannot write {:?}: {}",
-                                        ann_path, e
-                                    ));
+                                    errs.push(format!("cannot write {:?}: {}", ann_path, e));
                                 }
                             }
 
@@ -730,8 +729,7 @@ fn cmd_evaluate_batch(
 
                 // Write summary CSV
                 if !csv_rows.is_empty() {
-                    let header =
-                        "fixture,strategy,avg_quality,crossings,bends,flagged_edges";
+                    let header = "fixture,strategy,avg_quality,crossings,bends,flagged_edges";
                     let csv = format!("{}\n{}\n", header, csv_rows.join("\n"));
                     let csv_path = output_dir.join(format!("{}_strategies.csv", stem));
                     if let Err(e) = fs::write(&csv_path, csv.as_bytes()) {
@@ -777,8 +775,7 @@ fn cmd_evaluate_batch(
                                 &report,
                                 &validation.grid,
                             );
-                            let ann_path =
-                                output_dir.join(format!("{}.annotated.svg", stem));
+                            let ann_path = output_dir.join(format!("{}.annotated.svg", stem));
                             if let Err(e) = fs::write(&ann_path, &ann) {
                                 errs.push(format!("cannot write {:?}: {}", ann_path, e));
                             }
@@ -786,10 +783,7 @@ fn cmd_evaluate_batch(
 
                         println!(
                             "  {:?} → {}.svg + {}.json (quality {:.2})",
-                            file,
-                            stem,
-                            stem,
-                            report.global_metrics.avg_quality_score
+                            file, stem, stem, report.global_metrics.avg_quality_score
                         );
                     }
                 }
@@ -806,10 +800,7 @@ fn cmd_evaluate_batch(
         for e in &errors {
             eprintln!("Error: {}", e);
         }
-        Err(AppError::Render(format!(
-            "{} file(s) failed",
-            errors.len()
-        )))
+        Err(AppError::Render(format!("{} file(s) failed", errors.len())))
     }
 }
 
@@ -818,10 +809,7 @@ fn cmd_evaluate_batch(
 /// Load every `*.json` report from `input_dir`, pair with the matching
 /// `*.annotated.svg` (falling back to `*.svg`), then write a self-contained
 /// `review.html` that the reviewer opens in a browser.
-fn cmd_generate_review(
-    input_dir: &PathBuf,
-    output: Option<&PathBuf>,
-) -> Result<(), AppError> {
+fn cmd_generate_review(input_dir: &PathBuf, output: Option<&PathBuf>) -> Result<(), AppError> {
     // Collect all JSON report files
     let json_files: Vec<PathBuf> = walkdir::WalkDir::new(input_dir)
         .max_depth(1)
@@ -861,9 +849,8 @@ fn cmd_generate_review(
         let json_content = fs::read_to_string(json_path)
             .map_err(|e| AppError::Render(format!("cannot read {:?}: {}", json_path, e)))?;
         let report: trellis_validate::report::DiagramReport =
-            serde_json::from_str(&json_content).map_err(|e| {
-                AppError::Render(format!("cannot parse {:?}: {}", json_path, e))
-            })?;
+            serde_json::from_str(&json_content)
+                .map_err(|e| AppError::Render(format!("cannot parse {:?}: {}", json_path, e)))?;
 
         // Detect strategy label: if the JSON stem is `{fixture_stem}_{strategy}`,
         // extract the suffix. e.g. "b01_barycenter" with fixture "b01.mmd" → "barycenter".
@@ -909,7 +896,12 @@ fn cmd_generate_review(
         };
 
         let fixture_name = report.fixture.clone();
-        entries.push(Entry { fixture_name, strategy_label, svg, report });
+        entries.push(Entry {
+            fixture_name,
+            strategy_label,
+            svg,
+            report,
+        });
     }
 
     // Sort: primary key = fixture_name, secondary = strategy_label (None first)
@@ -1193,7 +1185,13 @@ fn run() -> i32 {
             output_dir,
             annotated,
             compare_strategies,
-        } => cmd_evaluate_batch(input_dir, output_dir, *annotated, *compare_strategies, &config),
+        } => cmd_evaluate_batch(
+            input_dir,
+            output_dir,
+            *annotated,
+            *compare_strategies,
+            &config,
+        ),
 
         Commands::Preprocess {
             input,

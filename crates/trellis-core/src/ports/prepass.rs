@@ -65,12 +65,14 @@ pub fn straight_edge_prepass(
     offset_x: i32,
     offset_y: i32,
 ) -> PinnedPortMap {
-    let cs = cell_size as f64;
-    let ox = offset_x as f64;
-    let oy = offset_y as f64;
+    let ctx = GridCtx {
+        grid,
+        cs: cell_size as f64,
+        ox: offset_x as f64,
+        oy: offset_y as f64,
+    };
 
-    let node_map: HashMap<&str, &Node> =
-        graph.nodes.iter().map(|n| (n.id.as_str(), n)).collect();
+    let node_map: HashMap<&str, &Node> = graph.nodes.iter().map(|n| (n.id.as_str(), n)).collect();
 
     let mut candidates: Vec<PrepassCandidate> = Vec::new();
 
@@ -83,11 +85,9 @@ pub fn straight_edge_prepass(
         };
 
         // Try vertical alignment first; fall back to horizontal.
-        if let Some(cand) = try_vertical(edge_idx, src, tgt, &edge.from, &edge.to, grid, cs, ox, oy) {
+        if let Some(cand) = try_vertical(edge_idx, src, tgt, &edge.from, &edge.to, &ctx) {
             candidates.push(cand);
-        } else if let Some(cand) =
-            try_horizontal(edge_idx, src, tgt, &edge.from, &edge.to, grid, cs, ox, oy)
-        {
+        } else if let Some(cand) = try_horizontal(edge_idx, src, tgt, &edge.from, &edge.to, &ctx) {
             candidates.push(cand);
         }
     }
@@ -128,6 +128,15 @@ pub fn straight_edge_prepass(
     pinned
 }
 
+// ─── Grid context ─────────────────────────────────────────────────────────────
+
+struct GridCtx<'a> {
+    grid: &'a Grid,
+    cs: f64,
+    ox: f64,
+    oy: f64,
+}
+
 // ─── Vertical alignment ───────────────────────────────────────────────────────
 
 fn try_vertical(
@@ -136,13 +145,10 @@ fn try_vertical(
     tgt: &Node,
     src_id: &str,
     tgt_id: &str,
-    grid: &Grid,
-    cs: f64,
-    ox: f64,
-    oy: f64,
+    ctx: &GridCtx<'_>,
 ) -> Option<PrepassCandidate> {
-    let (gc_src, gr_src, w_src, h_src) = node_grid_coords(src, cs, ox, oy);
-    let (gc_tgt, gr_tgt, w_tgt, h_tgt) = node_grid_coords(tgt, cs, ox, oy);
+    let (gc_src, gr_src, w_src, h_src) = node_grid_coords(src, ctx.cs, ctx.ox, ctx.oy);
+    let (gc_tgt, gr_tgt, w_tgt, h_tgt) = node_grid_coords(tgt, ctx.cs, ctx.ox, ctx.oy);
 
     let src_bottom = gr_src + h_src - 1;
     let tgt_bottom = gr_tgt + h_tgt - 1;
@@ -178,11 +184,18 @@ fn try_vertical(
     let center_col = (overlap_min + overlap_max) / 2;
     let best_col = (overlap_min..=overlap_max)
         .filter(|&col| {
-            unobstructed_vertical(grid, col, corridor_start, corridor_end) >= corridor_len
+            unobstructed_vertical(ctx.grid, col, corridor_start, corridor_end) >= corridor_len
         })
         .min_by_key(|&col| (col - center_col).abs())?;
 
-    let overlap_fraction = overlap_fraction(overlap_min, overlap_max, src_col_min, src_col_max, tgt_col_min, tgt_col_max);
+    let overlap_fraction = overlap_fraction(
+        overlap_min,
+        overlap_max,
+        src_col_min,
+        src_col_max,
+        tgt_col_min,
+        tgt_col_max,
+    );
 
     // Port row depends on which node is higher.
     let (src_row, tgt_row) = if matches!(src_side, Side::Bottom) {
@@ -193,8 +206,8 @@ fn try_vertical(
 
     Some(PrepassCandidate {
         edge_idx,
-        src_port: make_port(src_row, best_col, src_side, cs, ox, oy),
-        tgt_port: make_port(tgt_row, best_col, tgt_side, cs, ox, oy),
+        src_port: make_port(src_row, best_col, src_side, ctx.cs, ctx.ox, ctx.oy),
+        tgt_port: make_port(tgt_row, best_col, tgt_side, ctx.cs, ctx.ox, ctx.oy),
         overlap_fraction,
         src_node_id: src_id.to_string(),
         tgt_node_id: tgt_id.to_string(),
@@ -209,13 +222,10 @@ fn try_horizontal(
     tgt: &Node,
     src_id: &str,
     tgt_id: &str,
-    grid: &Grid,
-    cs: f64,
-    ox: f64,
-    oy: f64,
+    ctx: &GridCtx<'_>,
 ) -> Option<PrepassCandidate> {
-    let (gc_src, gr_src, w_src, h_src) = node_grid_coords(src, cs, ox, oy);
-    let (gc_tgt, gr_tgt, w_tgt, h_tgt) = node_grid_coords(tgt, cs, ox, oy);
+    let (gc_src, gr_src, w_src, h_src) = node_grid_coords(src, ctx.cs, ctx.ox, ctx.oy);
+    let (gc_tgt, gr_tgt, w_tgt, h_tgt) = node_grid_coords(tgt, ctx.cs, ctx.ox, ctx.oy);
 
     let src_right = gc_src + w_src - 1;
     let tgt_right = gc_tgt + w_tgt - 1;
@@ -249,11 +259,18 @@ fn try_horizontal(
     let center_row = (overlap_min + overlap_max) / 2;
     let best_row = (overlap_min..=overlap_max)
         .filter(|&row| {
-            unobstructed_horizontal(grid, row, corridor_start, corridor_end) >= corridor_len
+            unobstructed_horizontal(ctx.grid, row, corridor_start, corridor_end) >= corridor_len
         })
         .min_by_key(|&row| (row - center_row).abs())?;
 
-    let overlap_fraction = overlap_fraction(overlap_min, overlap_max, src_row_min, src_row_max, tgt_row_min, tgt_row_max);
+    let overlap_fraction = overlap_fraction(
+        overlap_min,
+        overlap_max,
+        src_row_min,
+        src_row_max,
+        tgt_row_min,
+        tgt_row_max,
+    );
 
     let (src_col, tgt_col) = if matches!(src_side, Side::Right) {
         (src_right, gc_tgt)
@@ -263,8 +280,8 @@ fn try_horizontal(
 
     Some(PrepassCandidate {
         edge_idx,
-        src_port: make_port(best_row, src_col, src_side, cs, ox, oy),
-        tgt_port: make_port(best_row, tgt_col, tgt_side, cs, ox, oy),
+        src_port: make_port(best_row, src_col, src_side, ctx.cs, ctx.ox, ctx.oy),
+        tgt_port: make_port(best_row, tgt_col, tgt_side, ctx.cs, ctx.ox, ctx.oy),
         overlap_fraction,
         src_node_id: src_id.to_string(),
         tgt_node_id: tgt_id.to_string(),

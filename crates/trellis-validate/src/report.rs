@@ -222,14 +222,29 @@ mod tests {
 
     fn make_ports(sr: i64, sc: i64, tr: i64, tc: i64) -> EdgePorts {
         EdgePorts {
-            source_port: Port { x: 0.0, y: 0.0, grid_row: sr, grid_col: sc, side: Side::Bottom },
-            target_port: Port { x: 0.0, y: 0.0, grid_row: tr, grid_col: tc, side: Side::Top },
+            source_port: Port {
+                x: 0.0,
+                y: 0.0,
+                grid_row: sr,
+                grid_col: sc,
+                side: Side::Bottom,
+            },
+            target_port: Port {
+                x: 0.0,
+                y: 0.0,
+                grid_row: tr,
+                grid_col: tc,
+                side: Side::Top,
+            },
         }
     }
 
     fn make_path(points: Vec<(i64, i64)>, bends: usize) -> RoutedPath {
         RoutedPath {
-            points: points.into_iter().map(|(r, c)| GridPoint { row: r, col: c }).collect(),
+            points: points
+                .into_iter()
+                .map(|(r, c)| GridPoint { row: r, col: c })
+                .collect(),
             total_cost: 0.0,
             bend_count: bends,
         }

@@ -66,10 +66,10 @@ pub fn score_edge(
     grid: &Grid,
 ) -> EdgeQuality {
     let path_length = path.points.len().saturating_sub(1);
-    let manhattan_distance = (
-        (ports.source_port.grid_row - ports.target_port.grid_row).unsigned_abs()
-        + (ports.source_port.grid_col - ports.target_port.grid_col).unsigned_abs()
-    ) as usize;
+    let manhattan_distance = ((ports.source_port.grid_row - ports.target_port.grid_row)
+        .unsigned_abs()
+        + (ports.source_port.grid_col - ports.target_port.grid_col).unsigned_abs())
+        as usize;
 
     let detour_factor = if manhattan_distance > 0 {
         path_length as f64 / manhattan_distance as f64
@@ -266,9 +266,19 @@ mod tests {
         // Path detours: right 4, down 4, left 4 = 12 steps → detour = 3.0 ≥ threshold.
         let path = make_path(
             vec![
-                (0, 0), (0, 1), (0, 2), (0, 3), (0, 4),
-                (1, 4), (2, 4), (3, 4),
-                (3, 3), (3, 2), (3, 1), (3, 0), (3, -1),
+                (0, 0),
+                (0, 1),
+                (0, 2),
+                (0, 3),
+                (0, 4),
+                (1, 4),
+                (2, 4),
+                (3, 4),
+                (3, 3),
+                (3, 2),
+                (3, 1),
+                (3, 0),
+                (3, -1),
             ],
             4,
         );

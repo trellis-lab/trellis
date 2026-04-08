@@ -137,8 +137,8 @@ fn compute_barycenter(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use super::super::PortAssignmentContext;
+    use super::*;
     use crate::grid::Grid;
     use std::collections::HashMap;
     use trellis_parser::{ArrowHead, Edge, EdgeStyle, Node, NodeShape};

@@ -1,9 +1,7 @@
 use criterion::{criterion_group, BenchmarkId, Criterion};
 use std::path::Path;
 use trellis_core::{
-    config::{
-        configuration_factory, ConfigurationType, PortAssignmentStrategy, TrellisConfig,
-    },
+    config::{configuration_factory, ConfigurationType, PortAssignmentStrategy, TrellisConfig},
     pipeline::render,
     types::OutputFormat,
 };
@@ -65,10 +63,7 @@ fn bench_config(strategy: PortAssignmentStrategy) -> TrellisConfig {
     let mut config = configuration_factory(ConfigurationType::Benchmark);
     config.port_assignment = strategy;
     // Enable refinement rounds for multi-round strategies
-    if matches!(
-        strategy,
-        PA::IterativeSwap | PA::TwoPhase | PA::Auto
-    ) {
+    if matches!(strategy, PA::IterativeSwap | PA::TwoPhase | PA::Auto) {
         config.port_refinement_rounds = 3;
     }
     config
@@ -137,17 +132,13 @@ fn bench_port_strategies(c: &mut Criterion) {
 
         for &(strategy_name, strategy) in &strategies {
             let id = format!("{}/{}", fixture_name, strategy_name);
-            group.bench_with_input(
-                BenchmarkId::new("render", &id),
-                &source,
-                |b, src| {
-                    b.iter(|| {
-                        let graph = parse(src).expect("parse failed");
-                        let config = bench_config(strategy);
-                        render(&graph, &config, OutputFormat::Svg).expect("render failed")
-                    });
-                },
-            );
+            group.bench_with_input(BenchmarkId::new("render", &id), &source, |b, src| {
+                b.iter(|| {
+                    let graph = parse(src).expect("parse failed");
+                    let config = bench_config(strategy);
+                    render(&graph, &config, OutputFormat::Svg).expect("render failed")
+                });
+            });
         }
     }
 
