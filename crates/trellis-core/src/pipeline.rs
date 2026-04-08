@@ -125,7 +125,7 @@ fn run_pipeline(
 
     // Phase 5a: Quality rerouting — rip-up edges with excessive bends and
     // try alternative port-side combinations to find a lower-bend route.
-    if config.max_acceptable_bends > 0 {
+    if config.bend_threshold != crate::config::BendThreshold::Disabled {
         routing::quality_reroute::quality_reroute(
             &graph,
             &mut grid,

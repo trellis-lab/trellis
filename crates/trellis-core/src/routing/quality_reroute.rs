@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use trellis_parser::Graph;
 
-use crate::config::TrellisConfig;
+use crate::config::{BendThreshold, TrellisConfig};
 use crate::grid::Grid;
 use crate::ports::assignment::{EdgePorts, Port, Side};
 use crate::ports::common::enumerate_connectors;
@@ -10,14 +10,43 @@ use crate::ports::common::enumerate_connectors;
 use super::astar::{route_edge, GridPoint, RoutedPath};
 use super::commit::{commit_path, uncommit_path};
 
-/// Attempt to improve edges whose bend count exceeds `config.max_acceptable_bends`
-/// by trying alternative port-side combinations.
+/// Resolve the effective bend threshold from the config and the current set of
+/// routed paths.
+///
+/// - `Disabled` → `None` (caller skips quality reroute entirely).
+/// - `Fixed(n)` → `Some(n)`.
+/// - `Auto` → `Some(max(2, median_bends + 2))`.
+///
+/// The median is computed from a snapshot of the bend counts at the time this
+/// function is called, before any rerouting happens.
+pub fn resolve_threshold(
+    threshold: BendThreshold,
+    paths: &HashMap<usize, RoutedPath>,
+) -> Option<usize> {
+    match threshold {
+        BendThreshold::Disabled => None,
+        BendThreshold::Fixed(n) => Some(n),
+        BendThreshold::Auto => {
+            if paths.is_empty() {
+                return None;
+            }
+            let mut bend_counts: Vec<usize> =
+                paths.values().map(|p| p.bend_count).collect();
+            bend_counts.sort_unstable();
+            let median = bend_counts[bend_counts.len() / 2];
+            Some(median.saturating_add(2).max(2))
+        }
+    }
+}
+
+/// Attempt to improve edges whose bend count exceeds the resolved threshold by
+/// trying alternative port-side combinations.
 ///
 /// Returns the number of edges that were improved (re-routed with fewer bends).
 ///
 /// This runs after the primary routing phase and before the deadlock resolver.
-/// Only edges that have an existing committed path are candidates; unrouted edges
-/// are left for the deadlock resolver.
+/// Only edges that have an existing committed path are candidates; unrouted
+/// edges are left for the deadlock resolver.
 pub fn quality_reroute(
     graph: &Graph,
     grid: &mut Grid,
@@ -25,15 +54,16 @@ pub fn quality_reroute(
     paths: &mut HashMap<usize, RoutedPath>,
     config: &TrellisConfig,
 ) -> usize {
-    if config.max_acceptable_bends == 0 {
-        return 0;
-    }
+    let threshold = match resolve_threshold(config.bend_threshold, paths) {
+        Some(t) => t,
+        None => return 0,
+    };
 
-    // Collect candidates: routed edges with bend count above threshold
+    // Snapshot bend counts before we start mutating paths.
     let mut candidates: Vec<(usize, usize)> = paths
         .iter()
         .filter_map(|(&edge_idx, path)| {
-            if path.bend_count > config.max_acceptable_bends {
+            if path.bend_count > threshold {
                 Some((edge_idx, path.bend_count))
             } else {
                 None
@@ -41,7 +71,7 @@ pub fn quality_reroute(
         })
         .collect();
 
-    // Worst first
+    // Worst first.
     candidates.sort_by(|a, b| b.1.cmp(&a.1));
 
     let mut improved = 0;
@@ -60,7 +90,6 @@ pub fn quality_reroute(
             None => continue,
         };
 
-        // Current state
         let current_path = match paths.get(&edge_idx) {
             Some(p) => p.clone(),
             None => continue,
@@ -71,7 +100,6 @@ pub fn quality_reroute(
         };
         let current_bends = current_path.bend_count;
 
-        // Rip up the current path
         let edge_id = format!("edge_{}", edge_idx);
         uncommit_path(grid, &current_path.points, &edge_id, &config.routing_costs);
 
@@ -81,10 +109,9 @@ pub fn quality_reroute(
 
         let all_sides = [Side::Top, Side::Bottom, Side::Left, Side::Right];
 
-        // Try all 16 side combinations
+        // Try all 16 side combinations.
         for &src_side in &all_sides {
             for &tgt_side in &all_sides {
-                // Skip the current assignment
                 if src_side == current_ports.source_port.side
                     && tgt_side == current_ports.target_port.side
                 {
@@ -99,7 +126,6 @@ pub fn quality_reroute(
                     config.cell_size,
                     grid.offset_x,
                     grid.offset_y,
-                    grid,
                 );
                 let candidate = match candidate {
                     Some(c) => c,
@@ -115,7 +141,6 @@ pub fn quality_reroute(
                     col: candidate.target_port.grid_col,
                 };
 
-                // Temporarily free source/target boundary cells for routing
                 let src_state = save_and_free_cell(grid, source, &config.routing_costs);
                 let tgt_state = save_and_free_cell(grid, target, &config.routing_costs);
 
@@ -134,24 +159,21 @@ pub fn quality_reroute(
             }
         }
 
-        // Commit the best result
         commit_path(grid, &best_path.points, &edge_id, &config.routing_costs);
 
         if best_bends < current_bends {
             port_assignments.insert(edge_idx, best_ports);
             paths.insert(edge_idx, best_path);
             improved += 1;
-        } else {
-            // Restore original (already committed above with best_path == current_path)
         }
     }
 
     improved
 }
 
-/// Pick the median connector on `src_side` of `src_node` and `tgt_side` of `tgt_node`.
+/// Pick the median connector on each requested side as a neutral starting port.
 ///
-/// Returns `None` if either side has no connectors (e.g. node is too narrow).
+/// Returns `None` if either side has no connectors (node is too narrow/short).
 fn ports_for_sides(
     src_node: &trellis_parser::Node,
     tgt_node: &trellis_parser::Node,
@@ -160,7 +182,6 @@ fn ports_for_sides(
     cell_size: i32,
     offset_x: i32,
     offset_y: i32,
-    _grid: &Grid,
 ) -> Option<EdgePorts> {
     let src_connectors = enumerate_connectors(src_node, src_side, cell_size, offset_x, offset_y);
     let tgt_connectors = enumerate_connectors(tgt_node, tgt_side, cell_size, offset_x, offset_y);
@@ -236,63 +257,129 @@ fn restore_cell(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::config::TrellisConfig;
+    use crate::config::{BendThreshold, TrellisConfig};
     use crate::grid::{build_grid, params::calculate_grid_extent};
     use crate::placement;
     use crate::ports::assign_ports;
     use crate::routing::route_all_edges;
 
-    fn make_config_with_threshold(max_bends: usize) -> TrellisConfig {
-        TrellisConfig {
-            max_acceptable_bends: max_bends,
-            ..TrellisConfig::default()
+    fn make_config(threshold: BendThreshold) -> TrellisConfig {
+        TrellisConfig { bend_threshold: threshold, ..TrellisConfig::default() }
+    }
+
+    // ── resolve_threshold ────────────────────────────────────────────────────
+
+    #[test]
+    fn resolve_disabled_returns_none() {
+        let paths = HashMap::new();
+        assert_eq!(resolve_threshold(BendThreshold::Disabled, &paths), None);
+    }
+
+    #[test]
+    fn resolve_fixed_returns_value() {
+        let paths = HashMap::new();
+        assert_eq!(resolve_threshold(BendThreshold::Fixed(5), &paths), Some(5));
+    }
+
+    #[test]
+    fn resolve_auto_empty_paths_returns_none() {
+        let paths = HashMap::new();
+        assert_eq!(resolve_threshold(BendThreshold::Auto, &paths), None);
+    }
+
+    #[test]
+    fn resolve_auto_all_zero_bends_gives_floor() {
+        // median=0 → max(2, 0+2) = 2
+        let mut paths = HashMap::new();
+        paths.insert(0, RoutedPath { points: vec![], total_cost: 0.0, bend_count: 0 });
+        paths.insert(1, RoutedPath { points: vec![], total_cost: 0.0, bend_count: 0 });
+        assert_eq!(resolve_threshold(BendThreshold::Auto, &paths), Some(2));
+    }
+
+    #[test]
+    fn resolve_auto_median_two_gives_four() {
+        // median=2 → max(2, 2+2) = 4
+        let mut paths = HashMap::new();
+        for i in 0..5usize {
+            paths.insert(i, RoutedPath { points: vec![], total_cost: 0.0, bend_count: 2 });
         }
+        assert_eq!(resolve_threshold(BendThreshold::Auto, &paths), Some(4));
     }
 
     #[test]
-    fn quality_reroute_disabled_when_zero() {
+    fn resolve_auto_outlier_does_not_inflate_threshold() {
+        // Even with one extreme outlier the median stays low.
+        // bend_counts = [0, 0, 0, 0, 20] → sorted median = 0 → threshold = 2
+        let mut paths = HashMap::new();
+        for i in 0..4usize {
+            paths.insert(i, RoutedPath { points: vec![], total_cost: 0.0, bend_count: 0 });
+        }
+        paths.insert(4, RoutedPath { points: vec![], total_cost: 0.0, bend_count: 20 });
+        assert_eq!(resolve_threshold(BendThreshold::Auto, &paths), Some(2));
+        // The outlier (20 bends) is above threshold=2 → it will be a candidate.
+    }
+
+    #[test]
+    fn resolve_auto_uniform_high_bends_raises_threshold() {
+        // All edges have 6 bends → median=6 → threshold=8. Nothing gets flagged —
+        // this is a global routing problem, not individual outliers.
+        let mut paths = HashMap::new();
+        for i in 0..4usize {
+            paths.insert(i, RoutedPath { points: vec![], total_cost: 0.0, bend_count: 6 });
+        }
+        assert_eq!(resolve_threshold(BendThreshold::Auto, &paths), Some(8));
+    }
+
+    // ── quality_reroute integration ──────────────────────────────────────────
+
+    fn route_fixture(mermaid: &str, threshold: BendThreshold) -> (HashMap<usize, RoutedPath>, Grid, HashMap<usize, EdgePorts>, trellis_parser::Graph) {
+        let mut graph = trellis_parser::parse(mermaid).expect("parse failed");
+        let config = make_config(threshold);
+        let cell_size = config.cell_size;
+        placement::place_nodes(&mut graph, cell_size);
+        let extent = calculate_grid_extent(&graph, cell_size);
+        let mut grid = build_grid(&graph, cell_size, &extent);
+        let mut port_assignments = assign_ports(&graph, cell_size, extent.offset_x, extent.offset_y);
+        let result = route_all_edges(&graph, &mut grid, &port_assignments, &config);
+        (result.paths, grid, port_assignments, graph)
+    }
+
+    #[test]
+    fn disabled_never_reroutes() {
         let mermaid = "graph TB\n    A --> B\n    B --> C";
-        let mut graph = trellis_parser::parse(mermaid).expect("parse failed");
-        let config = make_config_with_threshold(0);
-        let cell_size = config.cell_size;
-        placement::place_nodes(&mut graph, cell_size);
-        let extent = calculate_grid_extent(&graph, cell_size);
-        let mut grid = build_grid(&graph, cell_size, &extent);
-        let mut port_assignments = assign_ports(&graph, cell_size, extent.offset_x, extent.offset_y);
-        let mut routing_result = route_all_edges(&graph, &mut grid, &port_assignments, &config);
-        let improved = quality_reroute(
-            &graph,
-            &mut grid,
-            &mut port_assignments,
-            &mut routing_result.paths,
-            &config,
-        );
-        assert_eq!(improved, 0, "should be 0 when max_acceptable_bends=0");
+        let (mut paths, mut grid, mut ports, graph) =
+            route_fixture(mermaid, BendThreshold::Disabled);
+        let config = make_config(BendThreshold::Disabled);
+        let improved = quality_reroute(&graph, &mut grid, &mut ports, &mut paths, &config);
+        assert_eq!(improved, 0);
     }
 
     #[test]
-    fn quality_reroute_leaves_low_bend_edges() {
-        // A → B: direct vertical chain → 0 bends → below any reasonable threshold
+    fn fixed_threshold_below_actual_bends_is_noop() {
+        // Simple chain: A→B has 0 bends. Fixed(2) means only edges >2 bends are
+        // candidates — none here.
         let mermaid = "graph TB\n    A --> B";
-        let mut graph = trellis_parser::parse(mermaid).expect("parse failed");
-        let config = make_config_with_threshold(2);
-        let cell_size = config.cell_size;
-        placement::place_nodes(&mut graph, cell_size);
-        let extent = calculate_grid_extent(&graph, cell_size);
-        let mut grid = build_grid(&graph, cell_size, &extent);
-        let mut port_assignments = assign_ports(&graph, cell_size, extent.offset_x, extent.offset_y);
-        let mut routing_result = route_all_edges(&graph, &mut grid, &port_assignments, &config);
-        let total_bends_before: usize = routing_result.paths.values().map(|p| p.bend_count).sum();
-        let improved = quality_reroute(
-            &graph,
-            &mut grid,
-            &mut port_assignments,
-            &mut routing_result.paths,
-            &config,
-        );
-        let total_bends_after: usize = routing_result.paths.values().map(|p| p.bend_count).sum();
-        // Edges below threshold are untouched; total bends shouldn't increase
+        let (mut paths, mut grid, mut ports, graph) =
+            route_fixture(mermaid, BendThreshold::Fixed(2));
+        let config = make_config(BendThreshold::Fixed(2));
+        let bends_before: usize = paths.values().map(|p| p.bend_count).sum();
+        let improved = quality_reroute(&graph, &mut grid, &mut ports, &mut paths, &config);
+        let bends_after: usize = paths.values().map(|p| p.bend_count).sum();
         assert_eq!(improved, 0);
-        assert!(total_bends_after <= total_bends_before);
+        assert!(bends_after <= bends_before);
+    }
+
+    #[test]
+    fn auto_does_not_increase_total_bends() {
+        // On a well-routed chain the auto threshold should be above the actual
+        // bend counts, so nothing is rerouted and bends cannot increase.
+        let mermaid = "graph TB\n    A --> B\n    B --> C\n    C --> D";
+        let (mut paths, mut grid, mut ports, graph) =
+            route_fixture(mermaid, BendThreshold::Auto);
+        let config = make_config(BendThreshold::Auto);
+        let bends_before: usize = paths.values().map(|p| p.bend_count).sum();
+        quality_reroute(&graph, &mut grid, &mut ports, &mut paths, &config);
+        let bends_after: usize = paths.values().map(|p| p.bend_count).sum();
+        assert!(bends_after <= bends_before, "bends increased after quality reroute");
     }
 }

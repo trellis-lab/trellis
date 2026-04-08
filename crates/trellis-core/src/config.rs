@@ -38,8 +38,8 @@ fn default_port_refinement_rounds() -> usize {
 fn default_flow_bias() -> FlowBias {
     FlowBias::None
 }
-fn default_max_acceptable_bends() -> usize {
-    0
+fn default_bend_threshold() -> BendThreshold {
+    BendThreshold::Auto
 }
 fn default_routing_costs() -> RoutingCosts {
     RoutingCosts::default()
@@ -129,10 +129,14 @@ pub struct TrellisConfig {
     #[serde(default)]
     pub print_metrics: bool,
 
-    /// Bend count above which quality rerouting attempts alternative port sides.
-    /// 0 = disabled. Recommended: 4 (flags edges with more than 3 bends).
-    #[serde(default = "default_max_acceptable_bends")]
-    pub max_acceptable_bends: usize,
+    /// Bend threshold that triggers quality rerouting.
+    ///
+    /// - `Disabled` — quality reroute never runs.
+    /// - `Fixed(n)` — reroutes any edge with more than `n` bends.
+    /// - `Auto` (default) — computes `max(2, median_bends + 2)` from the
+    ///   routed paths at runtime, targeting only the long tail of outliers.
+    #[serde(default = "default_bend_threshold")]
+    pub bend_threshold: BendThreshold,
 }
 
 /// A* routing cost constants
@@ -185,6 +189,24 @@ pub enum FlowBias {
     None,
 }
 
+/// Bend count threshold that controls quality rerouting.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum BendThreshold {
+    /// Quality reroute is disabled.
+    Disabled,
+    /// Reroute any edge whose bend count exceeds this fixed value.
+    Fixed(usize),
+    /// Compute threshold as `max(2, median_bends + 2)` from the routed paths.
+    /// Targets only the long tail of outliers while leaving well-routed edges alone.
+    Auto,
+}
+
+impl Default for BendThreshold {
+    fn default() -> Self {
+        BendThreshold::Auto
+    }
+}
+
 /// Decomposition mode for handling large graphs
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, Default)]
 pub enum DecompositionMode {
@@ -211,7 +233,7 @@ impl Default for TrellisConfig {
             port_refinement_rounds: default_port_refinement_rounds(),
             flow_bias: FlowBias::None,
             print_metrics: false,
-            max_acceptable_bends: default_max_acceptable_bends(),
+            bend_threshold: BendThreshold::Auto,
         }
     }
 }
@@ -252,7 +274,7 @@ pub fn configuration_factory(config_type: ConfigurationType) -> TrellisConfig {
             port_refinement_rounds: 0,
             flow_bias: FlowBias::Auto,
             print_metrics: false,
-            max_acceptable_bends: default_max_acceptable_bends(),
+            bend_threshold: BendThreshold::Auto,
         },
     }
 }
