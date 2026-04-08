@@ -38,6 +38,9 @@ fn default_port_refinement_rounds() -> usize {
 fn default_flow_bias() -> FlowBias {
     FlowBias::None
 }
+fn default_max_acceptable_bends() -> usize {
+    0
+}
 fn default_routing_costs() -> RoutingCosts {
     RoutingCosts::default()
 }
@@ -125,6 +128,11 @@ pub struct TrellisConfig {
     /// Controlled by the CLI `--metrics` flag.
     #[serde(default)]
     pub print_metrics: bool,
+
+    /// Bend count above which quality rerouting attempts alternative port sides.
+    /// 0 = disabled. Recommended: 4 (flags edges with more than 3 bends).
+    #[serde(default = "default_max_acceptable_bends")]
+    pub max_acceptable_bends: usize,
 }
 
 /// A* routing cost constants
@@ -203,6 +211,7 @@ impl Default for TrellisConfig {
             port_refinement_rounds: default_port_refinement_rounds(),
             flow_bias: FlowBias::None,
             print_metrics: false,
+            max_acceptable_bends: default_max_acceptable_bends(),
         }
     }
 }
@@ -243,6 +252,7 @@ pub fn configuration_factory(config_type: ConfigurationType) -> TrellisConfig {
             port_refinement_rounds: 0,
             flow_bias: FlowBias::Auto,
             print_metrics: false,
+            max_acceptable_bends: default_max_acceptable_bends(),
         },
     }
 }

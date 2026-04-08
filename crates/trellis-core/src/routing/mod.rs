@@ -3,6 +3,7 @@ pub mod commit;
 pub mod cost;
 pub mod multi_edge;
 pub mod priority;
+pub mod quality_reroute;
 
 use std::collections::HashMap;
 

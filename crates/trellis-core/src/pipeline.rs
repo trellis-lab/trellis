@@ -109,7 +109,7 @@ fn run_pipeline(
     };
 
     #[allow(unused_mut)]
-    let (port_assignments, mut grid, routing_result) = if use_refinement {
+    let (mut port_assignments, mut grid, mut routing_result) = if use_refinement {
         crate::ports::iterative::refine_ports(
             &graph,
             config,
@@ -122,6 +122,20 @@ fn run_pipeline(
         let result = routing::route_all_edges(&graph, &mut grid, &port_assignments, config);
         (port_assignments, grid, result)
     };
+
+    // Phase 5a: Quality rerouting — rip-up edges with excessive bends and
+    // try alternative port-side combinations to find a lower-bend route.
+    if config.max_acceptable_bends > 0 {
+        routing::quality_reroute::quality_reroute(
+            &graph,
+            &mut grid,
+            &mut port_assignments,
+            &mut routing_result.paths,
+            config,
+        );
+        // Recompute aggregate bend count from the (possibly updated) paths.
+        routing_result.total_bends = routing_result.paths.values().map(|p| p.bend_count).sum();
+    }
 
     // Collect metrics
     let routed_count = routing_result.paths.len();
