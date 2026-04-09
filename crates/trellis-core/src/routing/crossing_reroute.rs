@@ -1,6 +1,6 @@
 use std::collections::{HashMap, HashSet};
 
-use trellis_parser::Graph;
+use trellis_parser::{Direction, Graph};
 
 use crate::config::TrellisConfig;
 use crate::grid::Grid;
@@ -9,6 +9,12 @@ use crate::ports::common::enumerate_connectors;
 
 use super::astar::{route_edge, GridPoint, RoutedPath};
 use super::commit::{commit_path, uncommit_path};
+
+/// Maximum additional bends a reroute may introduce relative to the original.
+const MAX_EXTRA_BENDS: usize = 2;
+
+/// Maximum path-length growth factor a reroute may introduce.
+const MAX_LENGTH_FACTOR: f64 = 1.3;
 
 /// Attempt to reduce crossings by rerouting each edge that geometrically
 /// crosses any other committed path.
@@ -93,14 +99,22 @@ pub fn crossing_reroute(
             })
             .sum();
 
+        let current_len = current_path.points.len().saturating_sub(1);
+        let bend_budget = current_path.bend_count.saturating_add(MAX_EXTRA_BENDS);
+        let len_budget = (current_len as f64 * MAX_LENGTH_FACTOR).ceil() as usize;
+
+        // Fix 3: restrict sides to those consistent with the graph flow direction.
+        // Back-flow sides (e.g. Top for a source in TB) are excluded so that
+        // crossing_reroute never routes an edge against the layout direction.
+        let src_sides = allowed_source_sides(graph.direction);
+        let tgt_sides = allowed_target_sides(graph.direction);
+
         let mut best_crossings = crossings_before;
         let mut best_ports = current_ports.clone();
         let mut best_path = current_path.clone();
 
-        let all_sides = [Side::Top, Side::Bottom, Side::Left, Side::Right];
-
-        for &src_side in &all_sides {
-            for &tgt_side in &all_sides {
+        for &src_side in &src_sides {
+            for &tgt_side in &tgt_sides {
                 let candidate_ports = match ports_for_sides(
                     src_node,
                     tgt_node,
@@ -133,6 +147,13 @@ pub fn crossing_reroute(
                 restore_cell(grid, target, tgt_state);
 
                 if let Some(path) = try_path {
+                    let new_len = path.points.len().saturating_sub(1);
+
+                    // Fix 1: reject paths that bloat bends or detour excessively.
+                    if path.bend_count > bend_budget || new_len > len_budget {
+                        continue;
+                    }
+
                     let crossings: usize = other_sets
                         .iter()
                         .map(|s| {
@@ -162,6 +183,40 @@ pub fn crossing_reroute(
     }
 
     improved
+}
+
+/// Return the source-side candidates consistent with the graph flow direction.
+///
+/// The back-flow side (e.g. Top in TB) is excluded: allowing a forward edge to
+/// exit from there almost always produces a long detour that routes against the
+/// intended layout direction.
+fn allowed_source_sides(direction: Direction) -> Vec<Side> {
+    match direction {
+        // TB flows downward — source exits Bottom, Left, or Right; not Top.
+        Direction::TB => vec![Side::Bottom, Side::Left, Side::Right],
+        // BT flows upward — source exits Top, Left, or Right; not Bottom.
+        Direction::BT => vec![Side::Top, Side::Left, Side::Right],
+        // LR flows rightward — source exits Right, Top, or Bottom; not Left.
+        Direction::LR => vec![Side::Right, Side::Top, Side::Bottom],
+        // RL flows leftward — source exits Left, Top, or Bottom; not Right.
+        Direction::RL => vec![Side::Left, Side::Top, Side::Bottom],
+    }
+}
+
+/// Return the target-side candidates consistent with the graph flow direction.
+///
+/// The back-flow side (e.g. Bottom in TB) is excluded for the same reason.
+fn allowed_target_sides(direction: Direction) -> Vec<Side> {
+    match direction {
+        // TB flows downward — target enters Top, Left, or Right; not Bottom.
+        Direction::TB => vec![Side::Top, Side::Left, Side::Right],
+        // BT flows upward — target enters Bottom, Left, or Right; not Top.
+        Direction::BT => vec![Side::Bottom, Side::Left, Side::Right],
+        // LR flows rightward — target enters Left, Top, or Bottom; not Right.
+        Direction::LR => vec![Side::Left, Side::Top, Side::Bottom],
+        // RL flows leftward — target enters Right, Top, or Bottom; not Left.
+        Direction::RL => vec![Side::Right, Side::Top, Side::Bottom],
+    }
 }
 
 /// Count how many cells in edge `idx`'s path are shared with any other path.
@@ -257,7 +312,9 @@ fn save_and_free_cell(
     let col = point.col as usize;
     if let Some(cell) = grid.get(row, col) {
         let original = cell.state;
-        if original == crate::grid::CellState::Blocked {
+        let needs_free = original == crate::grid::CellState::Blocked
+            || original == crate::grid::CellState::Occupied;
+        if needs_free {
             if let Some(cell) = grid.get_mut(row, col) {
                 cell.state = crate::grid::CellState::Free;
                 cell.cost = costs.base_cost;
@@ -275,11 +332,16 @@ fn restore_cell(
     original_state: Option<crate::grid::CellState>,
 ) {
     if let Some(state) = original_state {
-        if state == crate::grid::CellState::Blocked && grid.in_bounds(point.row, point.col) {
+        let was_blocked_or_occupied = state == crate::grid::CellState::Blocked
+            || state == crate::grid::CellState::Occupied;
+        if was_blocked_or_occupied && grid.in_bounds(point.row, point.col) {
             if let Some(cell) = grid.get_mut(point.row as usize, point.col as usize) {
                 if cell.state != crate::grid::CellState::Occupied {
                     cell.state = state;
-                    cell.cost = f64::INFINITY;
+                    if state == crate::grid::CellState::Blocked {
+                        cell.cost = f64::INFINITY;
+                    }
+                    // Occupied cells have no stored cost; movement_cost computes it dynamically.
                 }
             }
         }

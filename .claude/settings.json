@@ -16,7 +16,9 @@
       "Bash(for f in \"Cargo.toml\" \"Cargo.lock\" \"crates/trellis-parser/Cargo.toml\" \"crates/trellis-core/Cargo.toml\" \"crates/trellis-wasm/Cargo.toml\" \"crates/trellis-cli/Cargo.toml\" \"tests/benchmarks/Cargo.toml\" \"tests/integration/Cargo.toml\" \"crates/\" \"editors/vscode/package.json\" \"editors/vscode/src\" \"editors/vscode/tsconfig.json\" \"editors/vscode/media\" \"editors/vscode/.vscodeignore\")",
       "Bash(do)",
       "Bash([ -e \"$f\" ])",
-      "Bash(chmod +x \"c:/User/work/trellis-mermaid/trellis/scripts/build-intellij.sh\")"
+      "Bash(chmod +x \"c:/User/work/trellis-mermaid/trellis/scripts/build-intellij.sh\")",
+      "Read(//c/temp/trellis-batch-3/**)",
+      "Read(//c/Users/vzora/temp/**)"
     ],
     "additionalDirectories": [
       "c:\\Users\\vzora\\.claude\\projects\\c--User-work-trellis-mermaid-trellis\\memory"

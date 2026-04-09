@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use trellis_parser::Graph;
 
@@ -62,7 +62,7 @@ pub fn quality_reroute(
     let mut candidates: Vec<(usize, usize)> = paths
         .iter()
         .filter_map(|(&edge_idx, path)| {
-            if path.bend_count > threshold {
+            if path.bend_count >= threshold {
                 Some((edge_idx, path.bend_count))
             } else {
                 None
@@ -99,12 +99,40 @@ pub fn quality_reroute(
         };
         let current_bends = current_path.bend_count;
 
+        // Pre-build point sets for all other committed paths.  Used to count
+        // crossings against any candidate path without rebuilding per trial.
+        let other_sets: Vec<HashSet<(i64, i64)>> = paths
+            .iter()
+            .filter(|(&idx, _)| idx != edge_idx)
+            .map(|(_, p)| p.points.iter().map(|pt| (pt.row, pt.col)).collect())
+            .collect();
+
+        let current_crossings: usize = other_sets
+            .iter()
+            .map(|s| {
+                current_path
+                    .points
+                    .iter()
+                    .filter(|pt| s.contains(&(pt.row, pt.col)))
+                    .count()
+            })
+            .sum();
+
         let edge_id = format!("edge_{}", edge_idx);
         uncommit_path(grid, &current_path.points, &edge_id, &config.routing_costs);
 
         let mut best_bends = current_bends;
+        let mut best_crossings = current_crossings;
         let mut best_ports = current_ports.clone();
         let mut best_path = current_path.clone();
+
+        // Exploration costs: suppress adjacent_cost so A* finds the geometrically
+        // shortest path (fewest bends) without being deflected by congestion from
+        // other committed edges.  The committed result still lives on the real grid.
+        let explore_costs = crate::config::RoutingCosts {
+            adjacent_cost: 0.0,
+            ..config.routing_costs.clone()
+        };
 
         let all_sides = [Side::Top, Side::Bottom, Side::Left, Side::Right];
 
@@ -141,17 +169,31 @@ pub fn quality_reroute(
                     col: candidate.target_port.grid_col,
                 };
 
-                let src_state = save_and_free_cell(grid, source, &config.routing_costs);
-                let tgt_state = save_and_free_cell(grid, target, &config.routing_costs);
+                let src_state = save_and_free_cell(grid, source, &explore_costs);
+                let tgt_state = save_and_free_cell(grid, target, &explore_costs);
 
-                let try_path = route_edge(grid, source, target, &config.routing_costs);
+                let try_path = route_edge(grid, source, target, &explore_costs);
 
                 restore_cell(grid, source, src_state);
                 restore_cell(grid, target, tgt_state);
 
                 if let Some(path) = try_path {
-                    if path.bend_count < best_bends {
+                    let crossings: usize = other_sets
+                        .iter()
+                        .map(|s| {
+                            path.points
+                                .iter()
+                                .filter(|pt| s.contains(&(pt.row, pt.col)))
+                                .count()
+                        })
+                        .sum();
+
+                    // Accept only if bends strictly improve AND crossings do not
+                    // worsen.  This enforces lexicographic priority: never trade
+                    // a crossing for a bend reduction.
+                    if path.bend_count < best_bends && crossings <= best_crossings {
                         best_bends = path.bend_count;
+                        best_crossings = crossings;
                         best_ports = candidate;
                         best_path = path;
                     }
@@ -250,6 +292,11 @@ fn pick_connector<'a>(
 }
 
 /// Temporarily free a boundary cell so routing can start/end there.
+///
+/// Frees both `Blocked` cells (node body) and `Occupied` cells (previously
+/// committed edge paths).  Freeing an occupied endpoint is necessary so that
+/// A* can land directly on the target connector instead of approaching it from
+/// a neighbour, which would add two extra bends.
 fn save_and_free_cell(
     grid: &mut Grid,
     point: GridPoint,
@@ -262,7 +309,9 @@ fn save_and_free_cell(
     let col = point.col as usize;
     if let Some(cell) = grid.get(row, col) {
         let original = cell.state;
-        if original == crate::grid::CellState::Blocked {
+        let needs_free = original == crate::grid::CellState::Blocked
+            || original == crate::grid::CellState::Occupied;
+        if needs_free {
             if let Some(cell) = grid.get_mut(row, col) {
                 cell.state = crate::grid::CellState::Free;
                 cell.cost = costs.base_cost;
@@ -277,11 +326,16 @@ fn save_and_free_cell(
 /// Restore a cell's original state after routing.
 fn restore_cell(grid: &mut Grid, point: GridPoint, original_state: Option<crate::grid::CellState>) {
     if let Some(state) = original_state {
-        if state == crate::grid::CellState::Blocked && grid.in_bounds(point.row, point.col) {
+        let was_blocked_or_occupied = state == crate::grid::CellState::Blocked
+            || state == crate::grid::CellState::Occupied;
+        if was_blocked_or_occupied && grid.in_bounds(point.row, point.col) {
             if let Some(cell) = grid.get_mut(point.row as usize, point.col as usize) {
                 if cell.state != crate::grid::CellState::Occupied {
                     cell.state = state;
-                    cell.cost = f64::INFINITY;
+                    if state == crate::grid::CellState::Blocked {
+                        cell.cost = f64::INFINITY;
+                    }
+                    // Occupied cells have no stored cost; movement_cost computes it dynamically.
                 }
             }
         }
@@ -471,4 +525,5 @@ mod tests {
             "bends increased after quality reroute"
         );
     }
+
 }

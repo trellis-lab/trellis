@@ -259,7 +259,12 @@ fn route_single_edge(
     restore_cell(grid, target, target_state);
 }
 
-/// Save a cell's state and temporarily mark it as free for routing
+/// Save a cell's state and temporarily mark it as free for routing.
+///
+/// Frees both `Blocked` cells (node body) and `Occupied` cells (previously
+/// committed edge paths).  Freeing an occupied endpoint is necessary so that
+/// A* can land directly on the target connector instead of approaching it from
+/// a neighbour, which would add two extra bends.
 fn save_and_free_cell(
     grid: &mut Grid,
     point: GridPoint,
@@ -274,7 +279,9 @@ fn save_and_free_cell(
 
     if let Some(cell) = grid.get(row, col) {
         let original_state = cell.state;
-        if original_state == crate::grid::CellState::Blocked {
+        let needs_free = original_state == crate::grid::CellState::Blocked
+            || original_state == crate::grid::CellState::Occupied;
+        if needs_free {
             if let Some(cell) = grid.get_mut(row, col) {
                 cell.state = crate::grid::CellState::Free;
                 cell.cost = costs.base_cost;
@@ -289,12 +296,17 @@ fn save_and_free_cell(
 /// Restore a cell's original state after routing
 fn restore_cell(grid: &mut Grid, point: GridPoint, original_state: Option<crate::grid::CellState>) {
     if let Some(state) = original_state {
-        if state == crate::grid::CellState::Blocked && grid.in_bounds(point.row, point.col) {
+        let was_blocked_or_occupied = state == crate::grid::CellState::Blocked
+            || state == crate::grid::CellState::Occupied;
+        if was_blocked_or_occupied && grid.in_bounds(point.row, point.col) {
             if let Some(cell) = grid.get_mut(point.row as usize, point.col as usize) {
-                // Don't restore to blocked if we committed a path through it
+                // Don't restore if routing committed a new path through this cell.
                 if cell.state != crate::grid::CellState::Occupied {
                     cell.state = state;
-                    cell.cost = f64::INFINITY;
+                    if state == crate::grid::CellState::Blocked {
+                        cell.cost = f64::INFINITY;
+                    }
+                    // Occupied cells have no stored cost; movement_cost computes it dynamically.
                 }
             }
         }

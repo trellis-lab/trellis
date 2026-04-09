@@ -372,7 +372,9 @@ fn save_and_free_cell(
     let col = point.col as usize;
     if let Some(cell) = grid.get(row, col) {
         let original = cell.state;
-        if original == crate::grid::CellState::Blocked {
+        let needs_free = original == crate::grid::CellState::Blocked
+            || original == crate::grid::CellState::Occupied;
+        if needs_free {
             if let Some(cell) = grid.get_mut(row, col) {
                 cell.state = crate::grid::CellState::Free;
                 cell.cost = costs.base_cost;
@@ -386,11 +388,16 @@ fn save_and_free_cell(
 
 fn restore_cell(grid: &mut Grid, point: GridPoint, original_state: Option<crate::grid::CellState>) {
     if let Some(state) = original_state {
-        if state == crate::grid::CellState::Blocked && grid.in_bounds(point.row, point.col) {
+        let was_blocked_or_occupied = state == crate::grid::CellState::Blocked
+            || state == crate::grid::CellState::Occupied;
+        if was_blocked_or_occupied && grid.in_bounds(point.row, point.col) {
             if let Some(cell) = grid.get_mut(point.row as usize, point.col as usize) {
                 if cell.state != crate::grid::CellState::Occupied {
                     cell.state = state;
-                    cell.cost = f64::INFINITY;
+                    if state == crate::grid::CellState::Blocked {
+                        cell.cost = f64::INFINITY;
+                    }
+                    // Occupied cells have no stored cost; movement_cost computes it dynamically.
                 }
             }
         }

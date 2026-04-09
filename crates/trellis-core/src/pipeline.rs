@@ -158,8 +158,25 @@ fn run_pipeline(
     // keeping whichever reduces total crossings.  Runs after port_swap so
     // it only needs to handle crossings that the swap pass could not fix
     // (e.g. two edges that don't share a node side).
-    if config.crossing_reroute {
-        routing::crossing_reroute::crossing_reroute(
+    let crossing_improved = if config.crossing_reroute {
+        let n = routing::crossing_reroute::crossing_reroute(
+            &graph,
+            &mut grid,
+            &mut port_assignments,
+            &mut routing_result.paths,
+            config,
+        );
+        routing_result.total_bends = routing_result.paths.values().map(|p| p.bend_count).sum();
+        n
+    } else {
+        0
+    };
+
+    // Phase 5d: Second quality-reroute pass — runs only when crossing_reroute
+    // moved at least one edge (the grid state has changed, so the median bend
+    // count may be lower and previously-below-threshold edges can now qualify).
+    if config.bend_threshold != crate::config::BendThreshold::Disabled && crossing_improved > 0 {
+        routing::quality_reroute::quality_reroute(
             &graph,
             &mut grid,
             &mut port_assignments,

@@ -69,8 +69,14 @@ pub fn movement_cost(
                 }
             }
 
-            // Adjacent occupied cell penalty
-            cost += adjacent_penalty(grid, to_row, to_col, costs);
+            // Adjacent occupied cell penalty.
+            // Skipped on connector and approach-zone cells (boundary_side.is_some()).
+            // These cells are constrained port exits/entries; penalising adjacency
+            // here pushes A* off the straight corridor between co-linear ports,
+            // producing the "exit-then-return" Z-shape bend pattern.
+            if cell.boundary_side.is_none() {
+                cost += adjacent_penalty(grid, to_row, to_col, costs);
+            }
 
             // Perpendicularity penalty: penalize movement parallel to a node boundary
             // on connector cells (directly on the boundary) to ensure the very
