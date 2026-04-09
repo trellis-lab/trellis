@@ -41,6 +41,9 @@ fn default_flow_bias() -> FlowBias {
 fn default_bend_threshold() -> BendThreshold {
     BendThreshold::Auto
 }
+fn default_crossing_reroute() -> bool {
+    true
+}
 fn default_routing_costs() -> RoutingCosts {
     RoutingCosts::default()
 }
@@ -137,6 +140,15 @@ pub struct TrellisConfig {
     ///   routed paths at runtime, targeting only the long tail of outliers.
     #[serde(default = "default_bend_threshold")]
     pub bend_threshold: BendThreshold,
+
+    /// Enable crossing-reduction rerouting (Phase 5c).
+    ///
+    /// When `true` (default), edges with at least one geometric crossing are
+    /// ripped up and re-routed through all 16 source/target side combinations.
+    /// The new route is kept only if it reduces the total crossing count
+    /// against all other committed paths.  Set to `false` to disable.
+    #[serde(default = "default_crossing_reroute")]
+    pub crossing_reroute: bool,
 }
 
 /// A* routing cost constants
@@ -229,6 +241,7 @@ impl Default for TrellisConfig {
             flow_bias: FlowBias::None,
             print_metrics: false,
             bend_threshold: BendThreshold::Auto,
+            crossing_reroute: true,
         }
     }
 }
@@ -270,6 +283,7 @@ pub fn configuration_factory(config_type: ConfigurationType) -> TrellisConfig {
             flow_bias: FlowBias::Auto,
             print_metrics: false,
             bend_threshold: BendThreshold::Auto,
+            crossing_reroute: true,
         },
     }
 }

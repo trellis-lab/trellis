@@ -153,6 +153,22 @@ fn run_pipeline(
     );
     routing_result.total_bends = routing_result.paths.values().map(|p| p.bend_count).sum();
 
+    // Phase 5c: Crossing-reduction reroute — rip up any edge that still
+    // crosses another committed path and try all 16 side combinations,
+    // keeping whichever reduces total crossings.  Runs after port_swap so
+    // it only needs to handle crossings that the swap pass could not fix
+    // (e.g. two edges that don't share a node side).
+    if config.crossing_reroute {
+        routing::crossing_reroute::crossing_reroute(
+            &graph,
+            &mut grid,
+            &mut port_assignments,
+            &mut routing_result.paths,
+            config,
+        );
+        routing_result.total_bends = routing_result.paths.values().map(|p| p.bend_count).sum();
+    }
+
     // Collect metrics
     let routed_count = routing_result.paths.len();
     let avg_edge_length = if routed_count > 0 {

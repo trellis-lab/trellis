@@ -1,6 +1,7 @@
 pub mod astar;
 pub mod commit;
 pub mod cost;
+pub mod crossing_reroute;
 pub mod multi_edge;
 pub mod port_swap;
 pub mod priority;
