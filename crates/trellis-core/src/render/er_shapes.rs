@@ -1,4 +1,4 @@
-use trellis_parser::{ErCardinality, KeyType, Node};
+use trellis_parser::{KeyType, Node};
 
 /// Line height for ER attribute rows (pixels)
 const LINE_HEIGHT: f64 = 18.0;
@@ -117,103 +117,6 @@ fn escape_xml(s: &str) -> String {
         .replace('"', "&quot;")
 }
 
-/// Generate SVG `<defs>` block containing crow's foot marker definitions.
-///
-/// Crow's foot markers for ER diagrams. Each cardinality type has a
-/// `source` (start) and `target` (end) marker variant since the SVG
-/// `orient="auto"` flips the marker at the target end.
-///
-/// Naming convention: `er-{cardinality}-{end}` where end is `start` or `end`.
-pub fn er_marker_defs() -> &'static str {
-    "<defs>\
-     <!-- ER: ExactlyOne (||) — double tick at target end -->\
-     <marker id=\"er-exactlyone-end\" viewBox=\"0 0 12 12\" refX=\"12\" refY=\"6\" \
-     markerWidth=\"8\" markerHeight=\"8\" orient=\"auto\">\
-     <line x1=\"8\" y1=\"0\" x2=\"8\" y2=\"12\" stroke=\"#336699\" stroke-width=\"1.5\"/>\
-     <line x1=\"11\" y1=\"0\" x2=\"11\" y2=\"12\" stroke=\"#336699\" stroke-width=\"1.5\"/>\
-     </marker>\
-     <marker id=\"er-exactlyone-start\" viewBox=\"0 0 12 12\" refX=\"0\" refY=\"6\" \
-     markerWidth=\"8\" markerHeight=\"8\" orient=\"auto-start-reverse\">\
-     <line x1=\"1\" y1=\"0\" x2=\"1\" y2=\"12\" stroke=\"#336699\" stroke-width=\"1.5\"/>\
-     <line x1=\"4\" y1=\"0\" x2=\"4\" y2=\"12\" stroke=\"#336699\" stroke-width=\"1.5\"/>\
-     </marker>\
-     <!-- ER: ZeroOrOne (|o) — tick + circle -->\
-     <marker id=\"er-zeroorone-end\" viewBox=\"0 0 16 12\" refX=\"16\" refY=\"6\" \
-     markerWidth=\"10\" markerHeight=\"8\" orient=\"auto\">\
-     <line x1=\"12\" y1=\"0\" x2=\"12\" y2=\"12\" stroke=\"#336699\" stroke-width=\"1.5\"/>\
-     <circle cx=\"5\" cy=\"6\" r=\"4\" fill=\"none\" stroke=\"#336699\" stroke-width=\"1.5\"/>\
-     </marker>\
-     <marker id=\"er-zeroorone-start\" viewBox=\"0 0 16 12\" refX=\"0\" refY=\"6\" \
-     markerWidth=\"10\" markerHeight=\"8\" orient=\"auto-start-reverse\">\
-     <line x1=\"4\" y1=\"0\" x2=\"4\" y2=\"12\" stroke=\"#336699\" stroke-width=\"1.5\"/>\
-     <circle cx=\"11\" cy=\"6\" r=\"4\" fill=\"none\" stroke=\"#336699\" stroke-width=\"1.5\"/>\
-     </marker>\
-     <!-- ER: OneOrMore (|{) — tick + crow's foot -->\
-     <marker id=\"er-oneormore-end\" viewBox=\"0 0 16 14\" refX=\"16\" refY=\"7\" \
-     markerWidth=\"10\" markerHeight=\"9\" orient=\"auto\">\
-     <line x1=\"12\" y1=\"0\" x2=\"12\" y2=\"14\" stroke=\"#336699\" stroke-width=\"1.5\"/>\
-     <line x1=\"12\" y1=\"7\" x2=\"2\" y2=\"0\" stroke=\"#336699\" stroke-width=\"1.5\"/>\
-     <line x1=\"12\" y1=\"7\" x2=\"2\" y2=\"14\" stroke=\"#336699\" stroke-width=\"1.5\"/>\
-     <line x1=\"12\" y1=\"7\" x2=\"2\" y2=\"7\" stroke=\"#336699\" stroke-width=\"1.5\"/>\
-     </marker>\
-     <marker id=\"er-oneormore-start\" viewBox=\"0 0 16 14\" refX=\"0\" refY=\"7\" \
-     markerWidth=\"10\" markerHeight=\"9\" orient=\"auto-start-reverse\">\
-     <line x1=\"4\" y1=\"0\" x2=\"4\" y2=\"14\" stroke=\"#336699\" stroke-width=\"1.5\"/>\
-     <line x1=\"4\" y1=\"7\" x2=\"14\" y2=\"0\" stroke=\"#336699\" stroke-width=\"1.5\"/>\
-     <line x1=\"4\" y1=\"7\" x2=\"14\" y2=\"14\" stroke=\"#336699\" stroke-width=\"1.5\"/>\
-     <line x1=\"4\" y1=\"7\" x2=\"14\" y2=\"7\" stroke=\"#336699\" stroke-width=\"1.5\"/>\
-     </marker>\
-     <!-- ER: ZeroOrMore (o{) — circle + crow's foot -->\
-     <marker id=\"er-zeroormore-end\" viewBox=\"0 0 20 14\" refX=\"20\" refY=\"7\" \
-     markerWidth=\"12\" markerHeight=\"9\" orient=\"auto\">\
-     <circle cx=\"16\" cy=\"7\" r=\"3.5\" fill=\"none\" stroke=\"#336699\" stroke-width=\"1.5\"/>\
-     <line x1=\"12\" y1=\"7\" x2=\"2\" y2=\"0\" stroke=\"#336699\" stroke-width=\"1.5\"/>\
-     <line x1=\"12\" y1=\"7\" x2=\"2\" y2=\"14\" stroke=\"#336699\" stroke-width=\"1.5\"/>\
-     <line x1=\"12\" y1=\"7\" x2=\"2\" y2=\"7\" stroke=\"#336699\" stroke-width=\"1.5\"/>\
-     </marker>\
-     <marker id=\"er-zeroormore-start\" viewBox=\"0 0 20 14\" refX=\"0\" refY=\"7\" \
-     markerWidth=\"12\" markerHeight=\"9\" orient=\"auto-start-reverse\">\
-     <circle cx=\"4\" cy=\"7\" r=\"3.5\" fill=\"none\" stroke=\"#336699\" stroke-width=\"1.5\"/>\
-     <line x1=\"8\" y1=\"7\" x2=\"18\" y2=\"0\" stroke=\"#336699\" stroke-width=\"1.5\"/>\
-     <line x1=\"8\" y1=\"7\" x2=\"18\" y2=\"14\" stroke=\"#336699\" stroke-width=\"1.5\"/>\
-     <line x1=\"8\" y1=\"7\" x2=\"18\" y2=\"7\" stroke=\"#336699\" stroke-width=\"1.5\"/>\
-     </marker>\
-     </defs>"
-}
-
-/// Return the marker ID suffix string for an ER cardinality.
-fn cardinality_marker_id(card: ErCardinality) -> &'static str {
-    match card {
-        ErCardinality::ExactlyOne => "exactlyone",
-        ErCardinality::ZeroOrOne => "zeroorone",
-        ErCardinality::OneOrMore => "oneormore",
-        ErCardinality::ZeroOrMore => "zeroormore",
-    }
-}
-
-/// Return SVG marker-start and marker-end attribute strings for an ER edge.
-///
-/// Source cardinality → `marker-start` (at the `from` node end).
-/// Target cardinality → `marker-end` (at the `to` node end).
-pub fn er_edge_markers(edge: &trellis_parser::Edge) -> (String, String) {
-    let src = edge
-        .er_source_card
-        .map(|c| {
-            format!(
-                " marker-start=\"url(#er-{}-start)\"",
-                cardinality_marker_id(c)
-            )
-        })
-        .unwrap_or_default();
-
-    let tgt = edge
-        .er_target_card
-        .map(|c| format!(" marker-end=\"url(#er-{}-end)\"", cardinality_marker_id(c)))
-        .unwrap_or_default();
-
-    (src, tgt)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -269,16 +172,4 @@ mod tests {
         assert!(svg.contains("font-style=\"italic\""));
     }
 
-    #[test]
-    fn test_er_marker_defs_contains_all_types() {
-        let defs = er_marker_defs();
-        assert!(defs.contains("er-exactlyone-end"));
-        assert!(defs.contains("er-zeroorone-end"));
-        assert!(defs.contains("er-oneormore-end"));
-        assert!(defs.contains("er-zeroormore-end"));
-        assert!(defs.contains("er-exactlyone-start"));
-        assert!(defs.contains("er-zeroorone-start"));
-        assert!(defs.contains("er-oneormore-start"));
-        assert!(defs.contains("er-zeroormore-start"));
-    }
 }

@@ -1,7 +1,7 @@
 use crate::grid::Grid;
 use crate::render::c4_shapes::c4_edge_markers;
 use crate::render::class_shapes::class_edge_markers;
-use crate::render::er_shapes::er_edge_markers;
+use crate::render::er_glyphs::{render_glyph, GlyphEnd, GLYPH_LENGTH};
 use crate::routing::astar::GridPoint;
 use trellis_parser::{ArrowHead, Edge, EdgeStyle};
 
@@ -147,6 +147,101 @@ fn marker_attr(arrow_head: ArrowHead) -> &'static str {
     }
 }
 
+/// Unit vector pointing from `from` toward `to`. Returns `(0,0)` for coincident points.
+fn unit_vector(from: &Point, to: &Point) -> (f64, f64) {
+    let d = distance(from, to);
+    if d < 0.001 {
+        return (0.0, 0.0);
+    }
+    ((to.x - from.x) / d, (to.y - from.y) / d)
+}
+
+/// Shorten a polyline from the start and/or end by `trim_start` / `trim_end` pixels.
+///
+/// Trimming walks inward segment-by-segment, consuming full segments when the
+/// trim distance exceeds the segment length. The resulting polyline always
+/// preserves the interior bends of the original.
+fn trim_polyline(points: &[Point], trim_start: f64, trim_end: f64) -> Vec<Point> {
+    if points.len() < 2 {
+        return points.to_vec();
+    }
+
+    let mut pts = points.to_vec();
+
+    // Trim from the start
+    let mut remaining = trim_start;
+    while remaining > 0.0 && pts.len() >= 2 {
+        let seg_len = distance(&pts[0], &pts[1]);
+        if seg_len > remaining + 0.001 {
+            pts[0] = move_towards(&pts[0], &pts[1], remaining);
+            break;
+        }
+        remaining -= seg_len;
+        pts.remove(0);
+    }
+
+    // Trim from the end
+    let mut remaining = trim_end;
+    while remaining > 0.0 && pts.len() >= 2 {
+        let last = pts.len() - 1;
+        let seg_len = distance(&pts[last], &pts[last - 1]);
+        if seg_len > remaining + 0.001 {
+            pts[last] = move_towards(&pts[last], &pts[last - 1], remaining);
+            break;
+        }
+        remaining -= seg_len;
+        pts.pop();
+    }
+
+    pts
+}
+
+/// Render ER cardinality glyphs at either end of an edge and return
+/// `(svg_fragment, trim_start, trim_end)`.
+///
+/// `trim_start` / `trim_end` are the amounts the path line should be shortened
+/// on each end so the stroke does not protrude through the glyph.
+fn render_er_glyphs(edge: &Edge, points: &[Point]) -> (String, f64, f64) {
+    if points.len() < 2 {
+        return (String::new(), 0.0, 0.0);
+    }
+
+    let mut svg = String::new();
+    let mut trim_start = 0.0;
+    let mut trim_end = 0.0;
+
+    if let Some(card) = edge.er_source_card {
+        // At the start, the "into box" direction is opposite the outgoing tangent.
+        let tangent = unit_vector(&points[0], &points[1]);
+        let into_box = (-tangent.0, -tangent.1);
+        let anchor_world = (points[0].x, points[0].y);
+        // The glyph occupies GLYPH_LENGTH pixels along the line. We draw the
+        // glyph with its canonical origin at the path's first drawn point —
+        // i.e., after trimming — so the anchor is GLYPH_LENGTH into the path.
+        let anchor = (
+            anchor_world.0 + tangent.0 * GLYPH_LENGTH,
+            anchor_world.1 + tangent.1 * GLYPH_LENGTH,
+        );
+        svg.push_str(&render_glyph(card, anchor, into_box, GlyphEnd::Start));
+        trim_start = GLYPH_LENGTH;
+    }
+
+    if let Some(card) = edge.er_target_card {
+        let last = points.len() - 1;
+        let tangent = unit_vector(&points[last - 1], &points[last]);
+        let into_box = tangent;
+        let anchor_world = (points[last].x, points[last].y);
+        let anchor = (
+            anchor_world.0 - tangent.0 * GLYPH_LENGTH,
+            anchor_world.1 - tangent.1 * GLYPH_LENGTH,
+        );
+        svg.push_str(&render_glyph(card, anchor, into_box, GlyphEnd::End));
+        trim_end = GLYPH_LENGTH;
+    }
+
+    (svg, trim_start, trim_end)
+}
+
 /// Render a single routed edge as an SVG path element.
 pub fn render_edge(
     edge: &Edge,
@@ -170,16 +265,27 @@ pub fn render_edge(
     // Simplify: remove collinear intermediate points
     let simplified = simplify_path(&world_points);
 
-    // Generate SVG path with rounded corners
-    let path_data = generate_rounded_polyline(&simplified, corner_radius);
-
     let stroke = stroke_attrs(edge.style);
 
-    // Use diagram-specific markers when available, otherwise use arrow_head marker
+    let is_er = edge.er_source_card.is_some() || edge.er_target_card.is_some();
+
+    // Use diagram-specific markers when available, otherwise use arrow_head marker.
+    // ER is special: it renders glyphs inline as shapes (Option B) and trims
+    // the path so the stroke doesn't protrude through the glyph.
+    if is_er {
+        let (glyph_svg, trim_start, trim_end) = render_er_glyphs(edge, &simplified);
+        let trimmed = trim_polyline(&simplified, trim_start, trim_end);
+        let path_data = generate_rounded_polyline(&trimmed, corner_radius);
+        return format!(
+            "<path d=\"{}\" fill=\"none\" stroke=\"#555\" {}/>{}",
+            path_data, stroke, glyph_svg
+        );
+    }
+
+    let path_data = generate_rounded_polyline(&simplified, corner_radius);
+
     let (marker_start, marker_end) = if edge.class_edge_type.is_some() {
         class_edge_markers(edge)
-    } else if edge.er_source_card.is_some() || edge.er_target_card.is_some() {
-        er_edge_markers(edge)
     } else if edge.c4_rel_type.is_some() {
         c4_edge_markers(edge)
     } else {
@@ -191,6 +297,7 @@ pub fn render_edge(
         path_data, stroke, marker_start, marker_end
     )
 }
+
 
 /// Render a fallback straight-line edge when A* routing failed.
 pub fn render_fallback_edge(edge: &Edge, from_x: f64, from_y: f64, to_x: f64, to_y: f64) -> String {

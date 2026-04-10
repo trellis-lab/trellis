@@ -9,7 +9,7 @@ use crate::render::c4_shapes::{c4_marker_defs, render_c4_node};
 use crate::render::class_shapes::{class_marker_defs, render_class_node};
 use crate::render::crossing::render_crossings;
 use crate::render::edges::{arrow_marker_defs, render_edge, render_fallback_edge};
-use crate::render::er_shapes::{er_marker_defs, render_er_node};
+use crate::render::er_shapes::render_er_node;
 use crate::render::grid::render_grid_dot;
 use crate::render::nodes::{render_node, render_nodes};
 use crate::render::subgraph::render_subgraph_backgrounds;
@@ -71,10 +71,6 @@ pub fn build_svg(
     svg.push('\n');
     if graph.diagram_type == DiagramType::ClassDiagram {
         svg.push_str(class_marker_defs());
-        svg.push('\n');
-    }
-    if graph.diagram_type == DiagramType::ErDiagram {
-        svg.push_str(er_marker_defs());
         svg.push('\n');
     }
     if graph.diagram_type == DiagramType::C4Diagram {
