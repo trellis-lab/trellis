@@ -59,10 +59,12 @@ pub fn build_svg(
     ));
 
     // Show grid
-    for i in 0..grid.rows {
-        for j in 0..grid.cols {
-            let dot_svg = render_grid_dot(i, j, grid);
-            svg.push_str(&dot_svg);
+    if config.show_grid {
+        for i in 0..grid.rows {
+            for j in 0..grid.cols {
+                let dot_svg = render_grid_dot(i, j, grid);
+                svg.push_str(&dot_svg);
+            }
         }
     }
 

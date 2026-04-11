@@ -1,0 +1,155 @@
+# Trellis Default Configuration
+#
+# This file contains all available configuration options with their default values.
+# Trellis is a Mermaid-compatible diagram renderer using VLSI maze routing.
+# For more information, see: ./docs/trellis-spec.md
+
+# ─────────────────────────────────────────────────────────────────────────────
+# GRID AND LAYOUT CONFIGURATION
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Grid cell size in pixels. Smaller values enable finer routing precision but
+# increase memory and computation time.
+cell_size = 10
+
+# Density factor for grid calculation. Controls the ratio of grid extent to
+# node sizes. Higher values provide more space for routing.
+density_factor = 1.5
+
+# Safety multiplier for grid extent. Applied after density_factor to ensure
+# sufficient buffer space around nodes. Higher values reduce edge spillout.
+safety_multiplier = 1.2
+
+# Corner radius for rounded edges in pixels. Applied to all edge path curves.
+corner_radius = 8.0
+
+# ─────────────────────────────────────────────────────────────────────────────
+# A* ROUTING COST CONFIGURATION
+# ─────────────────────────────────────────────────────────────────────────────
+#
+# These costs control how A* pathfinding prioritizes different routing choices.
+# Higher costs discourage that behavior. Costs are relative to each other.
+#
+# [routing_costs]
+
+# Base cost for each cell traversal. Foundation for all path scoring.
+base_cost = 1.0
+
+# Cost for each edge bend (90° turn). Higher values encourage straighter paths.
+bend_cost = 2.0
+
+# Cost for routing parallel to node boundaries (moving alongside a connector).
+# Forces edges to approach/leave nodes perpendicularly.
+perpendicular_cost = 6.0
+
+# Cost for routing adjacent to other committed edges. Encourages bundling when
+# beneficial but allows crossings to avoid severe congestion.
+adjacent_cost = 0.5
+
+# Cost for crossing another edge. High values minimize crossings but may force
+# longer or more bent paths. Balanced against orthogonal layout goals.
+crossing_cost = 10.0
+
+# Cost for entering blocked cells (occupied by node boundaries). Very high to
+# prevent collision, but reachable when necessary (deadlock resolver).
+blocked_cost = 1000.0
+
+# ─────────────────────────────────────────────────────────────────────────────
+# PORT ASSIGNMENT ALGORITHM CONFIGURATION
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Port assignment algorithm. Determines which connector (edge attachment point)
+# is chosen for each node side. Controls edge crossing density before routing.
+#
+# Options:
+#   - Default          Simple angle-based assignment (no rebalancing)
+#   - Barycenter       Weighted average position of target neighbourhood
+#   - Median           Median position (robust to outliers)
+#   - CrossingGreedy   Minimizes port inversions that cause crossings
+#   - IterativeSwap    Routes, finds crossings, swaps ports, re-routes (multi-round)
+#   - TwoPhase         Fast crossing estimate + targeted re-route (multi-round)
+#   - Auto             Analyzes graph stats and selects best strategy automatically
+#
+port_assignment = "Default"
+
+# Maximum port refinement rounds for multi-round algorithms (IterativeSwap, TwoPhase).
+# After each round of routing, edges at crossing ports are swapped and re-routed.
+# 0 = disabled (use single-round strategy only).
+port_refinement_rounds = 0
+
+# Flow-direction bias for port side selection. Influences connector placement
+# to align with graph flow direction.
+#
+# Options:
+#   - Auto   Apply bias for Sugiyama (TB/LR/BT/RL), not for force-directed or C4
+#   - Strong Always apply directional bias regardless of diagram type
+#   - None   Use original uniform 90° quadrants (old behaviour)
+#
+flow_bias = "Auto"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# ROUTING QUALITY IMPROVEMENT CONFIGURATION
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Bend threshold that controls quality-driven rerouting (Phase 5a).
+# Reroutes edges with excessive bends through all side combinations to find
+# better alternatives.
+#
+# Options:
+#   - Disabled      Quality reroute never runs
+#   - Fixed(n)      Reroutes any edge with more than n bends (e.g., "Fixed(4)")
+#   - Auto          Computes max(2, median_bends + 2) at runtime (default)
+#                   Targets only the long tail of outliers
+#
+bend_threshold = "Auto"
+
+# Enable crossing-reduction rerouting (Phase 5c). When true, edges with at least
+# one geometric crossing are ripped up and re-routed through all 16 source/target
+# side combinations. Kept only if it reduces total crossing count.
+crossing_reroute = true
+
+# ─────────────────────────────────────────────────────────────────────────────
+# RENDERING CONFIGURATION
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Render line jumps (crossing indicators). When true, draws semicircular arcs
+# over crossing edges to indicate they don't actually intersect.
+render_crossings = false
+
+# Show the underlying grid overlay in SVG output. Useful for debugging routing
+# and grid configuration. Never rendered in PNG export.
+show_grid = true
+
+# Display edge labels/captions in the diagram. When false, all edge labels are
+# omitted from output.
+show_edge_labels = false
+
+# ─────────────────────────────────────────────────────────────────────────────
+# DECOMPOSITION CONFIGURATION (for large graphs)
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Decomposition mode for handling large graphs. Splits problem into subgraphs
+# to reduce memory/time complexity.
+#
+# Options:
+#   - None   No decomposition (handles entire graph at once)
+#   - Single Decompose once into independent subgraphs
+#   - Multi  Iterative decomposition with refinement (future)
+#
+decomposition = "None"
+
+# Threshold (node count) that triggers decomposition. Applied only when
+# decomposition mode is not "None".
+decomposition_threshold = 50
+
+# ─────────────────────────────────────────────────────────────────────────────
+# DIAGNOSTIC CONFIGURATION
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Print diagnostic metrics to stderr. When true, emits messages such as:
+#   - Auto strategy selection rationale
+#   - Bend threshold computation
+#   - Decomposition decisions
+#
+# Controlled by the CLI --metrics flag. Does not affect normal SVG/PNG output.
+print_metrics = false
