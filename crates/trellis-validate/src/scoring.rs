@@ -30,7 +30,7 @@ pub struct EdgeQuality {
     pub bends: usize,
     /// `actual_path_length / manhattan_distance`.  1.0 is theoretically optimal;
     /// values > 1 indicate detour due to obstacles or congestion.
-    /// `f64::INFINITY` when the manhattan distance is zero (source == target).
+    /// 1.0 when the manhattan distance is zero (source == target, self-loop).
     pub detour_factor: f64,
     /// Number of grid cells on this edge's path that are marked as crossing points.
     pub crossings: usize,
@@ -74,7 +74,7 @@ pub fn score_edge(
     let detour_factor = if manhattan_distance > 0 {
         path_length as f64 / manhattan_distance as f64
     } else {
-        f64::INFINITY
+        1.0
     };
 
     let crossings = count_edge_crossings(edge_idx, path, grid);
@@ -362,5 +362,21 @@ mod tests {
         assert_eq!(scores.len(), 2);
         assert_eq!(scores[0].source, "A");
         assert_eq!(scores[1].source, "C");
+    }
+
+    #[test]
+    fn self_loop_detour_factor_is_finite() {
+        // Test that a self-loop (source == target) produces a finite detour_factor
+        // Path with 1 point (self-loop), manhattan distance = 0
+        let path = make_path(vec![(0, 0)], 0);
+        let ports = make_ports(0, 0, 0, 0);  // same position
+        let grid = Grid::new(5, 5, 10, 0, 0);
+        let edge = make_edge("A", "A");
+
+        let q = score_edge(0, &edge, &path, &ports, &grid);
+
+        assert!(q.detour_factor.is_finite(), "detour_factor should be finite");
+        assert_eq!(q.manhattan_distance, 0);
+        assert_eq!(q.detour_factor, 1.0);
     }
 }

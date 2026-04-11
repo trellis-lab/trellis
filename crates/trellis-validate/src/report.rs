@@ -344,4 +344,28 @@ mod tests {
         assert!(json.contains("\"path_cells\""));
         assert!(json.contains("X-->Y"));
     }
+
+    #[test]
+    fn self_loop_edge_serialises_with_finite_detour() {
+        // Test that a self-loop edge (A-->A) produces valid JSON with detour_factor=1.0
+        let graph = make_graph_with_edges(&[("A", "A")]);
+        let mut paths = HashMap::new();
+        paths.insert(0, make_path(vec![(0, 0)], 0));
+        let rr = make_routing_result(paths);
+        let mut pa = HashMap::new();
+        pa.insert(0, make_ports(0, 0, 0, 0));  // same position
+        let grid = Grid::new(5, 5, 10, 0, 0);
+
+        let report = generate_report("self-loop.mmd", &graph, &rr, &pa, &grid);
+        let json = serde_json::to_string_pretty(&report).expect("serialisation failed");
+
+        // Verify JSON is valid and contains expected fields
+        assert!(json.contains("\"detour_factor\": 1.0"), "detour_factor should be 1.0, got:\n{}", json);
+        assert!(!json.contains("\"detour_factor\": null"), "detour_factor should not be null");
+
+        // Verify the edge report has the correct detour_factor
+        assert_eq!(report.edges.len(), 1);
+        assert_eq!(report.edges[0].detour_factor, 1.0);
+        assert!(report.edges[0].detour_factor.is_finite());
+    }
 }
