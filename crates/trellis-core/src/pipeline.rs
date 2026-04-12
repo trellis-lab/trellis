@@ -8,7 +8,7 @@ use crate::{
         compute_topo_rank, create_port_assigner, needs_refinement, straight_edge_prepass,
         EdgePorts, PortAssignmentContext,
     },
-    routing::{self, RoutingResult},
+    routing::{self, commit::reconcile_crossings, RoutingResult},
     types::*,
 };
 use trellis_parser::{DiagramType, Graph};
@@ -185,6 +185,11 @@ fn run_pipeline(
         );
         routing_result.total_bends = routing_result.paths.values().map(|p| p.bend_count).sum();
     }
+
+    // Phase 5e: Reconcile crossing metadata — rebuild grid crossing flags from
+    // authoritative paths after all reroute passes. Ensures the grid reflects
+    // actual committed paths (guards against stale flags from rerouting).
+    reconcile_crossings(&mut grid, &routing_result.paths);
 
     // Collect metrics
     let routed_count = routing_result.paths.len();

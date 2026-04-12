@@ -1,7 +1,10 @@
+use std::collections::HashSet;
+
 use crate::grid::Grid;
 use crate::render::c4_shapes::c4_edge_markers;
 use crate::render::class_shapes::class_edge_markers;
 use crate::render::er_glyphs::{render_glyph, GlyphEnd, GLYPH_LENGTH};
+use crate::render::segments::{build_edge_segments, segments_to_svg_path};
 use crate::routing::astar::GridPoint;
 use trellis_parser::{ArrowHead, Edge, EdgeStyle};
 
@@ -243,36 +246,37 @@ fn render_er_glyphs(edge: &Edge, points: &[Point]) -> (String, f64, f64) {
 }
 
 /// Render a single routed edge as an SVG path element.
+///
+/// `crossing_set` contains the grid coordinates where this edge crosses another;
+/// those cells are rendered as semicircular hop arcs integrated into the path.
+/// Pass an empty `HashSet` to suppress hop arcs (e.g. when `render_crossings`
+/// is disabled in config).
 pub fn render_edge(
     edge: &Edge,
     grid_points: &[GridPoint],
     grid: &Grid,
     corner_radius: f64,
+    crossing_set: &HashSet<(i64, i64)>,
 ) -> String {
     if grid_points.len() < 2 {
         return String::new();
     }
 
-    // Convert grid coordinates to world (pixel) coordinates
-    let world_points: Vec<Point> = grid_points
-        .iter()
-        .map(|gp| {
-            let (x, y) = grid.grid_to_world(gp.row as usize, gp.col as usize);
-            Point { x, y }
-        })
-        .collect();
-
-    // Simplify: remove collinear intermediate points
-    let simplified = simplify_path(&world_points);
-
     let stroke = stroke_attrs(edge.style);
 
     let is_er = edge.er_source_card.is_some() || edge.er_target_card.is_some();
 
-    // Use diagram-specific markers when available, otherwise use arrow_head marker.
-    // ER is special: it renders glyphs inline as shapes (Option B) and trims
-    // the path so the stroke doesn't protrude through the glyph.
+    // ER edges use a separate trimming pipeline for crow's-foot glyphs.
+    // Hop arc rendering is not yet applied to ER edges (Phase 4 polish).
     if is_er {
+        let world_points: Vec<Point> = grid_points
+            .iter()
+            .map(|gp| {
+                let (x, y) = grid.grid_to_world(gp.row as usize, gp.col as usize);
+                Point { x, y }
+            })
+            .collect();
+        let simplified = simplify_path(&world_points);
         let (glyph_svg, trim_start, trim_end) = render_er_glyphs(edge, &simplified);
         let trimmed = trim_polyline(&simplified, trim_start, trim_end);
         let path_data = generate_rounded_polyline(&trimmed, corner_radius);
@@ -282,7 +286,9 @@ pub fn render_edge(
         );
     }
 
-    let path_data = generate_rounded_polyline(&simplified, corner_radius);
+    // Standard edges: use the segment pipeline which integrates hop arcs.
+    let segments = build_edge_segments(grid_points, grid, crossing_set, corner_radius);
+    let path_data = segments_to_svg_path(&segments);
 
     let (marker_start, marker_end) = if edge.class_edge_type.is_some() {
         class_edge_markers(edge)

@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use crate::config::TrellisConfig;
 use crate::grid::Grid;
@@ -7,12 +7,12 @@ use crate::placement::subgraph::VIRTUAL_PREFIX;
 use crate::render::c4_boundary::render_c4_boundaries;
 use crate::render::c4_shapes::{c4_marker_defs, render_c4_node};
 use crate::render::class_shapes::{class_marker_defs, render_class_node};
-use crate::render::crossing::render_crossings;
 use crate::render::edges::{arrow_marker_defs, render_edge, render_fallback_edge};
 use crate::render::er_shapes::render_er_node;
 use crate::render::grid::render_grid_dot;
 use crate::render::nodes::{render_node, render_nodes};
 use crate::render::subgraph::render_subgraph_backgrounds;
+use crate::routing::commit::compute_crossing_points;
 use crate::routing::RoutingResult;
 use crate::types::{BoundingBox, SubgraphTree};
 use trellis_parser::{DiagramType, Graph, NodeShape};
@@ -116,6 +116,18 @@ pub fn build_svg(
         }
     }
 
+    // Compute per-edge crossing sets from final committed paths.
+    // When render_crossings is disabled, pass empty sets so no hop arcs appear.
+    let empty_set: HashSet<(i64, i64)> = HashSet::new();
+    let crossing_sets: HashMap<usize, HashSet<(i64, i64)>> = if config.render_crossings {
+        compute_crossing_points(&routing_result.paths, grid)
+            .into_iter()
+            .map(|(k, v)| (k, v.into_iter().collect()))
+            .collect()
+    } else {
+        HashMap::new()
+    };
+
     // --- Edges ---
     svg.push_str("<!-- Edges -->\n");
     svg.push_str("<g class=\"edges\">\n");
@@ -123,7 +135,9 @@ pub fn build_svg(
     // Routed edges
     for (edge_idx, path) in &routing_result.paths {
         if let Some(edge) = graph.edges.get(*edge_idx) {
-            let edge_svg = render_edge(edge, &path.points, grid, config.corner_radius);
+            let crossing_set = crossing_sets.get(edge_idx).unwrap_or(&empty_set);
+            let edge_svg =
+                render_edge(edge, &path.points, grid, config.corner_radius, crossing_set);
             svg.push_str("  ");
             svg.push_str(&edge_svg);
             svg.push('\n');
@@ -146,21 +160,6 @@ pub fn build_svg(
     }
 
     svg.push_str("</g>\n");
-
-    // --- Crossing indicators (on top of edges, under nodes) ---
-    if config.render_crossings {
-        let crossings_svg = render_crossings(grid);
-        if !crossings_svg.is_empty() {
-            svg.push_str("<!-- Crossings -->\n");
-            svg.push_str("<g class=\"crossings\">\n");
-            for line in crossings_svg.lines() {
-                svg.push_str("  ");
-                svg.push_str(line);
-                svg.push('\n');
-            }
-            svg.push_str("</g>\n");
-        }
-    }
 
     // --- Nodes (on top of edges) ---
     svg.push_str("<!-- Nodes -->\n");
