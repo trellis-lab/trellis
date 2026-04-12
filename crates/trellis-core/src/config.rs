@@ -15,7 +15,7 @@ fn default_corner_radius() -> f64 {
     8.0
 }
 fn default_render_crossings() -> bool {
-    false
+    true
 }
 fn default_show_grid() -> bool {
     true
@@ -297,7 +297,7 @@ mod tests {
         let config: TrellisConfig = serde_json::from_str("{}").unwrap();
         assert!(matches!(
             config.port_assignment,
-            PortAssignmentStrategy::Default
+            PortAssignmentStrategy::Auto
         ));
     }
 
