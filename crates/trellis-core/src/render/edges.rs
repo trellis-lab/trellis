@@ -1,5 +1,6 @@
 use std::collections::HashSet;
 
+use crate::config::CrossingStyle;
 use crate::grid::Grid;
 use crate::render::c4_shapes::c4_edge_markers;
 use crate::render::class_shapes::class_edge_markers;
@@ -247,16 +248,16 @@ fn render_er_glyphs(edge: &Edge, points: &[Point]) -> (String, f64, f64) {
 
 /// Render a single routed edge as an SVG path element.
 ///
-/// `crossing_set` contains the grid coordinates where this edge crosses another;
-/// those cells are rendered as semicircular hop arcs integrated into the path.
-/// Pass an empty `HashSet` to suppress hop arcs (e.g. when `render_crossings`
-/// is disabled in config).
+/// `crossing_set` contains the grid coordinates where this edge crosses another.
+/// `crossing_style` controls decoration at those cells; use `CrossingStyle::None`
+/// to pass crossings straight through without any special rendering.
 pub fn render_edge(
     edge: &Edge,
     grid_points: &[GridPoint],
     grid: &Grid,
     corner_radius: f64,
     crossing_set: &HashSet<(i64, i64)>,
+    crossing_style: CrossingStyle,
 ) -> String {
     if grid_points.len() < 2 {
         return String::new();
@@ -286,8 +287,8 @@ pub fn render_edge(
         );
     }
 
-    // Standard edges: use the segment pipeline which integrates hop arcs.
-    let segments = build_edge_segments(grid_points, grid, crossing_set, corner_radius);
+    // Standard edges: use the segment pipeline which integrates crossing decorations.
+    let segments = build_edge_segments(grid_points, grid, crossing_set, corner_radius, crossing_style);
     let path_data = segments_to_svg_path(&segments);
 
     let (marker_start, marker_end) = if edge.class_edge_type.is_some() {

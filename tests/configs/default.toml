@@ -112,9 +112,15 @@ crossing_reroute = true
 # RENDERING CONFIGURATION
 # ─────────────────────────────────────────────────────────────────────────────
 
-# Render line jumps (crossing indicators). When true, draws semicircular arcs
-# over crossing edges to indicate they don't actually intersect.
-render_crossings = false
+# Crossing decoration style. Controls how edge crossings are rendered.
+#
+# Options:
+#   - None         Straight lines pass through each other — no decoration (default)
+#   - Arc          Semicircular hop arc: _͡_  (second occupant hops over the first)
+#   - Rectangular  Square bridge: _|‾|_  (orthogonal bump, same side as arc bulge)
+#   - Skip         Gap/skip: -| |-  (second occupant's stroke breaks at crossing)
+#
+crossing_style = "None"
 
 # Show the underlying grid overlay in SVG output. Useful for debugging routing
 # and grid configuration. Never rendered in PNG export.

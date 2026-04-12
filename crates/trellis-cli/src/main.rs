@@ -1125,7 +1125,7 @@ CONFIG FILE
     cell_size        = 10      # grid cell size in pixels
     corner_radius    = 8.0     # rounded edge corners
     show_edge_labels = true    # show edge captions
-    render_crossings = false   # draw line-jump bridges
+    crossing_style = \"Arc\"    # crossing decoration: None | Arc | Rectangular | Skip
 
     [routing_costs]
     bend_cost     = 2.0

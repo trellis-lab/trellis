@@ -14,8 +14,8 @@ fn default_safety_multiplier() -> f64 {
 fn default_corner_radius() -> f64 {
     8.0
 }
-fn default_render_crossings() -> bool {
-    true
+fn default_crossing_style() -> CrossingStyle {
+    CrossingStyle::None
 }
 fn default_show_grid() -> bool {
     true
@@ -100,9 +100,9 @@ pub struct TrellisConfig {
     #[serde(default = "default_corner_radius")]
     pub corner_radius: f64,
 
-    /// Enable/disable rendering line jumps
-    #[serde(default = "default_render_crossings")]
-    pub render_crossings: bool,
+    /// Crossing rendering style — how edge crossings are drawn.
+    #[serde(default = "default_crossing_style")]
+    pub crossing_style: CrossingStyle,
 
     /// Enable/disable rendering of the grid system
     #[serde(default = "default_show_grid")]
@@ -214,6 +214,20 @@ pub enum BendThreshold {
     Auto,
 }
 
+/// How edge crossings are rendered.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+pub enum CrossingStyle {
+    /// Straight lines pass through each other — no special decoration (default).
+    #[default]
+    None,
+    /// Semicircular hop arc: `_͡_` — the second occupant hops over the first.
+    Arc,
+    /// Rectangular bump: `_|‾|_` — square bridge orthogonal to travel direction.
+    Rectangular,
+    /// Gap/skip: `-| |-` — the second occupant's stroke is broken at the crossing.
+    Skip,
+}
+
 /// Decomposition mode for handling large graphs
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, Default)]
 pub enum DecompositionMode {
@@ -233,7 +247,7 @@ impl Default for TrellisConfig {
             decomposition: DecompositionMode::None,
             decomposition_threshold: default_decomposition_threshold(),
             corner_radius: default_corner_radius(),
-            render_crossings: default_render_crossings(),
+            crossing_style: default_crossing_style(),
             show_grid: default_show_grid(),
             show_edge_labels: default_show_edge_labels(),
             port_assignment: default_port_assignment(),
@@ -275,7 +289,7 @@ pub fn configuration_factory(config_type: ConfigurationType) -> TrellisConfig {
             decomposition: DecompositionMode::None,
             decomposition_threshold: 50,
             corner_radius: 8.0,
-            render_crossings: true,
+            crossing_style: CrossingStyle::Arc,
             show_grid: false,
             show_edge_labels: true,
             port_assignment: PortAssignmentStrategy::Default,

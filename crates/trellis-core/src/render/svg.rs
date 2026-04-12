@@ -117,16 +117,18 @@ pub fn build_svg(
     }
 
     // Compute per-edge crossing sets from final committed paths.
-    // When render_crossings is disabled, pass empty sets so no hop arcs appear.
+    // When crossing_style is None, skip the computation (no decorations needed).
+    use crate::config::CrossingStyle;
     let empty_set: HashSet<(i64, i64)> = HashSet::new();
-    let crossing_sets: HashMap<usize, HashSet<(i64, i64)>> = if config.render_crossings {
-        compute_crossing_points(&routing_result.paths, grid)
-            .into_iter()
-            .map(|(k, v)| (k, v.into_iter().collect()))
-            .collect()
-    } else {
-        HashMap::new()
-    };
+    let crossing_sets: HashMap<usize, HashSet<(i64, i64)>> =
+        if config.crossing_style != CrossingStyle::None {
+            compute_crossing_points(&routing_result.paths, grid)
+                .into_iter()
+                .map(|(k, v)| (k, v.into_iter().collect()))
+                .collect()
+        } else {
+            HashMap::new()
+        };
 
     // --- Edges ---
     svg.push_str("<!-- Edges -->\n");
@@ -136,8 +138,14 @@ pub fn build_svg(
     for (edge_idx, path) in &routing_result.paths {
         if let Some(edge) = graph.edges.get(*edge_idx) {
             let crossing_set = crossing_sets.get(edge_idx).unwrap_or(&empty_set);
-            let edge_svg =
-                render_edge(edge, &path.points, grid, config.corner_radius, crossing_set);
+            let edge_svg = render_edge(
+                edge,
+                &path.points,
+                grid,
+                config.corner_radius,
+                crossing_set,
+                config.crossing_style,
+            );
             svg.push_str("  ");
             svg.push_str(&edge_svg);
             svg.push('\n');
