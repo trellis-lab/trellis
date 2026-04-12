@@ -40,18 +40,16 @@ pub fn place_c4_diagram(graph: &mut Graph) {
         return;
     }
 
-    // Build a node_id → boundary_id lookup from graph.subgraphs
+    // Build a node_id → immediate-parent boundary_id lookup
     let containment = build_containment_map(graph);
 
-    // ── Classify nodes ───────────────────────────────────────────────────────
+    // ── Classify nodes into top-level vs boundary groups ────────────────────
     let mut top_level: Vec<usize> = Vec::new();
-    // Keep boundaries in declaration order (same order as graph.subgraphs)
-    let mut boundary_order: Vec<String> = Vec::new();
     let mut boundary_map: HashMap<String, Vec<usize>> = HashMap::new();
 
-    // Pre-populate boundary_order from the subgraph list (preserves parse order)
+    // Pre-populate boundary_map with empty vecs for every subgraph
     for sg in &graph.subgraphs {
-        collect_subgraph_order(sg, &mut boundary_order, &mut boundary_map);
+        collect_boundary_map(sg, &mut boundary_map);
     }
 
     for (i, node) in graph.nodes.iter().enumerate() {
@@ -85,28 +83,20 @@ pub fn place_c4_diagram(graph: &mut Graph) {
         current_y += row_flow::ELEM_GAP_Y;
     }
 
-    // ── Place each boundary group below the top-level elements ───────────────
-    for bid in &boundary_order {
-        let contained = match boundary_map.get(bid) {
-            Some(v) if !v.is_empty() => v.clone(),
-            _ => continue,
-        };
-
-        // Top padding only — the label strip is at the bottom of the frame.
-        current_y += BOUNDARY_PADDING;
-
-        let row_heights = row_flow::compute_row_heights(&graph.nodes, &contained, shapes_per_row);
-        current_y = row_flow::place_in_rows(
+    // ── Recursively place each top-level boundary ────────────────────────────
+    // Clone subgraphs to avoid borrow conflict with graph.nodes mutation.
+    let top_level_sgs: Vec<Subgraph> = graph.subgraphs.clone();
+    for sg in &top_level_sgs {
+        current_y = place_boundary_recursive(
+            sg,
             graph,
-            &contained,
-            MARGIN_X + BOUNDARY_PADDING,
+            &boundary_map,
+            MARGIN_X,
             current_y,
             shapes_per_row,
-            &row_heights,
+            0,
         );
-
-        // Bottom padding before the next group (or end of diagram)
-        current_y += BOUNDARY_PADDING + row_flow::ELEM_GAP_Y;
+        current_y += row_flow::ELEM_GAP_Y;
     }
 }
 
@@ -164,18 +154,64 @@ fn collect_sg_nodes(sg: &Subgraph, map: &mut HashMap<String, String>) {
     }
 }
 
-/// Pre-populate `boundary_order` and `boundary_map` from the subgraph list
-/// so that boundaries appear in declaration order during placement.
-fn collect_subgraph_order(
-    sg: &Subgraph,
-    order: &mut Vec<String>,
-    map: &mut HashMap<String, Vec<usize>>,
-) {
-    order.push(sg.id.clone());
+/// Pre-populate `boundary_map` with empty vecs for every subgraph in the tree.
+fn collect_boundary_map(sg: &Subgraph, map: &mut HashMap<String, Vec<usize>>) {
     map.insert(sg.id.clone(), Vec::new());
     for child in &sg.subgraphs {
-        collect_subgraph_order(child, order, map);
+        collect_boundary_map(child, map);
     }
+}
+
+/// Recursively place one boundary group and all its nested sub-boundaries.
+///
+/// `depth` controls the additional x-indent per nesting level.
+/// Returns the y-coordinate of the bottom edge of this boundary's content
+/// (after all children are placed, before the outer frame's bottom padding).
+fn place_boundary_recursive(
+    sg: &Subgraph,
+    graph: &mut Graph,
+    boundary_map: &HashMap<String, Vec<usize>>,
+    start_x: f64,
+    start_y: f64,
+    shapes_per_row: usize,
+    depth: usize,
+) -> f64 {
+    let inner_x = start_x + BOUNDARY_PADDING * (depth as f64 + 1.0);
+    let mut current_y = start_y + BOUNDARY_PADDING;
+
+    // Place direct-child nodes of this boundary
+    let direct = boundary_map.get(&sg.id).cloned().unwrap_or_default();
+    if !direct.is_empty() {
+        let row_heights = row_flow::compute_row_heights(&graph.nodes, &direct, shapes_per_row);
+        current_y = row_flow::place_in_rows(
+            graph,
+            &direct,
+            inner_x,
+            current_y,
+            shapes_per_row,
+            &row_heights,
+        );
+        if !sg.subgraphs.is_empty() {
+            current_y += row_flow::ELEM_GAP_Y;
+        }
+    }
+
+    // Recurse into child sub-boundaries
+    for child_sg in &sg.subgraphs.clone() {
+        current_y = place_boundary_recursive(
+            child_sg,
+            graph,
+            boundary_map,
+            inner_x,
+            current_y,
+            shapes_per_row,
+            0,
+        );
+        current_y += row_flow::ELEM_GAP_Y;
+    }
+
+    // Bottom padding + label strip space
+    current_y + BOUNDARY_PADDING
 }
 
 /// Flatten a `Subgraph` tree into `SubgraphTreeNode` entries in the `SubgraphTree`.

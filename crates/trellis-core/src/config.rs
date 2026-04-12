@@ -30,7 +30,7 @@ fn default_decomposition_threshold() -> usize {
     50
 }
 fn default_port_assignment() -> PortAssignmentStrategy {
-    PortAssignmentStrategy::Default
+    PortAssignmentStrategy::Auto
 }
 fn default_port_refinement_rounds() -> usize {
     0
