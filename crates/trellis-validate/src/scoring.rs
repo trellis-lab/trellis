@@ -369,13 +369,16 @@ mod tests {
         // Test that a self-loop (source == target) produces a finite detour_factor
         // Path with 1 point (self-loop), manhattan distance = 0
         let path = make_path(vec![(0, 0)], 0);
-        let ports = make_ports(0, 0, 0, 0);  // same position
+        let ports = make_ports(0, 0, 0, 0); // same position
         let grid = Grid::new(5, 5, 10, 0, 0);
         let edge = make_edge("A", "A");
 
         let q = score_edge(0, &edge, &path, &ports, &grid);
 
-        assert!(q.detour_factor.is_finite(), "detour_factor should be finite");
+        assert!(
+            q.detour_factor.is_finite(),
+            "detour_factor should be finite"
+        );
         assert_eq!(q.manhattan_distance, 0);
         assert_eq!(q.detour_factor, 1.0);
     }

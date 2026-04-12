@@ -171,5 +171,4 @@ mod tests {
         assert!(svg.contains("FK int user_id"));
         assert!(svg.contains("font-style=\"italic\""));
     }
-
 }

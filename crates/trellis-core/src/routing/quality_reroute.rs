@@ -326,8 +326,8 @@ fn save_and_free_cell(
 /// Restore a cell's original state after routing.
 fn restore_cell(grid: &mut Grid, point: GridPoint, original_state: Option<crate::grid::CellState>) {
     if let Some(state) = original_state {
-        let was_blocked_or_occupied = state == crate::grid::CellState::Blocked
-            || state == crate::grid::CellState::Occupied;
+        let was_blocked_or_occupied =
+            state == crate::grid::CellState::Blocked || state == crate::grid::CellState::Occupied;
         if was_blocked_or_occupied && grid.in_bounds(point.row, point.col) {
             if let Some(cell) = grid.get_mut(point.row as usize, point.col as usize) {
                 if cell.state != crate::grid::CellState::Occupied {
@@ -525,5 +525,4 @@ mod tests {
             "bends increased after quality reroute"
         );
     }
-
 }

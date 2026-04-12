@@ -288,7 +288,13 @@ pub fn render_edge(
     }
 
     // Standard edges: use the segment pipeline which integrates crossing decorations.
-    let segments = build_edge_segments(grid_points, grid, crossing_set, corner_radius, crossing_style);
+    let segments = build_edge_segments(
+        grid_points,
+        grid,
+        crossing_set,
+        corner_radius,
+        crossing_style,
+    );
     let path_data = segments_to_svg_path(&segments);
 
     let (marker_start, marker_end) = if edge.class_edge_type.is_some() {
@@ -304,7 +310,6 @@ pub fn render_edge(
         path_data, stroke, marker_start, marker_end
     )
 }
-
 
 /// Render a fallback straight-line edge when A* routing failed.
 pub fn render_fallback_edge(edge: &Edge, from_x: f64, from_y: f64, to_x: f64, to_y: f64) -> String {

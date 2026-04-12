@@ -353,15 +353,22 @@ mod tests {
         paths.insert(0, make_path(vec![(0, 0)], 0));
         let rr = make_routing_result(paths);
         let mut pa = HashMap::new();
-        pa.insert(0, make_ports(0, 0, 0, 0));  // same position
+        pa.insert(0, make_ports(0, 0, 0, 0)); // same position
         let grid = Grid::new(5, 5, 10, 0, 0);
 
         let report = generate_report("self-loop.mmd", &graph, &rr, &pa, &grid);
         let json = serde_json::to_string_pretty(&report).expect("serialisation failed");
 
         // Verify JSON is valid and contains expected fields
-        assert!(json.contains("\"detour_factor\": 1.0"), "detour_factor should be 1.0, got:\n{}", json);
-        assert!(!json.contains("\"detour_factor\": null"), "detour_factor should not be null");
+        assert!(
+            json.contains("\"detour_factor\": 1.0"),
+            "detour_factor should be 1.0, got:\n{}",
+            json
+        );
+        assert!(
+            !json.contains("\"detour_factor\": null"),
+            "detour_factor should not be null"
+        );
 
         // Verify the edge report has the correct detour_factor
         assert_eq!(report.edges.len(), 1);

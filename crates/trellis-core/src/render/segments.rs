@@ -98,13 +98,6 @@ fn move_towards(from: RenderPoint, to: RenderPoint, dist: f64) -> RenderPoint {
     }
 }
 
-fn midpoint(a: RenderPoint, b: RenderPoint) -> RenderPoint {
-    RenderPoint {
-        x: (a.x + b.x) / 2.0,
-        y: (a.y + b.y) / 2.0,
-    }
-}
-
 fn direction_sign(from: RenderPoint, to: RenderPoint) -> (i32, i32) {
     let eps = 0.001;
     let dx = to.x - from.x;
@@ -290,11 +283,7 @@ pub fn build_edge_segments(
                         .sqrt()
                         .max(0.001);
                     let (ux, uy) = (travel_dx / len, travel_dy / len);
-                    let (px, py) = if sweep == 0 {
-                        (uy, -ux)
-                    } else {
-                        (-uy, ux)
-                    };
+                    let (px, py) = if sweep == 0 { (uy, -ux) } else { (-uy, ux) };
                     let height = (half_cell - HOP_FOOT_LEN).max(1.0);
                     let corner1 = RenderPoint {
                         x: foot_in.x + px * height,
@@ -329,9 +318,7 @@ pub fn build_edge_segments(
             // Bend or straight segment.
             let dist_prev = distance(prev_pt, curr_pt);
             let dist_next = distance(curr_pt, next_pt);
-            let r = corner_radius
-                .min(dist_prev / 2.0)
-                .min(dist_next / 2.0);
+            let r = corner_radius.min(dist_prev / 2.0).min(dist_next / 2.0);
 
             if r < 0.5 {
                 segments.push(EdgeSegment::LineTo(curr_pt));
@@ -384,11 +371,17 @@ pub fn segments_to_svg_path(segments: &[EdgeSegment]) -> String {
                 // _͡_ : flat foot → arc → flat foot
                 d.push_str(&format!(
                     " L {:.1} {:.1} L {:.1} {:.1} A {:.1} {:.1} 0 0 {} {:.1} {:.1} L {:.1} {:.1}",
-                    entry.x, entry.y,
-                    foot_in.x, foot_in.y,
-                    radius, radius, sweep,
-                    foot_out.x, foot_out.y,
-                    exit.x, exit.y,
+                    entry.x,
+                    entry.y,
+                    foot_in.x,
+                    foot_in.y,
+                    radius,
+                    radius,
+                    sweep,
+                    foot_out.x,
+                    foot_out.y,
+                    exit.x,
+                    exit.y,
                 ));
             }
             EdgeSegment::HopRect {
@@ -414,8 +407,7 @@ pub fn segments_to_svg_path(segments: &[EdgeSegment]) -> String {
                 // -| |- : line to entry, lift pen, resume at exit
                 d.push_str(&format!(
                     " L {:.1} {:.1} M {:.1} {:.1}",
-                    entry.x, entry.y,
-                    exit.x, exit.y,
+                    entry.x, entry.y, exit.x, exit.y,
                 ));
             }
         }
@@ -428,8 +420,8 @@ pub fn segments_to_svg_path(segments: &[EdgeSegment]) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::grid::Grid;
     use crate::config::CrossingStyle;
+    use crate::grid::Grid;
     use crate::routing::astar::GridPoint;
 
     fn make_grid() -> Grid {
@@ -556,7 +548,10 @@ mod tests {
         assert!(d.contains("L 10.0 0.0"));
         assert!(d.contains("Q 20.0 0.0 20.0 5.0"));
         // Flat feet flank the arc
-        assert!(d.contains("L 25.0 5.0 L 27.0 5.0"), "entry foot missing: {d}");
+        assert!(
+            d.contains("L 25.0 5.0 L 27.0 5.0"),
+            "entry foot missing: {d}"
+        );
         assert!(d.contains("A 3.0 3.0 0 0 0 33.0 5.0"), "arc missing: {d}");
         assert!(d.contains("L 35.0 5.0"), "exit foot missing: {d}");
     }
@@ -571,8 +566,14 @@ mod tests {
 
         let segs = build_edge_segments(&pts, &grid, &crossing_set, 5.0, CrossingStyle::Arc);
         let hop = segs.iter().find_map(|s| match s {
-            EdgeSegment::Hop { entry, foot_in, foot_out, exit, radius, .. } =>
-                Some((*entry, *foot_in, *foot_out, *exit, *radius)),
+            EdgeSegment::Hop {
+                entry,
+                foot_in,
+                foot_out,
+                exit,
+                radius,
+                ..
+            } => Some((*entry, *foot_in, *foot_out, *exit, *radius)),
             _ => None,
         });
         let (entry, foot_in, foot_out, exit, radius) = hop.expect("Hop segment expected");
@@ -606,8 +607,14 @@ mod tests {
         assert_eq!(m_count, 1, "no pen lift expected: {d}");
 
         let hop = segs.iter().find_map(|s| match s {
-            EdgeSegment::HopRect { entry, foot_in, corner1, corner2, foot_out, exit } =>
-                Some((*entry, *foot_in, *corner1, *corner2, *foot_out, *exit)),
+            EdgeSegment::HopRect {
+                entry,
+                foot_in,
+                corner1,
+                corner2,
+                foot_out,
+                exit,
+            } => Some((*entry, *foot_in, *corner1, *corner2, *foot_out, *exit)),
             _ => None,
         });
         let (entry, foot_in, corner1, corner2, foot_out, exit) =
@@ -626,9 +633,17 @@ mod tests {
         // Corners offset perpendicularly (upward = negative y in SVG)
         let height = grid.cell_size as f64 / 2.0 - HOP_FOOT_LEN; // 3.0
         assert!((corner1.x - 27.0).abs() < 0.1, "corner1.x={}", corner1.x);
-        assert!((corner1.y - (-height)).abs() < 0.1, "corner1.y={}", corner1.y);
+        assert!(
+            (corner1.y - (-height)).abs() < 0.1,
+            "corner1.y={}",
+            corner1.y
+        );
         assert!((corner2.x - 33.0).abs() < 0.1, "corner2.x={}", corner2.x);
-        assert!((corner2.y - (-height)).abs() < 0.1, "corner2.y={}", corner2.y);
+        assert!(
+            (corner2.y - (-height)).abs() < 0.1,
+            "corner2.y={}",
+            corner2.y
+        );
     }
 
     #[test]
