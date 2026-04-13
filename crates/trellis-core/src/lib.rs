@@ -7,11 +7,13 @@ pub mod placement;
 pub mod ports;
 pub mod render;
 pub mod routing;
+pub mod theme;
 pub mod types;
 
 pub use config::*;
 pub use pipeline::*;
 pub use placement::place_nodes;
+pub use theme::ThemeName;
 pub use types::*;
 
 #[cfg(test)]

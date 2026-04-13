@@ -1,3 +1,4 @@
+use crate::theme::Theme;
 use trellis_parser::{ClassVisibility, Node};
 
 /// Line height for attribute/method rows (pixels)
@@ -17,7 +18,7 @@ const FONT_SIZE_MEMBER: f64 = 12.0;
 /// 1. Name compartment: class name (bold) + optional stereotype (italic)
 /// 2. Attribute compartment: list of attributes
 /// 3. Method compartment: list of methods
-pub fn render_class_node(node: &Node) -> String {
+pub fn render_class_node(node: &Node, theme: &Theme) -> String {
     let x = node.x;
     let y = node.y;
     let w = node.width;
@@ -43,8 +44,8 @@ pub fn render_class_node(node: &Node) -> String {
     // appears as padding at the bottom.
     svg.push_str(&format!(
         "<rect x=\"{:.1}\" y=\"{:.1}\" width=\"{:.1}\" height=\"{:.1}\" \
-         fill=\"#f5f5f5\" stroke=\"#555\" stroke-width=\"1.5\"/>\n",
-        x, y, w, h
+         fill=\"{}\" stroke=\"{}\" stroke-width=\"1.5\"/>\n",
+        x, y, w, h, theme.class_box_fill, theme.class_box_stroke,
     ));
 
     // ── Name compartment ──────────────────────────────────────────────
@@ -57,10 +58,11 @@ pub fn render_class_node(node: &Node) -> String {
         svg.push_str(&format!(
             "<text x=\"{:.1}\" y=\"{:.1}\" \
              text-anchor=\"middle\" font-size=\"{:.0}\" font-style=\"italic\" \
-             fill=\"#333\">{}</text>\n",
+             fill=\"{}\">{}</text>\n",
             cx,
             y + 14.0,
             FONT_SIZE_MEMBER,
+            theme.class_member_text,
             stereo_display,
         ));
         y + 28.0 // push name down
@@ -72,21 +74,23 @@ pub fn render_class_node(node: &Node) -> String {
     svg.push_str(&format!(
         "<text x=\"{:.1}\" y=\"{:.1}\" \
          text-anchor=\"middle\" font-size=\"{:.0}\" font-weight=\"bold\" \
-         fill=\"#111\">{}</text>\n",
+         fill=\"{}\">{}</text>\n",
         cx,
         name_label_y,
         FONT_SIZE_NAME,
+        theme.class_header_text,
         escape_xml(&node.label),
     ));
 
     // Separator line after name
     svg.push_str(&format!(
         "<line x1=\"{:.1}\" y1=\"{:.1}\" x2=\"{:.1}\" y2=\"{:.1}\" \
-         stroke=\"#555\" stroke-width=\"1\"/>\n",
+         stroke=\"{}\" stroke-width=\"1\"/>\n",
         x,
         sep1_y,
         x + w,
         sep1_y,
+        theme.class_separator,
     ));
 
     // ── Attribute compartment ──────────────────────────────────────────
@@ -119,10 +123,11 @@ pub fn render_class_node(node: &Node) -> String {
 
             svg.push_str(&format!(
                 "<text x=\"{:.1}\" y=\"{:.1}\" \
-                 font-size=\"{:.0}\" fill=\"#333\"{}>{}</text>\n",
+                 font-size=\"{:.0}\" fill=\"{}\"{}>{}</text>\n",
                 x + PADDING_X,
                 row_y,
                 FONT_SIZE_MEMBER,
+                theme.class_member_text,
                 decoration,
                 text,
             ));
@@ -132,11 +137,12 @@ pub fn render_class_node(node: &Node) -> String {
     // Separator line after attributes
     svg.push_str(&format!(
         "<line x1=\"{:.1}\" y1=\"{:.1}\" x2=\"{:.1}\" y2=\"{:.1}\" \
-         stroke=\"#555\" stroke-width=\"1\"/>\n",
+         stroke=\"{}\" stroke-width=\"1\"/>\n",
         x,
         sep2_y,
         x + w,
         sep2_y,
+        theme.class_separator,
     ));
 
     // ── Method compartment ────────────────────────────────────────────
@@ -175,10 +181,11 @@ pub fn render_class_node(node: &Node) -> String {
 
             svg.push_str(&format!(
                 "<text x=\"{:.1}\" y=\"{:.1}\" \
-                 font-size=\"{:.0}\" fill=\"#333\"{}>{}</text>\n",
+                 font-size=\"{:.0}\" fill=\"{}\"{}>{}</text>\n",
                 x + PADDING_X,
                 row_y,
                 FONT_SIZE_MEMBER,
+                theme.class_member_text,
                 decoration,
                 text,
             ));
@@ -209,39 +216,43 @@ fn escape_xml(s: &str) -> String {
 /// Generate SVG marker definitions for class diagram edge types.
 ///
 /// Returns a `<defs>` block containing all class-diagram-specific markers.
-pub fn class_marker_defs() -> &'static str {
-    "<defs>\
-     <!-- Inheritance: hollow triangle (open arrowhead at target) -->\
-     <marker id=\"inherit-arrow\" viewBox=\"0 0 12 12\" refX=\"12\" refY=\"6\" \
-     markerWidth=\"6\" markerHeight=\"6\" orient=\"auto-start-reverse\">\
-     <path d=\"M 0 0 L 12 6 L 0 12 Z\" fill=\"white\" stroke=\"#555\" stroke-width=\"1.5\"/>\
-     </marker>\
-     <!-- Realization: hollow triangle (same as inheritance but used with dotted line) -->\
-     <marker id=\"realize-arrow\" viewBox=\"0 0 12 12\" refX=\"12\" refY=\"6\" \
-     markerWidth=\"6\" markerHeight=\"6\" orient=\"auto-start-reverse\">\
-     <path d=\"M 0 0 L 12 6 L 0 12 Z\" fill=\"white\" stroke=\"#555\" stroke-width=\"1.5\"/>\
-     </marker>\
-     <!-- Composition: filled diamond at source -->\
-     <marker id=\"composition-diamond\" viewBox=\"0 0 20 10\" refX=\"0\" refY=\"5\" \
-     markerWidth=\"8\" markerHeight=\"6\" orient=\"auto\">\
-     <path d=\"M 0 5 L 8 0 L 16 5 L 8 10 Z\" fill=\"#555\" stroke=\"#555\" stroke-width=\"1\"/>\
-     </marker>\
-     <!-- Aggregation: hollow diamond at source -->\
-     <marker id=\"aggregation-diamond\" viewBox=\"0 0 20 10\" refX=\"0\" refY=\"5\" \
-     markerWidth=\"8\" markerHeight=\"6\" orient=\"auto\">\
-     <path d=\"M 0 5 L 8 0 L 16 5 L 8 10 Z\" fill=\"white\" stroke=\"#555\" stroke-width=\"1.5\"/>\
-     </marker>\
-     <!-- Association: open arrowhead -->\
-     <marker id=\"assoc-arrow\" viewBox=\"0 0 10 10\" refX=\"10\" refY=\"5\" \
-     markerWidth=\"5\" markerHeight=\"5\" orient=\"auto-start-reverse\">\
-     <path d=\"M 0 0 L 10 5 L 0 10\" fill=\"none\" stroke=\"#555\" stroke-width=\"1.5\"/>\
-     </marker>\
-     <!-- Dependency: open arrowhead (same as association but line is dashed) -->\
-     <marker id=\"depend-arrow\" viewBox=\"0 0 10 10\" refX=\"10\" refY=\"5\" \
-     markerWidth=\"5\" markerHeight=\"5\" orient=\"auto-start-reverse\">\
-     <path d=\"M 0 0 L 10 5 L 0 10\" fill=\"none\" stroke=\"#555\" stroke-width=\"1.5\"/>\
-     </marker>\
-     </defs>"
+pub fn class_marker_defs(theme: &Theme) -> String {
+    format!(
+        "<defs>\
+         <!-- Inheritance: hollow triangle (open arrowhead at target) -->\
+         <marker id=\"inherit-arrow\" viewBox=\"0 0 12 12\" refX=\"12\" refY=\"6\" \
+         markerWidth=\"6\" markerHeight=\"6\" orient=\"auto-start-reverse\">\
+         <path d=\"M 0 0 L 12 6 L 0 12 Z\" fill=\"{mf}\" stroke=\"{cs}\" stroke-width=\"1.5\"/>\
+         </marker>\
+         <!-- Realization: hollow triangle (same as inheritance but used with dotted line) -->\
+         <marker id=\"realize-arrow\" viewBox=\"0 0 12 12\" refX=\"12\" refY=\"6\" \
+         markerWidth=\"6\" markerHeight=\"6\" orient=\"auto-start-reverse\">\
+         <path d=\"M 0 0 L 12 6 L 0 12 Z\" fill=\"{mf}\" stroke=\"{cs}\" stroke-width=\"1.5\"/>\
+         </marker>\
+         <!-- Composition: filled diamond at source -->\
+         <marker id=\"composition-diamond\" viewBox=\"0 0 20 10\" refX=\"0\" refY=\"5\" \
+         markerWidth=\"8\" markerHeight=\"6\" orient=\"auto\">\
+         <path d=\"M 0 5 L 8 0 L 16 5 L 8 10 Z\" fill=\"{cs}\" stroke=\"{cs}\" stroke-width=\"1\"/>\
+         </marker>\
+         <!-- Aggregation: hollow diamond at source -->\
+         <marker id=\"aggregation-diamond\" viewBox=\"0 0 20 10\" refX=\"0\" refY=\"5\" \
+         markerWidth=\"8\" markerHeight=\"6\" orient=\"auto\">\
+         <path d=\"M 0 5 L 8 0 L 16 5 L 8 10 Z\" fill=\"{mf}\" stroke=\"{cs}\" stroke-width=\"1.5\"/>\
+         </marker>\
+         <!-- Association: open arrowhead -->\
+         <marker id=\"assoc-arrow\" viewBox=\"0 0 10 10\" refX=\"10\" refY=\"5\" \
+         markerWidth=\"5\" markerHeight=\"5\" orient=\"auto-start-reverse\">\
+         <path d=\"M 0 0 L 10 5 L 0 10\" fill=\"none\" stroke=\"{cs}\" stroke-width=\"1.5\"/>\
+         </marker>\
+         <!-- Dependency: open arrowhead (same as association but line is dashed) -->\
+         <marker id=\"depend-arrow\" viewBox=\"0 0 10 10\" refX=\"10\" refY=\"5\" \
+         markerWidth=\"5\" markerHeight=\"5\" orient=\"auto-start-reverse\">\
+         <path d=\"M 0 0 L 10 5 L 0 10\" fill=\"none\" stroke=\"{cs}\" stroke-width=\"1.5\"/>\
+         </marker>\
+         </defs>",
+        mf = theme.class_marker_fill,
+        cs = theme.class_box_stroke,
+    )
 }
 
 /// Determine the SVG marker-end and marker-start attributes for a class edge.
@@ -279,6 +290,7 @@ pub fn class_edge_markers(edge: &trellis_parser::Edge) -> (String, String) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::theme::themes::DEFAULT;
     use trellis_parser::{ClassAttribute, ClassMethod, ClassVisibility, Node, NodeShape};
 
     fn make_class_node_with_members() -> Node {
@@ -322,35 +334,35 @@ mod tests {
     #[test]
     fn test_render_contains_class_name() {
         let node = make_class_node_with_members();
-        let svg = render_class_node(&node);
+        let svg = render_class_node(&node, &DEFAULT);
         assert!(svg.contains("Animal"));
     }
 
     #[test]
     fn test_render_contains_stereotype() {
         let node = make_class_node_with_members();
-        let svg = render_class_node(&node);
+        let svg = render_class_node(&node, &DEFAULT);
         assert!(svg.contains("abstract"));
     }
 
     #[test]
     fn test_render_contains_attribute() {
         let node = make_class_node_with_members();
-        let svg = render_class_node(&node);
+        let svg = render_class_node(&node, &DEFAULT);
         assert!(svg.contains("+String name") || svg.contains("+String") && svg.contains("name"));
     }
 
     #[test]
     fn test_render_contains_method() {
         let node = make_class_node_with_members();
-        let svg = render_class_node(&node);
+        let svg = render_class_node(&node, &DEFAULT);
         assert!(svg.contains("makeSound"));
     }
 
     #[test]
     fn test_render_contains_separators() {
         let node = make_class_node_with_members();
-        let svg = render_class_node(&node);
+        let svg = render_class_node(&node, &DEFAULT);
         // Should have at least two separator lines
         let line_count = svg.matches("<line").count();
         assert!(

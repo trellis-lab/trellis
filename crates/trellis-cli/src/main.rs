@@ -4,7 +4,7 @@ use std::ffi::OsStr;
 use std::fs;
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
-use trellis_core::{PortAssignmentStrategy, TrellisConfig};
+use trellis_core::{PortAssignmentStrategy, ThemeName, TrellisConfig};
 
 // ─── CLI definition ───────────────────────────────────────────────────────────
 
@@ -17,6 +17,10 @@ struct Cli {
     /// Load configuration from FILE instead of ~/.trellis/config.toml
     #[arg(long, global = true, value_name = "FILE")]
     config: Option<PathBuf>,
+
+    /// Color theme: default, paper, blueprint, dark, midnight, forest
+    #[arg(long, global = true, value_name = "THEME")]
+    theme: Option<String>,
 
     #[command(subcommand)]
     command: Commands,
@@ -1161,7 +1165,30 @@ PANDOC INTEGRATION
 
 fn run() -> i32 {
     let cli = Cli::parse();
-    let config = load_config(cli.config.as_ref());
+    let mut config = load_config(cli.config.as_ref());
+
+    // --theme flag overrides any theme set in config file
+    if let Some(ref theme_str) = cli.theme {
+        let parsed = match theme_str.as_str() {
+            "default" => Some(ThemeName::Default),
+            "paper" => Some(ThemeName::Paper),
+            "blueprint" => Some(ThemeName::Blueprint),
+            "dark" => Some(ThemeName::Dark),
+            "midnight" => Some(ThemeName::Midnight),
+            "forest" => Some(ThemeName::Forest),
+            other => {
+                eprintln!(
+                    "Warning: unknown theme '{}' — using default. \
+                     Valid themes: default, paper, blueprint, dark, midnight, forest",
+                    other
+                );
+                None
+            }
+        };
+        if let Some(t) = parsed {
+            config.theme = t;
+        }
+    }
 
     let result = match &cli.command {
         Commands::Render {

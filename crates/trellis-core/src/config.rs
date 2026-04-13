@@ -1,6 +1,11 @@
+use crate::theme::ThemeName;
 use serde::{Deserialize, Serialize};
 
 // ─── per-field default functions ──────────────────────────────────────────────
+
+fn default_theme() -> ThemeName {
+    ThemeName::Default
+}
 
 fn default_cell_size() -> i32 {
     10
@@ -149,6 +154,12 @@ pub struct TrellisConfig {
     /// against all other committed paths.  Set to `false` to disable.
     #[serde(default = "default_crossing_reroute")]
     pub crossing_reroute: bool,
+
+    /// Color theme for diagram rendering.
+    ///
+    /// Built-in themes: `default`, `paper`, `blueprint`, `dark`, `midnight`, `forest`.
+    #[serde(default = "default_theme")]
+    pub theme: ThemeName,
 }
 
 /// A* routing cost constants
@@ -256,6 +267,7 @@ impl Default for TrellisConfig {
             print_metrics: false,
             bend_threshold: BendThreshold::Auto,
             crossing_reroute: true,
+            theme: ThemeName::Default,
         }
     }
 }
@@ -298,6 +310,7 @@ pub fn configuration_factory(config_type: ConfigurationType) -> TrellisConfig {
             print_metrics: false,
             bend_threshold: BendThreshold::Auto,
             crossing_reroute: true,
+            theme: ThemeName::Default,
         },
     }
 }

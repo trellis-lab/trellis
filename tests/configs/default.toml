@@ -112,6 +112,20 @@ crossing_reroute = true
 # RENDERING CONFIGURATION
 # ─────────────────────────────────────────────────────────────────────────────
 
+# Color theme for the rendered diagram.
+#
+# Options:
+#   - default    Clean white background, blue-tinted nodes  (default)
+#   - paper      Warm cream tones, sepia accents
+#   - blueprint  Technical blue background, white-on-blue nodes
+#   - dark       Dark gray background, muted colors
+#   - midnight   Deep navy background, bright accent colors
+#   - forest     Dark green background, nature-inspired tones
+#
+# Can also be set via the --theme CLI flag (overrides this value).
+#
+# theme = "default"
+
 # Crossing decoration style. Controls how edge crossings are rendered.
 #
 # Options:

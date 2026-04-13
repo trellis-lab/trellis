@@ -7,6 +7,7 @@ use crate::render::class_shapes::class_edge_markers;
 use crate::render::er_glyphs::{render_glyph, GlyphEnd, GLYPH_LENGTH};
 use crate::render::segments::{build_edge_segments, segments_to_svg_path};
 use crate::routing::astar::GridPoint;
+use crate::theme::Theme;
 use trellis_parser::{ArrowHead, Edge, EdgeStyle};
 
 /// A 2D point in world (pixel) coordinates.
@@ -205,7 +206,7 @@ fn trim_polyline(points: &[Point], trim_start: f64, trim_end: f64) -> Vec<Point>
 ///
 /// `trim_start` / `trim_end` are the amounts the path line should be shortened
 /// on each end so the stroke does not protrude through the glyph.
-fn render_er_glyphs(edge: &Edge, points: &[Point]) -> (String, f64, f64) {
+fn render_er_glyphs(edge: &Edge, points: &[Point], theme: &Theme) -> (String, f64, f64) {
     if points.len() < 2 {
         return (String::new(), 0.0, 0.0);
     }
@@ -226,7 +227,7 @@ fn render_er_glyphs(edge: &Edge, points: &[Point]) -> (String, f64, f64) {
             anchor_world.0 + tangent.0 * GLYPH_LENGTH,
             anchor_world.1 + tangent.1 * GLYPH_LENGTH,
         );
-        svg.push_str(&render_glyph(card, anchor, into_box, GlyphEnd::Start));
+        svg.push_str(&render_glyph(card, anchor, into_box, GlyphEnd::Start, theme));
         trim_start = GLYPH_LENGTH;
     }
 
@@ -239,7 +240,7 @@ fn render_er_glyphs(edge: &Edge, points: &[Point]) -> (String, f64, f64) {
             anchor_world.0 - tangent.0 * GLYPH_LENGTH,
             anchor_world.1 - tangent.1 * GLYPH_LENGTH,
         );
-        svg.push_str(&render_glyph(card, anchor, into_box, GlyphEnd::End));
+        svg.push_str(&render_glyph(card, anchor, into_box, GlyphEnd::End, theme));
         trim_end = GLYPH_LENGTH;
     }
 
@@ -258,6 +259,7 @@ pub fn render_edge(
     corner_radius: f64,
     crossing_set: &HashSet<(i64, i64)>,
     crossing_style: CrossingStyle,
+    theme: &Theme,
 ) -> String {
     if grid_points.len() < 2 {
         return String::new();
@@ -278,12 +280,12 @@ pub fn render_edge(
             })
             .collect();
         let simplified = simplify_path(&world_points);
-        let (glyph_svg, trim_start, trim_end) = render_er_glyphs(edge, &simplified);
+        let (glyph_svg, trim_start, trim_end) = render_er_glyphs(edge, &simplified, theme);
         let trimmed = trim_polyline(&simplified, trim_start, trim_end);
         let path_data = generate_rounded_polyline(&trimmed, corner_radius);
         return format!(
-            "<path d=\"{}\" fill=\"none\" stroke=\"#555\" {}/>{}",
-            path_data, stroke, glyph_svg
+            "<path d=\"{}\" fill=\"none\" stroke=\"{}\" {}/>{}",
+            path_data, theme.edge_stroke, stroke, glyph_svg
         );
     }
 
@@ -306,30 +308,40 @@ pub fn render_edge(
     };
 
     format!(
-        "<path d=\"{}\" fill=\"none\" stroke=\"#555\" {}{}{}/>",
-        path_data, stroke, marker_start, marker_end
+        "<path d=\"{}\" fill=\"none\" stroke=\"{}\" {}{}{}/>",
+        path_data, theme.edge_stroke, stroke, marker_start, marker_end
     )
 }
 
 /// Render a fallback straight-line edge when A* routing failed.
-pub fn render_fallback_edge(edge: &Edge, from_x: f64, from_y: f64, to_x: f64, to_y: f64) -> String {
+pub fn render_fallback_edge(
+    edge: &Edge,
+    from_x: f64,
+    from_y: f64,
+    to_x: f64,
+    to_y: f64,
+    theme: &Theme,
+) -> String {
     let stroke = stroke_attrs(edge.style);
     let marker = marker_attr(edge.arrow_head);
     format!(
         "<line x1=\"{:.1}\" y1=\"{:.1}\" x2=\"{:.1}\" y2=\"{:.1}\" \
-         stroke=\"#ccc\" {} stroke-dasharray=\"3,3\"{}/>",
-        from_x, from_y, to_x, to_y, stroke, marker
+         stroke=\"{}\" {} stroke-dasharray=\"3,3\"{}/>",
+        from_x, from_y, to_x, to_y, theme.edge_fallback_stroke, stroke, marker
     )
 }
 
 /// Generate the SVG `<defs>` block containing arrow marker definitions.
-pub fn arrow_marker_defs() -> &'static str {
-    "<defs>\
-     <marker id=\"arrowhead\" viewBox=\"0 0 10 10\" refX=\"10\" refY=\"5\" \
-     markerWidth=\"4\" markerHeight=\"4\" orient=\"auto-start-reverse\">\
-     <path d=\"M 0 0 L 10 5 L 0 10 z\" fill=\"#666\"/>\
-     </marker>\
-     </defs>"
+pub fn arrow_marker_defs(theme: &Theme) -> String {
+    format!(
+        "<defs>\
+         <marker id=\"arrowhead\" viewBox=\"0 0 10 10\" refX=\"10\" refY=\"5\" \
+         markerWidth=\"4\" markerHeight=\"4\" orient=\"auto-start-reverse\">\
+         <path d=\"M 0 0 L 10 5 L 0 10 z\" fill=\"{}\"/>\
+         </marker>\
+         </defs>",
+        theme.arrow_fill
+    )
 }
 
 #[cfg(test)]

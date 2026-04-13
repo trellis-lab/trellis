@@ -198,6 +198,7 @@ fn compute_global_metrics(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::collections::BTreeMap;
     use trellis_core::{
         grid::Grid,
         ports::assignment::{EdgePorts, Port, Side},

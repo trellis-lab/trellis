@@ -9,6 +9,7 @@
 //!
 //! The boundary renderer is in `c4_boundary.rs`.
 
+use crate::theme::Theme;
 use trellis_parser::{C4NodeType, Node};
 
 // ── Layout constants ──────────────────────────────────────────────────────────
@@ -42,22 +43,6 @@ const CHAR_WIDTH_CAPTION: f64 = 8.5;
 /// Must match `PERSON_MAX_LINES` in `c4_diagram.rs`.
 const MAX_TEXT_LINES: usize = 5;
 
-// ── Colours ───────────────────────────────────────────────────────────────────
-
-/// Stroke / text colour for Person elements (C4 v4: white fill, coloured stroke).
-const COLOUR_PERSON_FILL: &str = "#ffffff";
-const COLOUR_PERSON_STROKE: &str = "#08427b";
-const COLOUR_SYSTEM_FILL: &str = "#ffffff";
-const COLOUR_SYSTEM_STROKE: &str = "#1168bd";
-const COLOUR_CONTAINER_FILL: &str = "#ffffff";
-const COLOUR_CONTAINER_STROKE: &str = "#438dd5";
-const COLOUR_COMPONENT_FILL: &str = "#ffffff";
-const COLOUR_COMPONENT_STROKE: &str = "#85bbf0";
-const COLOUR_EXT_FILL: &str = "#ffffff";
-const COLOUR_EXT_STROKE: &str = "#999999";
-const COLOUR_DEPLOYMENT_FILL: &str = "#ffffff";
-const COLOUR_DEPLOYMENT_STROKE: &str = "#1c1c1c";
-
 // ── Stroke settings────────────────────────────────────────────────────────────
 
 const SVG_STROKE_WIDTH: f64 = 4.0;
@@ -66,23 +51,23 @@ const SVG_STROKE_WIDTH_NARROW: f64 = 1.0;
 // ── Public API ────────────────────────────────────────────────────────────────
 
 /// Render a C4 element node as SVG.
-pub fn render_c4_node(node: &Node) -> String {
+pub fn render_c4_node(node: &Node, theme: &Theme) -> String {
     let c4_type = match node.c4_type {
         Some(t) => t,
-        None => return render_c4_default_box(node),
+        None => return render_c4_default_box(node, theme),
     };
 
     if c4_type.is_person() {
-        render_person(node, c4_type)
+        render_person(node, c4_type, theme)
     } else if c4_type.is_db() {
-        render_cylinder(node, c4_type)
+        render_cylinder(node, c4_type, theme)
     } else if c4_type.is_queue() {
-        render_queue(node, c4_type)
+        render_queue(node, c4_type, theme)
     } else if c4_type.is_boundary() {
         // Boundaries are rendered separately in c4_boundary.rs
         String::new()
     } else {
-        render_c4_box(node, c4_type)
+        render_c4_box(node, c4_type, theme)
     }
 }
 
@@ -90,13 +75,16 @@ pub fn render_c4_node(node: &Node) -> String {
 ///
 /// C4 uses simple open arrows — we reuse the existing `arrowhead` marker
 /// plus an optional bidirectional variant.
-pub fn c4_marker_defs() -> &'static str {
-    "<defs>\
-     <marker id=\"c4-arrow\" viewBox=\"0 0 10 10\" refX=\"9\" refY=\"5\" \
-     markerWidth=\"5\" markerHeight=\"5\" orient=\"auto-start-reverse\">\
-     <path d=\"M 0 2 L 9 5 L 0 8\" fill=\"none\" stroke=\"#555\" stroke-width=\"3.0\"/>\
-     </marker>\
-     </defs>"
+pub fn c4_marker_defs(theme: &Theme) -> String {
+    format!(
+        "<defs>\
+         <marker id=\"c4-arrow\" viewBox=\"0 0 10 10\" refX=\"9\" refY=\"5\" \
+         markerWidth=\"5\" markerHeight=\"5\" orient=\"auto-start-reverse\">\
+         <path d=\"M 0 2 L 9 5 L 0 8\" fill=\"none\" stroke=\"{}\" stroke-width=\"3.0\"/>\
+         </marker>\
+         </defs>",
+        theme.edge_stroke
+    )
 }
 
 /// Return SVG marker attributes for a C4 edge.
@@ -120,13 +108,13 @@ pub fn c4_edge_markers(edge: &trellis_parser::Edge) -> (String, String) {
 /// - Rounded rectangle body (corner radius = box_h / 3)
 /// - Two vertical leg lines at the bottom
 /// - Text order: Caption (bold, +2), Type (italic, −1), Description (default)
-fn render_person(node: &Node, c4_type: C4NodeType) -> String {
+fn render_person(node: &Node, c4_type: C4NodeType, theme: &Theme) -> String {
     let x = node.x;
     let y = node.y;
     let w = node.width;
     let h = node.height;
 
-    let (fill, text_colour, stroke) = box_colours(c4_type);
+    let (fill, text_colour, stroke) = box_colours(c4_type, theme);
 
     // Head: diameter = 80% of width/2 → radius = width/4
     let head_r = w * 0.8 / 4.0;
@@ -244,14 +232,14 @@ fn render_person(node: &Node, c4_type: C4NodeType) -> String {
 ///     2. **Lid**  – bottom arc of the top ellipse (visible interior rim)
 /// - Ellipse ry = rx × CYLINDER_RY_RATIO, so "the ellipse curve is always the same"
 /// - Top padding = ry*2 + 10 px (spec: top padding = cap height + 10 px)
-fn render_cylinder(node: &Node, c4_type: C4NodeType) -> String {
+fn render_cylinder(node: &Node, c4_type: C4NodeType, theme: &Theme) -> String {
     let x = node.x;
     let y = node.y;
     let w = node.width;
     let h = node.height;
 
     // C4 v4: white fill, #438dd5 stroke and text for all database shapes.
-    let (fill, text_colour, stroke) = box_colours(c4_type);
+    let (fill, text_colour, stroke) = box_colours(c4_type, theme);
 
     // Geometry: rx proportional to width; ry keeps a fixed ratio (always the same curve).
     let cx = x + w / 2.0;
@@ -370,14 +358,14 @@ fn render_cylinder(node: &Node, c4_type: C4NodeType) -> String {
 ///     2. **Rim**  – right half of the left cap (visible interior arc, same as cylinder lid)
 /// - Same CYLINDER_RY_RATIO as the database (cap_ry = h/2, cap_rx = cap_ry × ratio)
 /// - Left padding = 2×cap_rx + 10 px (spec: "left padding is height of left ellipse + 10px")
-fn render_queue(node: &Node, c4_type: C4NodeType) -> String {
+fn render_queue(node: &Node, c4_type: C4NodeType, theme: &Theme) -> String {
     let x = node.x;
     let y = node.y;
     let w = node.width;
     let h = node.height;
 
     // C4 v4: white fill, #438dd5 stroke and text for all queue shapes.
-    let (fill, text_colour, stroke) = box_colours(c4_type);
+    let (fill, text_colour, stroke) = box_colours(c4_type, theme);
 
     let cy = y + h / 2.0;
 
@@ -504,13 +492,13 @@ fn render_queue(node: &Node, c4_type: C4NodeType) -> String {
 }
 
 /// Render a standard C4 rounded box element.
-fn render_c4_box(node: &Node, c4_type: C4NodeType) -> String {
+fn render_c4_box(node: &Node, c4_type: C4NodeType, theme: &Theme) -> String {
     let x = node.x;
     let y = node.y;
     let w = node.width;
     let h = node.height;
 
-    let (fill, text_colour, stroke) = box_colours(c4_type);
+    let (fill, text_colour, stroke) = box_colours(c4_type, theme);
     let mut svg = String::with_capacity(512);
 
     svg.push_str(&format!(
@@ -525,7 +513,7 @@ fn render_c4_box(node: &Node, c4_type: C4NodeType) -> String {
 }
 
 /// Fallback: plain box for unknown C4 type.
-fn render_c4_default_box(node: &Node) -> String {
+fn render_c4_default_box(node: &Node, theme: &Theme) -> String {
     let x = node.x;
     let y = node.y;
     let w = node.width;
@@ -535,17 +523,20 @@ fn render_c4_default_box(node: &Node) -> String {
 
     format!(
         "<rect x=\"{:.1}\" y=\"{:.1}\" width=\"{:.1}\" height=\"{:.1}\" \
-         fill=\"#f5f5f5\" stroke=\"#999\" stroke-width=\"{}\" rx=\"{}\"/>\n\
+         fill=\"{}\" stroke=\"{}\" stroke-width=\"{}\" rx=\"{}\"/>\n\
          <text x=\"{:.1}\" y=\"{:.1}\" text-anchor=\"middle\" dominant-baseline=\"central\" \
-         font-family=\"Arial, Helvetica, sans-serif\" font-size=\"13\" fill=\"#333\">{}</text>\n",
+         font-family=\"Arial, Helvetica, sans-serif\" font-size=\"13\" fill=\"{}\">{}</text>\n",
         x,
         y,
         w,
         h,
+        theme.fallback_box_fill,
+        theme.fallback_box_stroke,
         BOX_RADIUS,
         SVG_STROKE_WIDTH,
         cx,
         cy,
+        theme.node_text,
         escape_xml(&node.label)
     )
 }
@@ -645,9 +636,13 @@ fn c4_type_label(t: C4NodeType) -> &'static str {
 // ── Colour helpers ────────────────────────────────────────────────────────────
 
 /// Return (fill, text_colour, stroke) for box/cylinder/queue elements.
-fn box_colours(c4_type: C4NodeType) -> (&'static str, &'static str, &'static str) {
+fn box_colours<'t>(c4_type: C4NodeType, theme: &'t Theme) -> (&'t str, &'t str, &'t str) {
     if c4_type.is_external() {
-        return (COLOUR_EXT_FILL, COLOUR_EXT_STROKE, COLOUR_EXT_STROKE);
+        return (
+            theme.c4_external_fill,
+            theme.c4_external_stroke,
+            theme.c4_external_stroke,
+        );
     }
     match c4_type {
         C4NodeType::System
@@ -656,9 +651,9 @@ fn box_colours(c4_type: C4NodeType) -> (&'static str, &'static str, &'static str
         | C4NodeType::SystemExt
         | C4NodeType::SystemDbExt
         | C4NodeType::SystemQueueExt => (
-            COLOUR_SYSTEM_FILL,
-            COLOUR_SYSTEM_STROKE,
-            COLOUR_SYSTEM_STROKE,
+            theme.c4_system_fill,
+            theme.c4_system_stroke,
+            theme.c4_system_stroke,
         ),
 
         C4NodeType::Container
@@ -667,9 +662,9 @@ fn box_colours(c4_type: C4NodeType) -> (&'static str, &'static str, &'static str
         | C4NodeType::ContainerExt
         | C4NodeType::ContainerDbExt
         | C4NodeType::ContainerQueueExt => (
-            COLOUR_CONTAINER_FILL,
-            COLOUR_CONTAINER_STROKE,
-            COLOUR_CONTAINER_STROKE,
+            theme.c4_container_fill,
+            theme.c4_container_stroke,
+            theme.c4_container_stroke,
         ),
 
         C4NodeType::Component
@@ -678,25 +673,29 @@ fn box_colours(c4_type: C4NodeType) -> (&'static str, &'static str, &'static str
         | C4NodeType::ComponentExt
         | C4NodeType::ComponentDbExt
         | C4NodeType::ComponentQueueExt => (
-            COLOUR_COMPONENT_FILL,
-            COLOUR_COMPONENT_STROKE,
-            COLOUR_COMPONENT_STROKE,
+            theme.c4_component_fill,
+            theme.c4_component_stroke,
+            theme.c4_component_stroke,
         ),
 
         C4NodeType::DeploymentNode => (
-            COLOUR_DEPLOYMENT_FILL,
-            COLOUR_DEPLOYMENT_STROKE,
-            COLOUR_DEPLOYMENT_STROKE,
+            theme.c4_deployment_fill,
+            theme.c4_deployment_stroke,
+            theme.c4_deployment_stroke,
         ),
 
         C4NodeType::Person => (
-            COLOUR_PERSON_FILL,
-            COLOUR_PERSON_STROKE,
-            COLOUR_PERSON_STROKE,
+            theme.c4_person_fill,
+            theme.c4_person_stroke,
+            theme.c4_person_stroke,
         ),
 
         // Boundaries handled separately
-        _ => ("#f5f5f5", "#333333", "#999999"),
+        _ => (
+            theme.fallback_box_fill,
+            theme.node_text,
+            theme.fallback_box_stroke,
+        ),
     }
 }
 
@@ -767,6 +766,7 @@ fn escape_xml(s: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::theme::themes::DEFAULT;
     use trellis_parser::{C4NodeType, Node, NodeShape};
 
     fn make_c4_node(id: &str, c4_type: C4NodeType) -> Node {
@@ -786,7 +786,7 @@ mod tests {
     #[test]
     fn test_render_person() {
         let node = make_c4_node("alice", C4NodeType::Person);
-        let svg = render_c4_node(&node);
+        let svg = render_c4_node(&node, &DEFAULT);
         // New C4 v4 shape: ellipse head, rect body, two leg lines
         assert!(svg.contains("<ellipse"), "missing head ellipse");
         assert!(svg.contains("<rect"), "missing body rect");
@@ -804,7 +804,7 @@ mod tests {
     #[test]
     fn test_render_system() {
         let node = make_c4_node("sys", C4NodeType::System);
-        let svg = render_c4_node(&node);
+        let svg = render_c4_node(&node, &DEFAULT);
         assert!(svg.contains("<rect"));
         assert!(svg.contains("[Software System]"));
     }
@@ -812,7 +812,7 @@ mod tests {
     #[test]
     fn test_render_system_db() {
         let node = make_c4_node("db", C4NodeType::SystemDb);
-        let svg = render_c4_node(&node);
+        let svg = render_c4_node(&node, &DEFAULT);
         // C4 v4: two <path> elements (body + lid), no rect or ellipse
         assert_eq!(svg.matches("<path").count(), 2, "expected body + lid paths");
         assert!(
@@ -835,7 +835,7 @@ mod tests {
     #[test]
     fn test_render_container_queue() {
         let node = make_c4_node("q", C4NodeType::ContainerQueue);
-        let svg = render_c4_node(&node);
+        let svg = render_c4_node(&node, &DEFAULT);
         // New C4 v4 shape: two <path> elements (body + rim), no rects
         assert_eq!(svg.matches("<path").count(), 2, "expected body + rim paths");
         assert!(!svg.contains("<rect"), "queue must not use rect elements");
@@ -850,7 +850,7 @@ mod tests {
 
     #[test]
     fn test_c4_marker_defs() {
-        let defs = c4_marker_defs();
+        let defs = c4_marker_defs(&DEFAULT);
         assert!(defs.contains("c4-arrow"));
     }
 

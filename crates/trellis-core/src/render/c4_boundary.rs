@@ -11,6 +11,7 @@
 use std::collections::HashMap;
 use trellis_parser::{C4NodeType, Graph, Node};
 
+use crate::theme::Theme;
 use crate::types::BoundingBox;
 
 /// Corner radius for the boundary rectangle
@@ -25,16 +26,6 @@ const LABEL_STRIP_HEIGHT: f64 = 36.0;
 /// Vertical distance between the two label baselines.
 const LABEL_LINE_GAP: f64 = 16.0;
 
-// ── Colours by boundary type ──────────────────────────────────────────────────
-const COLOUR_ENTERPRISE_BG: &str = "#ffffff";
-const COLOUR_ENTERPRISE_STROKE: &str = "#f9a825";
-const COLOUR_SYSTEM_BG: &str = "#ffffff";
-const COLOUR_SYSTEM_STROKE: &str = "#388e3c";
-const COLOUR_CONTAINER_BG: &str = "#ffffff";
-const COLOUR_CONTAINER_STROKE: &str = "#1565c0";
-const COLOUR_DEPLOYMENT_BG: &str = "#ffffff";
-const COLOUR_DEPLOYMENT_STROKE: &str = "#616161";
-
 const SVG_BOUNDARY_STROKE_WIDTH: f64 = 2.0;
 
 // ── Public API ────────────────────────────────────────────────────────────────
@@ -47,7 +38,11 @@ const SVG_BOUNDARY_STROKE_WIDTH: f64 = 2.0;
 /// Boundaries that have no entry in `boxes` (i.e. no contained elements
 /// were placed) are silently skipped.  Returns an empty string when there
 /// are no boundaries in the graph.
-pub fn render_c4_boundaries(graph: &Graph, boxes: &HashMap<String, BoundingBox>) -> String {
+pub fn render_c4_boundaries(
+    graph: &Graph,
+    boxes: &HashMap<String, BoundingBox>,
+    theme: &Theme,
+) -> String {
     let boundaries: Vec<&Node> = graph
         .nodes
         .iter()
@@ -66,7 +61,7 @@ pub fn render_c4_boundaries(graph: &Graph, boxes: &HashMap<String, BoundingBox>)
             None => continue, // boundary has no contained elements
         };
 
-        let (bg, stroke) = boundary_colours(boundary.c4_type);
+        let (bg, stroke) = boundary_colours(boundary.c4_type, theme);
 
         // Background / border rectangle
         svg.push_str(&format!(
@@ -128,13 +123,28 @@ fn boundary_type_label(c4_type: Option<C4NodeType>) -> &'static str {
     }
 }
 
-fn boundary_colours(c4_type: Option<C4NodeType>) -> (&'static str, &'static str) {
+fn boundary_colours<'t>(
+    c4_type: Option<C4NodeType>,
+    theme: &'t Theme,
+) -> (&'t str, &'t str) {
     match c4_type {
-        Some(C4NodeType::EnterpriseBoundary) => (COLOUR_ENTERPRISE_BG, COLOUR_ENTERPRISE_STROKE),
-        Some(C4NodeType::SystemBoundary) => (COLOUR_SYSTEM_BG, COLOUR_SYSTEM_STROKE),
-        Some(C4NodeType::ContainerBoundary) => (COLOUR_CONTAINER_BG, COLOUR_CONTAINER_STROKE),
-        Some(C4NodeType::DeploymentNode) => (COLOUR_DEPLOYMENT_BG, COLOUR_DEPLOYMENT_STROKE),
-        _ => ("#ffffff", "#999999"),
+        Some(C4NodeType::EnterpriseBoundary) => (
+            theme.c4_boundary_enterprise_fill,
+            theme.c4_boundary_enterprise_stroke,
+        ),
+        Some(C4NodeType::SystemBoundary) => (
+            theme.c4_boundary_system_fill,
+            theme.c4_boundary_system_stroke,
+        ),
+        Some(C4NodeType::ContainerBoundary) => (
+            theme.c4_boundary_container_fill,
+            theme.c4_boundary_container_stroke,
+        ),
+        Some(C4NodeType::DeploymentNode) => (
+            theme.c4_boundary_deployment_fill,
+            theme.c4_boundary_deployment_stroke,
+        ),
+        _ => (theme.c4_external_fill, theme.c4_external_stroke),
     }
 }
 
@@ -149,6 +159,7 @@ fn escape_xml(s: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::theme::themes::DEFAULT;
     use trellis_parser::{C4NodeType, Node, NodeShape};
 
     fn make_boundary(id: &str, c4_type: C4NodeType) -> Node {
@@ -179,7 +190,7 @@ mod tests {
             ..Default::default()
         });
         let boxes = HashMap::new();
-        let svg = render_c4_boundaries(&graph, &boxes);
+        let svg = render_c4_boundaries(&graph, &boxes, &DEFAULT);
         assert!(svg.is_empty());
     }
 
@@ -191,7 +202,7 @@ mod tests {
             .push(make_boundary("eb", C4NodeType::EnterpriseBoundary));
         let mut boxes = HashMap::new();
         boxes.insert("eb".to_string(), make_bbox(16.0, -4.0, 200.0, 150.0));
-        let svg = render_c4_boundaries(&graph, &boxes);
+        let svg = render_c4_boundaries(&graph, &boxes, &DEFAULT);
         assert!(svg.contains("<rect"), "should contain a rect element");
         assert!(svg.contains("eb"), "should contain the boundary label");
     }
@@ -203,7 +214,7 @@ mod tests {
             .nodes
             .push(make_boundary("sb", C4NodeType::SystemBoundary));
         let boxes = HashMap::new(); // no entry for "sb"
-        let svg = render_c4_boundaries(&graph, &boxes);
+        let svg = render_c4_boundaries(&graph, &boxes, &DEFAULT);
         // Should be empty because no contained elements were placed
         assert!(svg.is_empty(), "empty boundary should produce no SVG");
     }
@@ -216,7 +227,7 @@ mod tests {
             .push(make_boundary("eb", C4NodeType::EnterpriseBoundary));
         let mut boxes = HashMap::new();
         boxes.insert("eb".to_string(), make_bbox(0.0, 0.0, 200.0, 150.0));
-        let svg = render_c4_boundaries(&graph, &boxes);
+        let svg = render_c4_boundaries(&graph, &boxes, &DEFAULT);
         // Both name and type label must appear
         assert!(svg.contains("eb"), "boundary name must be rendered");
         assert!(
@@ -238,8 +249,8 @@ mod tests {
             .push(make_boundary("cb", C4NodeType::ContainerBoundary));
         let mut boxes = HashMap::new();
         boxes.insert("cb".to_string(), make_bbox(0.0, 0.0, 100.0, 80.0));
-        let svg = render_c4_boundaries(&graph, &boxes);
-        assert!(svg.contains(COLOUR_CONTAINER_BG));
-        assert!(svg.contains(COLOUR_CONTAINER_STROKE));
+        let svg = render_c4_boundaries(&graph, &boxes, &DEFAULT);
+        assert!(svg.contains(DEFAULT.c4_boundary_container_fill));
+        assert!(svg.contains(DEFAULT.c4_boundary_container_stroke));
     }
 }

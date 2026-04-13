@@ -21,6 +21,7 @@
 //! A canonical point `(cx, cy)` is rotated into world space using a unit
 //! vector that points *from the endpoint into the box*. See [`emit_glyph`].
 
+use crate::theme::Theme;
 use trellis_parser::ErCardinality;
 
 /// Length (in pixels) reserved for an ER endpoint glyph along the line axis.
@@ -34,8 +35,6 @@ pub const GLYPH_LENGTH: f64 = 14.0;
 /// Half-width (perpendicular to the line) of the widest glyph.
 const GLYPH_HALF_WIDTH: f64 = 7.0;
 
-/// Stroke colour for ER glyphs — matches the entity box stroke.
-const STROKE: &str = "#336699";
 /// Stroke width for ER glyphs.
 const STROKE_WIDTH: f64 = 1.5;
 
@@ -66,12 +65,15 @@ pub fn render_glyph(
     anchor: (f64, f64),
     into_box: (f64, f64),
     _which_end: GlyphEnd,
+    theme: &Theme,
 ) -> String {
+    let stroke = theme.er_box_stroke;
+    let fill = theme.er_box_fill;
     match card {
-        ErCardinality::ExactlyOne => render_exactly_one(anchor, into_box),
-        ErCardinality::ZeroOrOne => render_zero_or_one(anchor, into_box),
-        ErCardinality::OneOrMore => render_one_or_more(anchor, into_box),
-        ErCardinality::ZeroOrMore => render_zero_or_more(anchor, into_box),
+        ErCardinality::ExactlyOne => render_exactly_one(anchor, into_box, stroke),
+        ErCardinality::ZeroOrOne => render_zero_or_one(anchor, into_box, stroke, fill),
+        ErCardinality::OneOrMore => render_one_or_more(anchor, into_box, stroke),
+        ErCardinality::ZeroOrMore => render_zero_or_more(anchor, into_box, stroke, fill),
     }
 }
 
@@ -90,23 +92,36 @@ fn transform(anchor: (f64, f64), into_box: (f64, f64), cx: f64, cy: f64) -> (f64
 }
 
 /// Emit an SVG `<line>` between two canonical points.
-fn line(anchor: (f64, f64), into_box: (f64, f64), c1: (f64, f64), c2: (f64, f64)) -> String {
+fn line(
+    anchor: (f64, f64),
+    into_box: (f64, f64),
+    c1: (f64, f64),
+    c2: (f64, f64),
+    stroke: &str,
+) -> String {
     let (x1, y1) = transform(anchor, into_box, c1.0, c1.1);
     let (x2, y2) = transform(anchor, into_box, c2.0, c2.1);
     format!(
         "<line x1=\"{:.1}\" y1=\"{:.1}\" x2=\"{:.1}\" y2=\"{:.1}\" \
          stroke=\"{}\" stroke-width=\"{}\"/>",
-        x1, y1, x2, y2, STROKE, STROKE_WIDTH
+        x1, y1, x2, y2, stroke, STROKE_WIDTH
     )
 }
 
 /// Emit an SVG `<circle>` at a canonical point.
-fn circle(anchor: (f64, f64), into_box: (f64, f64), c: (f64, f64), r: f64) -> String {
+fn circle(
+    anchor: (f64, f64),
+    into_box: (f64, f64),
+    c: (f64, f64),
+    r: f64,
+    stroke: &str,
+    fill: &str,
+) -> String {
     let (cx, cy) = transform(anchor, into_box, c.0, c.1);
     format!(
-        "<circle cx=\"{:.1}\" cy=\"{:.1}\" r=\"{:.1}\" fill=\"white\" \
+        "<circle cx=\"{:.1}\" cy=\"{:.1}\" r=\"{:.1}\" fill=\"{}\" \
          stroke=\"{}\" stroke-width=\"{}\"/>",
-        cx, cy, r, STROKE, STROKE_WIDTH
+        cx, cy, r, fill, stroke, STROKE_WIDTH
     )
 }
 
@@ -121,11 +136,11 @@ fn circle(anchor: (f64, f64), into_box: (f64, f64), c: (f64, f64), r: f64) -> St
 ///   line ──>│ │  box
 ///          4 8
 /// ```
-fn render_exactly_one(anchor: (f64, f64), into_box: (f64, f64)) -> String {
+fn render_exactly_one(anchor: (f64, f64), into_box: (f64, f64), stroke: &str) -> String {
     let h = GLYPH_HALF_WIDTH;
     let mut out = String::new();
-    out.push_str(&line(anchor, into_box, (4.0, -h), (4.0, h)));
-    out.push_str(&line(anchor, into_box, (8.0, -h), (8.0, h)));
+    out.push_str(&line(anchor, into_box, (4.0, -h), (4.0, h), stroke));
+    out.push_str(&line(anchor, into_box, (8.0, -h), (8.0, h), stroke));
     out
 }
 
@@ -136,11 +151,16 @@ fn render_exactly_one(anchor: (f64, f64), into_box: (f64, f64)) -> String {
 ///   line ──> O │  box
 ///            4 10
 /// ```
-fn render_zero_or_one(anchor: (f64, f64), into_box: (f64, f64)) -> String {
+fn render_zero_or_one(
+    anchor: (f64, f64),
+    into_box: (f64, f64),
+    stroke: &str,
+    fill: &str,
+) -> String {
     let h = GLYPH_HALF_WIDTH;
     let mut out = String::new();
-    out.push_str(&circle(anchor, into_box, (4.0, 0.0), 3.5));
-    out.push_str(&line(anchor, into_box, (10.0, -h), (10.0, h)));
+    out.push_str(&circle(anchor, into_box, (4.0, 0.0), 3.5, stroke, fill));
+    out.push_str(&line(anchor, into_box, (10.0, -h), (10.0, h), stroke));
     out
 }
 
@@ -156,36 +176,42 @@ fn render_zero_or_one(anchor: (f64, f64), into_box: (f64, f64)) -> String {
 ///                ── 12
 ///            2      12
 /// ```
-fn render_one_or_more(anchor: (f64, f64), into_box: (f64, f64)) -> String {
+fn render_one_or_more(anchor: (f64, f64), into_box: (f64, f64), stroke: &str) -> String {
     let h = GLYPH_HALF_WIDTH;
     let apex = (2.0, 0.0);
     let mut out = String::new();
     // Tick (the "one" bar) — sits just past the fan, between foot and box
-    out.push_str(&line(anchor, into_box, (12.0, -h), (12.0, h)));
+    out.push_str(&line(anchor, into_box, (12.0, -h), (12.0, h), stroke));
     // Three fan tines radiating from apex toward the box side
-    out.push_str(&line(anchor, into_box, apex, (12.0, -h)));
-    out.push_str(&line(anchor, into_box, apex, (12.0, 0.0)));
-    out.push_str(&line(anchor, into_box, apex, (12.0, h)));
+    out.push_str(&line(anchor, into_box, apex, (12.0, -h), stroke));
+    out.push_str(&line(anchor, into_box, apex, (12.0, 0.0), stroke));
+    out.push_str(&line(anchor, into_box, apex, (12.0, h), stroke));
     out
 }
 
 /// `o{` — circle + crow's-foot fan (zero-or-many). Circle sits on the line
 /// side of the apex.
-fn render_zero_or_more(anchor: (f64, f64), into_box: (f64, f64)) -> String {
+fn render_zero_or_more(
+    anchor: (f64, f64),
+    into_box: (f64, f64),
+    stroke: &str,
+    fill: &str,
+) -> String {
     let h = GLYPH_HALF_WIDTH;
     // Shift the whole foot box-ward to leave room for the circle on the line side
     let apex = (6.0, 0.0);
     let mut out = String::new();
-    out.push_str(&circle(anchor, into_box, (2.5, 0.0), 2.5));
-    out.push_str(&line(anchor, into_box, apex, (13.0, -h)));
-    out.push_str(&line(anchor, into_box, apex, (13.0, 0.0)));
-    out.push_str(&line(anchor, into_box, apex, (13.0, h)));
+    out.push_str(&circle(anchor, into_box, (2.5, 0.0), 2.5, stroke, fill));
+    out.push_str(&line(anchor, into_box, apex, (13.0, -h), stroke));
+    out.push_str(&line(anchor, into_box, apex, (13.0, 0.0), stroke));
+    out.push_str(&line(anchor, into_box, apex, (13.0, h), stroke));
     out
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::theme::themes::DEFAULT;
 
     /// Helper: extract all `x1` coordinates from a line-only glyph SVG.
     fn line_x1s(svg: &str) -> Vec<f64> {
@@ -213,6 +239,7 @@ mod tests {
             (100.0, 200.0),
             (0.0, 1.0),
             GlyphEnd::End,
+            &DEFAULT,
         );
         // Expect two vertical-ish ticks at world y=204 and y=208 (cx=4 and cx=8)
         assert!(svg.contains("y1=\"204.0\""));
@@ -230,6 +257,7 @@ mod tests {
             (100.0, 50.0),
             (1.0, 0.0),
             GlyphEnd::End,
+            &DEFAULT,
         );
         let xs = line_x1s(&svg);
         // Fan tines all start at apex x=102; tick line has x1=112.
@@ -249,6 +277,7 @@ mod tests {
             (0.0, 0.0),
             (1.0, 0.0),
             GlyphEnd::End,
+            &DEFAULT,
         );
         assert!(svg.contains("<circle"));
         assert!(svg.contains("cx=\"2.5\""));
@@ -261,6 +290,7 @@ mod tests {
             (0.0, 0.0),
             (1.0, 0.0),
             GlyphEnd::End,
+            &DEFAULT,
         );
         assert!(svg.contains("<circle"));
         // Circle canonical cx=4, tick canonical x=10. Circle must be closer to line.
@@ -278,6 +308,7 @@ mod tests {
             (100.0, 200.0),
             (0.0, -1.0),
             GlyphEnd::End,
+            &DEFAULT,
         );
         // Tick 1 (cx=4): world y = 200 - 4 = 196
         // Tick 2 (cx=8): world y = 200 - 8 = 192

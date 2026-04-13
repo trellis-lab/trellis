@@ -14,6 +14,7 @@ use crate::render::nodes::{render_node, render_nodes};
 use crate::render::subgraph::render_subgraph_backgrounds;
 use crate::routing::commit::compute_crossing_points;
 use crate::routing::RoutingResult;
+use crate::theme::Theme;
 use crate::types::{BoundingBox, SubgraphTree};
 use trellis_parser::{DiagramType, Graph, NodeShape};
 
@@ -26,10 +27,15 @@ pub fn build_svg(
     label_placements: &[LabelPlacement],
     subgraph_data: Option<&(SubgraphTree, HashMap<String, BoundingBox>)>,
 ) -> Vec<u8> {
+    let theme: &Theme = config.theme.resolve();
+
     if graph.nodes.is_empty() {
-        return b"<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"400\" height=\"300\">\
-                 <rect width=\"400\" height=\"300\" fill=\"white\"/></svg>"
-            .to_vec();
+        return format!(
+            "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"400\" height=\"300\">\
+             <rect width=\"400\" height=\"300\" fill=\"{}\"/></svg>",
+            theme.background
+        )
+        .into_bytes();
     }
 
     // Calculate viewBox from node positions, routed paths, and subgraph boxes
@@ -54,29 +60,29 @@ pub fn build_svg(
 
     // Background
     svg.push_str(&format!(
-        "<rect x=\"{}\" y=\"{}\" width=\"{}\" height=\"{}\" fill=\"white\"/>\n",
-        vx, vy, vw, vh
+        "<rect x=\"{}\" y=\"{}\" width=\"{}\" height=\"{}\" fill=\"{}\"/>\n",
+        vx, vy, vw, vh, theme.background
     ));
 
     // Show grid
     if config.show_grid {
         for i in 0..grid.rows {
             for j in 0..grid.cols {
-                let dot_svg = render_grid_dot(i, j, grid);
+                let dot_svg = render_grid_dot(i, j, grid, theme);
                 svg.push_str(&dot_svg);
             }
         }
     }
 
     // Marker definitions (arrowheads + diagram-specific markers)
-    svg.push_str(arrow_marker_defs());
+    svg.push_str(&arrow_marker_defs(theme));
     svg.push('\n');
     if graph.diagram_type == DiagramType::ClassDiagram {
-        svg.push_str(class_marker_defs());
+        svg.push_str(&class_marker_defs(theme));
         svg.push('\n');
     }
     if graph.diagram_type == DiagramType::C4Diagram {
-        svg.push_str(c4_marker_defs());
+        svg.push_str(&c4_marker_defs(theme));
         svg.push('\n');
     }
 
@@ -87,7 +93,7 @@ pub fn build_svg(
     // so this branch only fires when boundaries are present.
     if graph.diagram_type == DiagramType::C4Diagram {
         if let Some((_, boxes)) = subgraph_data {
-            let boundaries_svg = render_c4_boundaries(graph, boxes);
+            let boundaries_svg = render_c4_boundaries(graph, boxes, theme);
             if !boundaries_svg.is_empty() {
                 svg.push_str("<!-- C4 Boundaries -->\n");
                 svg.push_str("<g class=\"c4-boundaries\">\n");
@@ -102,7 +108,7 @@ pub fn build_svg(
     } else {
         // --- Subgraph backgrounds (below everything) ---
         if let Some((tree, boxes)) = subgraph_data {
-            let sg_svg = render_subgraph_backgrounds(tree, boxes);
+            let sg_svg = render_subgraph_backgrounds(tree, boxes, theme);
             if !sg_svg.is_empty() {
                 svg.push_str("<!-- Subgraph Backgrounds -->\n");
                 svg.push_str("<g class=\"subgraphs\">\n");
@@ -145,6 +151,7 @@ pub fn build_svg(
                 config.corner_radius,
                 crossing_set,
                 config.crossing_style,
+                theme,
             );
             svg.push_str("  ");
             svg.push_str(&edge_svg);
@@ -160,7 +167,7 @@ pub fn build_svg(
         let from_node = graph.nodes.iter().find(|n| n.id == edge.from);
         let to_node = graph.nodes.iter().find(|n| n.id == edge.to);
         if let (Some(f), Some(t)) = (from_node, to_node) {
-            let edge_svg = render_fallback_edge(edge, f.x, f.y, t.x, t.y);
+            let edge_svg = render_fallback_edge(edge, f.x, f.y, t.x, t.y, theme);
             svg.push_str("  ");
             svg.push_str(&edge_svg);
             svg.push('\n');
@@ -184,9 +191,9 @@ pub fn build_svg(
         // Class diagram: use dedicated three-compartment renderer for ClassBox nodes
         for node in &visible_nodes {
             let node_svg = if node.shape == NodeShape::ClassBox {
-                render_class_node(node)
+                render_class_node(node, theme)
             } else {
-                render_node(node)
+                render_node(node, theme)
             };
             for line in node_svg.lines() {
                 svg.push_str("  ");
@@ -198,9 +205,9 @@ pub fn build_svg(
         // ER diagram: use dedicated entity box renderer for ErBox nodes
         for node in &visible_nodes {
             let node_svg = if node.shape == NodeShape::ErBox {
-                render_er_node(node)
+                render_er_node(node, theme)
             } else {
-                render_node(node)
+                render_node(node, theme)
             };
             for line in node_svg.lines() {
                 svg.push_str("  ");
@@ -215,7 +222,7 @@ pub fn build_svg(
             if is_boundary {
                 continue; // drawn separately as boundary frames
             }
-            let node_svg = render_c4_node(node);
+            let node_svg = render_c4_node(node, theme);
             for line in node_svg.lines() {
                 svg.push_str("  ");
                 svg.push_str(line);
@@ -223,7 +230,7 @@ pub fn build_svg(
             }
         }
     } else {
-        let nodes_svg = render_nodes(&visible_nodes);
+        let nodes_svg = render_nodes(&visible_nodes, theme);
         for line in nodes_svg.lines() {
             svg.push_str("  ");
             svg.push_str(line);
@@ -243,7 +250,7 @@ pub fn build_svg(
             svg.push_str("<g class=\"multiplicity-labels\">\n");
             for (edge_idx, path) in &routing_result.paths {
                 if let Some(edge) = graph.edges.get(*edge_idx) {
-                    render_multiplicity_labels(&mut svg, edge, &path.points, grid);
+                    render_multiplicity_labels(&mut svg, edge, &path.points, grid, theme);
                 }
             }
             svg.push_str("</g>\n");
@@ -256,7 +263,7 @@ pub fn build_svg(
         svg.push_str("<g class=\"edge-labels\">\n");
         for label in label_placements {
             svg.push_str("  ");
-            svg.push_str(&render_label(label));
+            svg.push_str(&render_label(label, theme));
             svg.push('\n');
         }
         svg.push_str("</g>\n");
@@ -272,6 +279,7 @@ fn render_multiplicity_labels(
     edge: &trellis_parser::Edge,
     grid_points: &[crate::routing::astar::GridPoint],
     grid: &Grid,
+    theme: &Theme,
 ) {
     if grid_points.len() < 2 {
         return;
@@ -287,8 +295,8 @@ fn render_multiplicity_labels(
         let (x1, y1) = grid.grid_to_world(p1.row as usize, p1.col as usize);
         let (lx, ly) = label_offset_point(x0, y0, x1, y1, offset);
         svg.push_str(&format!(
-            "  <text x=\"{:.1}\" y=\"{:.1}\" font-size=\"10\" fill=\"#555\">{}</text>\n",
-            lx, ly, mult
+            "  <text x=\"{:.1}\" y=\"{:.1}\" font-size=\"10\" fill=\"{}\">{}</text>\n",
+            lx, ly, theme.multiplicity_text, mult
         ));
     }
 
@@ -301,8 +309,8 @@ fn render_multiplicity_labels(
         let (xn1, yn1) = grid.grid_to_world(pn1.row as usize, pn1.col as usize);
         let (lx, ly) = label_offset_point(xn, yn, xn1, yn1, offset);
         svg.push_str(&format!(
-            "  <text x=\"{:.1}\" y=\"{:.1}\" font-size=\"10\" fill=\"#555\">{}</text>\n",
-            lx, ly, mult
+            "  <text x=\"{:.1}\" y=\"{:.1}\" font-size=\"10\" fill=\"{}\">{}</text>\n",
+            lx, ly, theme.multiplicity_text, mult
         ));
     }
 }
@@ -331,7 +339,7 @@ const LABEL_LINE_HEIGHT_PX: f64 = 14.0;
 /// `label.text` may contain `\n` for multi-line labels (e.g. C4 edges that
 /// combine the relation label with a technology annotation).  Each line is
 /// emitted as a `<tspan>` element so the text wraps correctly in SVG.
-fn render_label(label: &LabelPlacement) -> String {
+fn render_label(label: &LabelPlacement, theme: &Theme) -> String {
     let padding = 3.0;
     let bg_x = label.x;
     let bg_y = label.y;
@@ -347,9 +355,10 @@ fn render_label(label: &LabelPlacement) -> String {
     let first_baseline_y =
         label.y + padding + (label.height - total_text_h) / 2.0 + LABEL_LINE_HEIGHT_PX * 0.8;
 
-    let mut text_svg = String::from(
+    let mut text_svg = format!(
         "<text text-anchor=\"middle\" \
-         font-family=\"Arial, Helvetica, sans-serif\" font-size=\"12\" fill=\"#333\">",
+         font-family=\"Arial, Helvetica, sans-serif\" font-size=\"12\" fill=\"{}\">",
+        theme.edge_label_text
     );
     for (i, line) in lines.iter().enumerate() {
         if i == 0 {
@@ -372,8 +381,8 @@ fn render_label(label: &LabelPlacement) -> String {
 
     format!(
         "<rect x=\"{:.1}\" y=\"{:.1}\" width=\"{:.1}\" height=\"{:.1}\" \
-         fill=\"white\" stroke=\"#ccc\" stroke-width=\"0.5\" rx=\"2\"/>{}",
-        bg_x, bg_y, bg_w, bg_h, text_svg
+         fill=\"{}\" stroke=\"{}\" stroke-width=\"0.5\" rx=\"2\"/>{}",
+        bg_x, bg_y, bg_w, bg_h, theme.edge_label_bg, theme.edge_label_border, text_svg
     )
 }
 

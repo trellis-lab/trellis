@@ -1,11 +1,12 @@
 use crate::grid::Grid;
+use crate::theme::Theme;
 
 /// Render crossing indicators as SVG elements.
 ///
 /// At each crossing point (where `cell.crossing == true`), draws a small
 /// white circle background with an arc, creating the "bridge" visual effect
 /// that clearly communicates two edges cross at this point.
-pub fn render_crossings(grid: &Grid) -> String {
+pub fn render_crossings(grid: &Grid, theme: &Theme) -> String {
     let mut svg = String::new();
 
     for row in 0..grid.rows {
@@ -15,18 +16,18 @@ pub fn render_crossings(grid: &Grid) -> String {
                     let (x, y) = grid.grid_to_world(row, col);
                     let r = grid.cell_size as f64 * 0.4;
 
-                    // White background circle to create the "gap" effect
+                    // Background circle to create the "gap" effect
                     svg.push_str(&format!(
                         "<circle cx=\"{:.1}\" cy=\"{:.1}\" r=\"{:.1}\" \
-                         fill=\"white\" stroke=\"none\"/>\n",
-                        x, y, r
+                         fill=\"{}\" stroke=\"none\"/>\n",
+                        x, y, r, theme.crossing_bg
                     ));
 
                     // Small arc to show the bridge
                     svg.push_str(&format!(
                         "<circle cx=\"{:.1}\" cy=\"{:.1}\" r=\"{:.1}\" \
-                         fill=\"none\" stroke=\"#666\" stroke-width=\"1.5\"/>\n",
-                        x, y, r
+                         fill=\"none\" stroke=\"{}\" stroke-width=\"1.5\"/>\n",
+                        x, y, r, theme.crossing_stroke
                     ));
                 }
             }
@@ -40,11 +41,12 @@ pub fn render_crossings(grid: &Grid) -> String {
 mod tests {
     use super::*;
     use crate::grid::{CellState, Grid};
+    use crate::theme::themes::DEFAULT;
 
     #[test]
     fn test_no_crossings_empty_output() {
         let grid = Grid::new(5, 5, 10, 0, 0);
-        let svg = render_crossings(&grid);
+        let svg = render_crossings(&grid, &DEFAULT);
         assert!(svg.is_empty());
     }
 
@@ -56,8 +58,8 @@ mod tests {
             cell.crossing = true;
         }
 
-        let svg = render_crossings(&grid);
+        let svg = render_crossings(&grid, &DEFAULT);
         assert!(svg.contains("<circle"));
-        assert!(svg.contains("fill=\"white\""));
+        assert!(svg.contains(&format!("fill=\"{}\"", DEFAULT.crossing_bg)));
     }
 }

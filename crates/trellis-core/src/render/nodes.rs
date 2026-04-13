@@ -1,8 +1,9 @@
+use crate::theme::Theme;
 use trellis_parser::{Node, NodeShape};
 
 /// Render a single node as an SVG element string.
 /// Node positions (x, y) are top-left coordinates.
-pub fn render_node(node: &Node) -> String {
+pub fn render_node(node: &Node, theme: &Theme) -> String {
     let w = node.width;
     let h = node.height;
     let left = node.x;
@@ -19,15 +20,15 @@ pub fn render_node(node: &Node) -> String {
         NodeShape::Rectangle => {
             svg.push_str(&format!(
                 "<rect x=\"{:.1}\" y=\"{:.1}\" width=\"{:.1}\" height=\"{:.1}\" \
-                 fill=\"#e8f4fd\" stroke=\"#4a90d9\" stroke-width=\"1.5\"/>\n",
-                left, top, w, h,
+                 fill=\"{}\" stroke=\"{}\" stroke-width=\"1.5\"/>\n",
+                left, top, w, h, theme.shape_process_fill, theme.shape_process_stroke,
             ));
         }
         NodeShape::RoundedRectangle => {
             svg.push_str(&format!(
                 "<rect x=\"{:.1}\" y=\"{:.1}\" width=\"{:.1}\" height=\"{:.1}\" rx=\"8\" \
-                 fill=\"#e8f4fd\" stroke=\"#4a90d9\" stroke-width=\"1.5\"/>\n",
-                left, top, w, h,
+                 fill=\"{}\" stroke=\"{}\" stroke-width=\"1.5\"/>\n",
+                left, top, w, h, theme.shape_process_fill, theme.shape_process_stroke,
             ));
         }
         NodeShape::Diamond => {
@@ -45,16 +46,16 @@ pub fn render_node(node: &Node) -> String {
             );
             svg.push_str(&format!(
                 "<polygon points=\"{}\" \
-                 fill=\"#fff3e0\" stroke=\"#e67e22\" stroke-width=\"1.5\"/>\n",
-                points,
+                 fill=\"{}\" stroke=\"{}\" stroke-width=\"1.5\"/>\n",
+                points, theme.shape_decision_fill, theme.shape_decision_stroke,
             ));
         }
         NodeShape::Circle => {
             let r = w.max(h) / 2.0;
             svg.push_str(&format!(
                 "<circle cx=\"{:.1}\" cy=\"{:.1}\" r=\"{:.1}\" \
-                 fill=\"#e8f5e9\" stroke=\"#43a047\" stroke-width=\"1.5\"/>\n",
-                cx, cy, r,
+                 fill=\"{}\" stroke=\"{}\" stroke-width=\"1.5\"/>\n",
+                cx, cy, r, theme.shape_terminal_fill, theme.shape_terminal_stroke,
             ));
         }
         NodeShape::Hexagon => {
@@ -77,45 +78,49 @@ pub fn render_node(node: &Node) -> String {
             );
             svg.push_str(&format!(
                 "<polygon points=\"{}\" \
-                 fill=\"#f3e5f5\" stroke=\"#8e24aa\" stroke-width=\"1.5\"/>\n",
-                points,
+                 fill=\"{}\" stroke=\"{}\" stroke-width=\"1.5\"/>\n",
+                points, theme.shape_special_fill, theme.shape_special_stroke,
             ));
         }
         NodeShape::Stadium => {
             // Stadium: rectangle with fully-rounded ends (rx = half height)
             svg.push_str(&format!(
                 "<rect x=\"{:.1}\" y=\"{:.1}\" width=\"{:.1}\" height=\"{:.1}\" rx=\"{:.1}\" \
-                 fill=\"#e8f4fd\" stroke=\"#4a90d9\" stroke-width=\"1.5\"/>\n",
+                 fill=\"{}\" stroke=\"{}\" stroke-width=\"1.5\"/>\n",
                 left,
                 top,
                 w,
                 h,
                 h / 2.0,
+                theme.shape_terminal_fill,
+                theme.shape_terminal_stroke,
             ));
         }
         NodeShape::Subroutine => {
             // Subroutine: rectangle with inner vertical lines 6 px from each side
             svg.push_str(&format!(
                 "<rect x=\"{:.1}\" y=\"{:.1}\" width=\"{:.1}\" height=\"{:.1}\" \
-                 fill=\"#e8f4fd\" stroke=\"#4a90d9\" stroke-width=\"1.5\"/>\n",
-                left, top, w, h,
+                 fill=\"{}\" stroke=\"{}\" stroke-width=\"1.5\"/>\n",
+                left, top, w, h, theme.shape_process_fill, theme.shape_process_stroke,
             ));
             let inset = 6.0;
             svg.push_str(&format!(
                 "<line x1=\"{:.1}\" y1=\"{:.1}\" x2=\"{:.1}\" y2=\"{:.1}\" \
-                 stroke=\"#4a90d9\" stroke-width=\"1.5\"/>\n",
+                 stroke=\"{}\" stroke-width=\"1.5\"/>\n",
                 left + inset,
                 top,
                 left + inset,
                 top + h,
+                theme.shape_process_stroke,
             ));
             svg.push_str(&format!(
                 "<line x1=\"{:.1}\" y1=\"{:.1}\" x2=\"{:.1}\" y2=\"{:.1}\" \
-                 stroke=\"#4a90d9\" stroke-width=\"1.5\"/>\n",
+                 stroke=\"{}\" stroke-width=\"1.5\"/>\n",
                 left + w - inset,
                 top,
                 left + w - inset,
                 top + h,
+                theme.shape_process_stroke,
             ));
         }
         NodeShape::Asymmetric => {
@@ -137,8 +142,8 @@ pub fn render_node(node: &Node) -> String {
             );
             svg.push_str(&format!(
                 "<polygon points=\"{}\" \
-                 fill=\"#e8f4fd\" stroke=\"#4a90d9\" stroke-width=\"1.5\"/>\n",
-                points,
+                 fill=\"{}\" stroke=\"{}\" stroke-width=\"1.5\"/>\n",
+                points, theme.shape_process_fill, theme.shape_process_stroke,
             ));
         }
         NodeShape::Parallelogram => {
@@ -158,8 +163,8 @@ pub fn render_node(node: &Node) -> String {
             );
             svg.push_str(&format!(
                 "<polygon points=\"{}\" \
-                 fill=\"#e8f4fd\" stroke=\"#4a90d9\" stroke-width=\"1.5\"/>\n",
-                points,
+                 fill=\"{}\" stroke=\"{}\" stroke-width=\"1.5\"/>\n",
+                points, theme.shape_process_fill, theme.shape_process_stroke,
             ));
         }
         NodeShape::ParallelogramAlt => {
@@ -179,8 +184,8 @@ pub fn render_node(node: &Node) -> String {
             );
             svg.push_str(&format!(
                 "<polygon points=\"{}\" \
-                 fill=\"#e8f4fd\" stroke=\"#4a90d9\" stroke-width=\"1.5\"/>\n",
-                points,
+                 fill=\"{}\" stroke=\"{}\" stroke-width=\"1.5\"/>\n",
+                points, theme.shape_process_fill, theme.shape_process_stroke,
             ));
         }
         NodeShape::TrapezoidAlt => {
@@ -200,8 +205,8 @@ pub fn render_node(node: &Node) -> String {
             );
             svg.push_str(&format!(
                 "<polygon points=\"{}\" \
-                 fill=\"#e8f4fd\" stroke=\"#4a90d9\" stroke-width=\"1.5\"/>\n",
-                points,
+                 fill=\"{}\" stroke=\"{}\" stroke-width=\"1.5\"/>\n",
+                points, theme.shape_process_fill, theme.shape_process_stroke,
             ));
         }
         NodeShape::Trapezoid => {
@@ -221,8 +226,8 @@ pub fn render_node(node: &Node) -> String {
             );
             svg.push_str(&format!(
                 "<polygon points=\"{}\" \
-                 fill=\"#e8f4fd\" stroke=\"#4a90d9\" stroke-width=\"1.5\"/>\n",
-                points,
+                 fill=\"{}\" stroke=\"{}\" stroke-width=\"1.5\"/>\n",
+                points, theme.shape_process_fill, theme.shape_process_stroke,
             ));
         }
         NodeShape::DoubleCircle => {
@@ -230,15 +235,16 @@ pub fn render_node(node: &Node) -> String {
             let r = w.max(h) / 2.0;
             svg.push_str(&format!(
                 "<circle cx=\"{:.1}\" cy=\"{:.1}\" r=\"{:.1}\" \
-                 fill=\"#e8f5e9\" stroke=\"#43a047\" stroke-width=\"1.5\"/>\n",
-                cx, cy, r,
+                 fill=\"{}\" stroke=\"{}\" stroke-width=\"1.5\"/>\n",
+                cx, cy, r, theme.shape_terminal_fill, theme.shape_terminal_stroke,
             ));
             svg.push_str(&format!(
                 "<circle cx=\"{:.1}\" cy=\"{:.1}\" r=\"{:.1}\" \
-                 fill=\"none\" stroke=\"#43a047\" stroke-width=\"1.5\"/>\n",
+                 fill=\"none\" stroke=\"{}\" stroke-width=\"1.5\"/>\n",
                 cx,
                 cy,
                 r - 5.0,
+                theme.shape_terminal_stroke,
             ));
         }
         NodeShape::Cylinder => {
@@ -258,7 +264,7 @@ pub fn render_node(node: &Node) -> String {
                 "<path d=\"M {:.1},{:.1} L {:.1},{:.1} \
                             A {:.1},{:.1} 0 0 0 {:.1},{:.1} \
                             L {:.1},{:.1} Z\" \
-                 fill=\"#e8f4fd\" stroke=\"#4a90d9\" stroke-width=\"1.5\"/>\n",
+                 fill=\"{}\" stroke=\"{}\" stroke-width=\"1.5\"/>\n",
                 left,
                 top + ry, // M top-left
                 left,
@@ -269,16 +275,20 @@ pub fn render_node(node: &Node) -> String {
                 top + h - ry, // A end bottom-right (through bottom)
                 right,
                 top + ry, // L top-right
+                theme.shape_storage_fill,
+                theme.shape_storage_stroke,
             ));
-            // Top ellipse — slightly lighter fill to suggest the top face.
+            // Top ellipse — slightly different fill to suggest the top face.
             // Its fill hides the straight closing line of the body path.
             svg.push_str(&format!(
                 "<ellipse cx=\"{:.1}\" cy=\"{:.1}\" rx=\"{:.1}\" ry=\"{:.1}\" \
-                 fill=\"#cce5ff\" stroke=\"#4a90d9\" stroke-width=\"1.5\"/>\n",
+                 fill=\"{}\" stroke=\"{}\" stroke-width=\"1.5\"/>\n",
                 cx,
                 top + ry,
                 rx,
                 ry,
+                theme.shape_storage_top_fill,
+                theme.shape_storage_stroke,
             ));
             // Push the label below the top ellipse so it stays readable.
             label_cy += 10.0;
@@ -287,8 +297,8 @@ pub fn render_node(node: &Node) -> String {
         NodeShape::ClassBox | NodeShape::ErBox | NodeShape::C4Box => {
             svg.push_str(&format!(
                 "<rect x=\"{:.1}\" y=\"{:.1}\" width=\"{:.1}\" height=\"{:.1}\" \
-                 fill=\"#f5f5f5\" stroke=\"#555\" stroke-width=\"1.5\"/>\n",
-                left, top, w, h,
+                 fill=\"{}\" stroke=\"{}\" stroke-width=\"1.5\"/>\n",
+                left, top, w, h, theme.fallback_box_fill, theme.fallback_box_stroke,
             ));
         }
     }
@@ -297,18 +307,18 @@ pub fn render_node(node: &Node) -> String {
     let escaped_label = escape_xml(&node.label);
     svg.push_str(&format!(
         "<text x=\"{:.1}\" y=\"{:.1}\" text-anchor=\"middle\" dominant-baseline=\"central\" \
-         font-family=\"Arial, Helvetica, sans-serif\" font-size=\"12\">{}</text>\n",
-        cx, label_cy, escaped_label,
+         font-family=\"Arial, Helvetica, sans-serif\" font-size=\"12\" fill=\"{}\">{}</text>\n",
+        cx, label_cy, theme.node_text, escaped_label,
     ));
 
     svg
 }
 
 /// Render all nodes as SVG elements.
-pub fn render_nodes(nodes: &[Node]) -> String {
+pub fn render_nodes(nodes: &[Node], theme: &Theme) -> String {
     let mut svg = String::new();
     for node in nodes {
-        svg.push_str(&render_node(node));
+        svg.push_str(&render_node(node, theme));
     }
     svg
 }
@@ -325,6 +335,7 @@ fn escape_xml(text: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::theme::themes::DEFAULT;
 
     fn make_node(id: &str, shape: NodeShape, x: f64, y: f64) -> Node {
         Node {
@@ -342,7 +353,7 @@ mod tests {
     #[test]
     fn test_render_rectangle() {
         let node = make_node("A", NodeShape::Rectangle, 100.0, 50.0);
-        let svg = render_node(&node);
+        let svg = render_node(&node, &DEFAULT);
         assert!(svg.contains("<rect"));
         assert!(!svg.contains("rx="));
         assert!(svg.contains("text-anchor=\"middle\""));
@@ -351,28 +362,28 @@ mod tests {
     #[test]
     fn test_render_rounded_rectangle() {
         let node = make_node("B", NodeShape::RoundedRectangle, 100.0, 50.0);
-        let svg = render_node(&node);
+        let svg = render_node(&node, &DEFAULT);
         assert!(svg.contains("rx=\"8\""));
     }
 
     #[test]
     fn test_render_diamond() {
         let node = make_node("C", NodeShape::Diamond, 100.0, 50.0);
-        let svg = render_node(&node);
+        let svg = render_node(&node, &DEFAULT);
         assert!(svg.contains("<polygon"));
     }
 
     #[test]
     fn test_render_circle() {
         let node = make_node("D", NodeShape::Circle, 100.0, 50.0);
-        let svg = render_node(&node);
+        let svg = render_node(&node, &DEFAULT);
         assert!(svg.contains("<circle"));
     }
 
     #[test]
     fn test_render_hexagon() {
         let node = make_node("E", NodeShape::Hexagon, 100.0, 50.0);
-        let svg = render_node(&node);
+        let svg = render_node(&node, &DEFAULT);
         assert!(svg.contains("<polygon"));
         // Hexagon has 6 points (6 pairs of coordinates)
     }
@@ -380,7 +391,7 @@ mod tests {
     #[test]
     fn test_render_cylinder() {
         let node = make_node("F", NodeShape::Cylinder, 100.0, 50.0);
-        let svg = render_node(&node);
+        let svg = render_node(&node, &DEFAULT);
         // Body uses a path (left wall + bottom arc + right wall)
         assert!(svg.contains("<path"));
         // One top-face ellipse
@@ -399,7 +410,7 @@ mod tests {
             make_node("A", NodeShape::Rectangle, 100.0, 50.0),
             make_node("B", NodeShape::RoundedRectangle, 200.0, 50.0),
         ];
-        let svg = render_nodes(&nodes);
+        let svg = render_nodes(&nodes, &DEFAULT);
         assert!(svg.contains(">A</text>"));
         assert!(svg.contains(">B</text>"));
     }

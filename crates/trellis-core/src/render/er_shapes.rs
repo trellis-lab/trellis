@@ -1,3 +1,4 @@
+use crate::theme::Theme;
 use trellis_parser::{KeyType, Node};
 
 /// Line height for ER attribute rows (pixels)
@@ -17,7 +18,7 @@ const FONT_SIZE_ATTR: f64 = 11.0;
 /// - Top compartment: entity name (bold, centered)
 /// - Separator line
 /// - One row per attribute: `[KEY] type name`
-pub fn render_er_node(node: &Node) -> String {
+pub fn render_er_node(node: &Node, theme: &Theme) -> String {
     let x = node.x;
     let y = node.y;
     let w = node.width;
@@ -28,19 +29,20 @@ pub fn render_er_node(node: &Node) -> String {
     // Outer box
     svg.push_str(&format!(
         "<rect x=\"{:.1}\" y=\"{:.1}\" width=\"{:.1}\" height=\"{:.1}\" \
-         fill=\"#f0f7ff\" stroke=\"#336699\" stroke-width=\"1.5\" rx=\"2\"/>\n",
-        x, y, w, h
+         fill=\"{}\" stroke=\"{}\" stroke-width=\"1.5\" rx=\"2\"/>\n",
+        x, y, w, h, theme.er_box_fill, theme.er_box_stroke,
     ));
 
     // Header separator line
     let sep_y = y + HEADER_HEIGHT;
     svg.push_str(&format!(
         "<line x1=\"{:.1}\" y1=\"{:.1}\" x2=\"{:.1}\" y2=\"{:.1}\" \
-         stroke=\"#336699\" stroke-width=\"1\"/>\n",
+         stroke=\"{}\" stroke-width=\"1\"/>\n",
         x,
         sep_y,
         x + w,
-        sep_y
+        sep_y,
+        theme.er_box_stroke,
     ));
 
     // Entity name — bold, centered
@@ -49,10 +51,11 @@ pub fn render_er_node(node: &Node) -> String {
     svg.push_str(&format!(
         "<text x=\"{:.1}\" y=\"{:.1}\" text-anchor=\"middle\" \
          font-family=\"Arial, Helvetica, sans-serif\" \
-         font-size=\"{:.0}\" font-weight=\"bold\" fill=\"#111\">{}</text>\n",
+         font-size=\"{:.0}\" font-weight=\"bold\" fill=\"{}\">{}</text>\n",
         cx,
         name_y,
         FONT_SIZE_NAME,
+        theme.er_entity_text,
         escape_xml(&node.label),
     ));
 
@@ -82,13 +85,14 @@ pub fn render_er_node(node: &Node) -> String {
         svg.push_str(&format!(
             "<text x=\"{:.1}\" y=\"{:.1}\" \
              font-family=\"Arial, Helvetica, sans-serif\" \
-             font-size=\"{:.0}\" font-weight=\"{}\" font-style=\"{}\"{} fill=\"#333\">{}</text>\n",
+             font-size=\"{:.0}\" font-weight=\"{}\" font-style=\"{}\"{} fill=\"{}\">{}</text>\n",
             x + PADDING_X,
             row_y,
             FONT_SIZE_ATTR,
             font_weight,
             font_style,
             text_decoration,
+            theme.er_attribute_text,
             escape_xml(&attr_text),
         ));
     }
@@ -120,6 +124,7 @@ fn escape_xml(s: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::theme::themes::DEFAULT;
     use trellis_parser::{ErAttribute, Node, NodeShape};
 
     fn make_er_node(id: &str, attrs: Vec<ErAttribute>) -> Node {
@@ -139,7 +144,7 @@ mod tests {
     #[test]
     fn test_render_er_node_no_attrs() {
         let node = make_er_node("USER", vec![]);
-        let svg = render_er_node(&node);
+        let svg = render_er_node(&node, &DEFAULT);
         assert!(svg.contains("USER"));
         assert!(svg.contains("<rect"));
     }
@@ -153,7 +158,7 @@ mod tests {
             comment: None,
         };
         let node = make_er_node("ORDER", vec![attr]);
-        let svg = render_er_node(&node);
+        let svg = render_er_node(&node, &DEFAULT);
         assert!(svg.contains("PK int id"));
         assert!(svg.contains("font-weight=\"bold\""));
     }
@@ -167,7 +172,7 @@ mod tests {
             comment: None,
         };
         let node = make_er_node("ORDER", vec![attr]);
-        let svg = render_er_node(&node);
+        let svg = render_er_node(&node, &DEFAULT);
         assert!(svg.contains("FK int user_id"));
         assert!(svg.contains("font-style=\"italic\""));
     }

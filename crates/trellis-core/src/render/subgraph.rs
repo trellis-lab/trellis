@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use crate::theme::Theme;
 use crate::types::{BoundingBox, SubgraphTree};
 
 const BORDER_RADIUS: f64 = 8.0;
@@ -9,27 +10,6 @@ const LABEL_FONT_SIZE: f64 = 13.0;
 const LABEL_OFFSET_X: f64 = 8.0;
 const LABEL_OFFSET_Y: f64 = 16.0;
 
-/// Background colors by depth (lighter = shallower)
-const BG_COLORS: &[&str] = &["#f0f4f8", "#e2e8f0", "#cbd5e1", "#94a3b8"];
-
-/// Stroke colors (pre-computed ~30% darker than bg)
-const STROKE_COLORS: &[&str] = &["#b0bec5", "#90a4ae", "#78909c", "#607d8b"];
-
-/// Label text colors (pre-computed ~60% darker than bg)
-const LABEL_COLORS: &[&str] = &["#546e7a", "#455a64", "#37474f", "#263238"];
-
-fn get_bg_color(depth: usize) -> &'static str {
-    BG_COLORS[depth.min(BG_COLORS.len() - 1)]
-}
-
-fn get_stroke_color(depth: usize) -> &'static str {
-    STROKE_COLORS[depth.min(STROKE_COLORS.len() - 1)]
-}
-
-fn get_label_color(depth: usize) -> &'static str {
-    LABEL_COLORS[depth.min(LABEL_COLORS.len() - 1)]
-}
-
 /// Render all subgraph backgrounds as SVG elements.
 ///
 /// Returns an SVG string with `<rect>` and `<text>` elements for each subgraph frame.
@@ -37,12 +17,13 @@ fn get_label_color(depth: usize) -> &'static str {
 pub fn render_subgraph_backgrounds(
     tree: &SubgraphTree,
     boxes: &HashMap<String, BoundingBox>,
+    theme: &Theme,
 ) -> String {
     let mut svg = String::new();
 
     if let Some(root) = tree.nodes.get(&tree.root_id) {
         for child_id in &root.children {
-            render_subgraph_recursive(tree, child_id, boxes, &mut svg, 0);
+            render_subgraph_recursive(tree, child_id, boxes, &mut svg, 0, theme);
         }
     }
 
@@ -55,15 +36,17 @@ fn render_subgraph_recursive(
     boxes: &HashMap<String, BoundingBox>,
     svg: &mut String,
     depth: usize,
+    theme: &Theme,
 ) {
     let bbox = match boxes.get(subtree_id) {
         Some(b) => b,
         None => return,
     };
 
-    let bg = get_bg_color(depth);
-    let stroke = get_stroke_color(depth);
-    let label_color = get_label_color(depth);
+    let idx = depth.min(3);
+    let bg = theme.subgraph_fill[idx];
+    let stroke = theme.subgraph_stroke[idx];
+    let label_color = theme.subgraph_label[idx];
 
     // Background rectangle with dashed border
     svg.push_str(&format!(
@@ -101,7 +84,7 @@ fn render_subgraph_recursive(
     // Recurse into children at depth+1 (rendered on top of parent)
     if let Some(tree_node) = tree.nodes.get(subtree_id) {
         for child_id in tree_node.children.clone() {
-            render_subgraph_recursive(tree, &child_id, boxes, svg, depth + 1);
+            render_subgraph_recursive(tree, &child_id, boxes, svg, depth + 1, theme);
         }
     }
 }
@@ -117,6 +100,7 @@ fn escape_xml(text: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::theme::themes::DEFAULT;
     use crate::types::SubgraphTreeNode;
 
     fn make_tree_with_one_sg() -> (SubgraphTree, HashMap<String, BoundingBox>) {
@@ -162,7 +146,7 @@ mod tests {
     #[test]
     fn test_render_single_frame() {
         let (tree, boxes) = make_tree_with_one_sg();
-        let svg = render_subgraph_backgrounds(&tree, &boxes);
+        let svg = render_subgraph_backgrounds(&tree, &boxes, &DEFAULT);
 
         assert!(svg.contains("<rect"), "Should contain a rect element");
         assert!(
@@ -175,11 +159,11 @@ mod tests {
 
     #[test]
     fn test_depth_colors() {
-        assert_eq!(get_bg_color(0), "#f0f4f8");
-        assert_eq!(get_bg_color(1), "#e2e8f0");
-        assert_eq!(get_bg_color(2), "#cbd5e1");
-        assert_eq!(get_bg_color(3), "#94a3b8");
-        assert_eq!(get_bg_color(99), "#94a3b8"); // clamped
+        // Default theme subgraph colors — depth 0 is lightest
+        assert_eq!(DEFAULT.subgraph_fill[0], "#f0f4f8");
+        assert_eq!(DEFAULT.subgraph_fill[1], "#e2e8f0");
+        assert_eq!(DEFAULT.subgraph_fill[2], "#cbd5e1");
+        assert_eq!(DEFAULT.subgraph_fill[3], "#94a3b8");
     }
 
     #[test]
@@ -238,7 +222,7 @@ mod tests {
             },
         );
 
-        let svg = render_subgraph_backgrounds(&tree, &boxes);
+        let svg = render_subgraph_backgrounds(&tree, &boxes, &DEFAULT);
 
         // Parent rect should appear before child rect
         let parent_pos = svg.find("Parent").expect("Should contain Parent label");
@@ -250,11 +234,11 @@ mod tests {
 
         // Parent should use depth-0 color, child should use depth-1 color
         assert!(
-            svg.contains("#f0f4f8"),
+            svg.contains(DEFAULT.subgraph_fill[0]),
             "Parent should have depth-0 bg color"
         );
         assert!(
-            svg.contains("#e2e8f0"),
+            svg.contains(DEFAULT.subgraph_fill[1]),
             "Child should have depth-1 bg color"
         );
     }

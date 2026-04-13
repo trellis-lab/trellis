@@ -267,3 +267,71 @@ mod metrics_summary {
         eprintln!("{}", "-".repeat(70));
     }
 }
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Theme smoke tests — each theme renders a simple diagram without panicking
+// and embeds its background colour in the SVG output.
+// ──────────────────────────────────────────────────────────────────────────────
+#[cfg(test)]
+mod themes {
+    use super::*;
+    use trellis_core::ThemeName;
+
+    const SIMPLE: &str = "graph TB\n    A --> B\n    B --> C";
+
+    fn render_with_theme(theme: ThemeName) -> String {
+        let graph = parse(SIMPLE).expect("parse failed");
+        let mut config = TrellisConfig::default();
+        config.theme = theme;
+        let result = render(&graph, &config, OutputFormat::Svg).expect("render failed");
+        String::from_utf8(result.data).expect("SVG is not valid UTF-8")
+    }
+
+    #[test]
+    fn default_theme_renders() {
+        let svg = render_with_theme(ThemeName::Default);
+        assert!(svg.contains("<svg"), "missing SVG root");
+        // Default background is white
+        assert!(svg.contains("white"), "missing default background");
+    }
+
+    #[test]
+    fn paper_theme_renders() {
+        let svg = render_with_theme(ThemeName::Paper);
+        assert!(svg.contains("<svg"), "missing SVG root");
+        // Paper theme has a warm cream background
+        assert!(svg.contains("#faf8f5"), "missing paper background colour");
+    }
+
+    #[test]
+    fn blueprint_theme_renders() {
+        let svg = render_with_theme(ThemeName::Blueprint);
+        assert!(svg.contains("<svg"), "missing SVG root");
+        // Blueprint theme has a light blue-white background
+        assert!(svg.contains("#f8faff"), "missing blueprint background colour");
+    }
+
+    #[test]
+    fn dark_theme_renders() {
+        let svg = render_with_theme(ThemeName::Dark);
+        assert!(svg.contains("<svg"), "missing SVG root");
+        // Dark theme has a dark background
+        assert!(svg.contains("#1e1e1e"), "missing dark background colour");
+    }
+
+    #[test]
+    fn midnight_theme_renders() {
+        let svg = render_with_theme(ThemeName::Midnight);
+        assert!(svg.contains("<svg"), "missing SVG root");
+        // Midnight theme has a deep navy background
+        assert!(svg.contains("#0d1117"), "missing midnight background colour");
+    }
+
+    #[test]
+    fn forest_theme_renders() {
+        let svg = render_with_theme(ThemeName::Forest);
+        assert!(svg.contains("<svg"), "missing SVG root");
+        // Forest theme has a dark green background
+        assert!(svg.contains("#0f1a0f"), "missing forest background colour");
+    }
+}
