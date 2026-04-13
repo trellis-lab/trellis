@@ -40,3 +40,4 @@ images/bugs/
 
 # Benchmarking & validation
 temp/
+*.local.*

@@ -69,9 +69,16 @@ pub enum EdgeSegment {
     },
     /// Gap/skip: `-| |-` shape — stroke breaks at the crossing.
     ///
-    /// Path flows: `L entry  M exit`  (pen lifted over the crossing).
+    /// Path flows: `L entry  L foot_in  M foot_out  L exit`
+    ///
+    /// `entry`/`exit` are half a cell from the crossing center.
+    /// `foot_in`/`foot_out` are `HOP_FOOT_LEN` pixels closer to the center —
+    /// the same flat feet as Arc/Rectangular, so there are 2 px of visible stub
+    /// on each side before the gap starts.
     HopSkip {
         entry: RenderPoint,
+        foot_in: RenderPoint,
+        foot_out: RenderPoint,
         exit: RenderPoint,
     },
 }
@@ -303,9 +310,13 @@ pub fn build_edge_segments(
                     });
                 }
                 CrossingStyle::Skip => {
-                    // `-| |-` shape: stroke breaks at the crossing.
+                    // `-| |-` shape: 2 px stub → gap → 2 px stub.
+                    let foot_in = move_towards(entry, curr_pt, HOP_FOOT_LEN);
+                    let foot_out = move_towards(exit_pt, curr_pt, HOP_FOOT_LEN);
                     segments.push(EdgeSegment::HopSkip {
                         entry,
+                        foot_in,
+                        foot_out,
                         exit: exit_pt,
                     });
                 }
@@ -403,11 +414,14 @@ pub fn segments_to_svg_path(segments: &[EdgeSegment]) -> String {
                     exit.x, exit.y,
                 ));
             }
-            EdgeSegment::HopSkip { entry, exit } => {
-                // -| |- : line to entry, lift pen, resume at exit
+            EdgeSegment::HopSkip { entry, foot_in, foot_out, exit } => {
+                // -| |- : stub → gap → stub
                 d.push_str(&format!(
-                    " L {:.1} {:.1} M {:.1} {:.1}",
-                    entry.x, entry.y, exit.x, exit.y,
+                    " L {:.1} {:.1} L {:.1} {:.1} M {:.1} {:.1} L {:.1} {:.1}",
+                    entry.x, entry.y,
+                    foot_in.x, foot_in.y,
+                    foot_out.x, foot_out.y,
+                    exit.x, exit.y,
                 ));
             }
         }
@@ -647,7 +661,9 @@ mod tests {
     }
 
     #[test]
-    fn test_hop_skip_breaks_stroke() {
+    fn test_hop_skip_breaks_stroke_with_feet() {
+        // cell_size=10, crossing at col 3 (world x=30), horizontal travel rightward.
+        // half_cell=5, foot=2 → entry=25, foot_in=27, gap, foot_out=33, exit=35.
         let grid = make_grid();
         let pts: Vec<GridPoint> = (0..=6).map(|c| gp(0, c)).collect();
         let mut crossing_set = HashSet::new();
@@ -656,10 +672,28 @@ mod tests {
         let segs = build_edge_segments(&pts, &grid, &crossing_set, 5.0, CrossingStyle::Skip);
         let d = segments_to_svg_path(&segs);
 
-        // Should contain a second M (pen lift) for the gap
+        // Pen lift present, no arc
         let m_count = d.chars().filter(|&c| c == 'M').count();
-        assert!(m_count >= 2, "expected pen lift (M) for skip gap: {d}");
+        assert!(m_count >= 2, "expected pen lift for skip gap: {d}");
         assert!(!d.contains('A'), "no arc expected: {d}");
+
+        let skip = segs.iter().find_map(|s| match s {
+            EdgeSegment::HopSkip { entry, foot_in, foot_out, exit } =>
+                Some((*entry, *foot_in, *foot_out, *exit)),
+            _ => None,
+        });
+        let (entry, foot_in, foot_out, exit) = skip.expect("HopSkip segment expected");
+
+        // Same foot positions as Arc/Rect
+        assert!((entry.x - 25.0).abs() < 0.1, "entry.x={}", entry.x);
+        assert!((foot_in.x - 27.0).abs() < 0.1, "foot_in.x={}", foot_in.x);
+        assert!((foot_out.x - 33.0).abs() < 0.1, "foot_out.x={}", foot_out.x);
+        assert!((exit.x - 35.0).abs() < 0.1, "exit.x={}", exit.x);
+        // All on baseline
+        assert!(entry.y.abs() < 0.1);
+        assert!(foot_in.y.abs() < 0.1);
+        assert!(foot_out.y.abs() < 0.1);
+        assert!(exit.y.abs() < 0.1);
     }
 
     #[test]
