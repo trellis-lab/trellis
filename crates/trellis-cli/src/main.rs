@@ -121,7 +121,8 @@ EXAMPLES
 EXAMPLES
   trellis evaluate-batch ./fixtures/ -o ./reports/
   trellis evaluate-batch ./fixtures/ -o ./reports/ --annotated
-  trellis evaluate-batch ./fixtures/ -o ./reports/ --compare-strategies")]
+  trellis evaluate-batch ./fixtures/ -o ./reports/ --compare-strategies
+  trellis --config custom.toml evaluate-batch ./fixtures/ -o ./reports/")]
     EvaluateBatch {
         /// Directory containing .mmd source files (searched recursively)
         input_dir: PathBuf,
@@ -1045,7 +1046,7 @@ COMMAND: evaluate-batch
   summary CSV suitable for A/B algorithm comparison.
 
   USAGE
-    trellis evaluate-batch [OPTIONS] <INPUT_DIR>
+    trellis [--config <FILE>] evaluate-batch [OPTIONS] <INPUT_DIR>
 
   ARGUMENTS
     <INPUT_DIR>              Source directory (searched recursively for .mmd files)
@@ -1057,10 +1058,14 @@ COMMAND: evaluate-batch
                              write <stem>_<strategy>.svg + .json + a
                              <stem>_strategies.csv summary
 
+  GLOBAL OPTIONS (place before the subcommand)
+    --config <FILE>          Load config from FILE instead of ~/.trellis/config.toml
+
   EXAMPLES
     trellis evaluate-batch ./fixtures/ -o ./reports/
     trellis evaluate-batch ./fixtures/ -o ./reports/ --annotated
     trellis evaluate-batch ./fixtures/ -o ./reports/ --compare-strategies
+    trellis --config custom.toml evaluate-batch ./fixtures/ -o ./reports/
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
