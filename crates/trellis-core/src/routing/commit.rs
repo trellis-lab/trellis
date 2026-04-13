@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 
 use crate::config::RoutingCosts;
 use crate::grid::{CellState, Grid};
@@ -111,7 +111,7 @@ pub fn uncommit_path(grid: &mut Grid, path: &[GridPoint], edge_id: &str, costs: 
 /// Clears every `crossing` / `crossed_by` flag, then re-derives them by
 /// scanning which cells are shared by two or more committed edge paths.
 /// Call this after any reroute pass so the grid reflects the actual paths.
-pub fn reconcile_crossings(grid: &mut Grid, paths: &HashMap<usize, RoutedPath>) {
+pub fn reconcile_crossings(grid: &mut Grid, paths: &BTreeMap<usize, RoutedPath>) {
     // Step 1: Clear all crossing metadata.
     for row in 0..grid.rows {
         for col in 0..grid.cols {
@@ -158,7 +158,7 @@ pub fn reconcile_crossings(grid: &mut Grid, paths: &HashMap<usize, RoutedPath>) 
 /// This ensures exactly one edge hops at every crossing — the grid's
 /// `crossed_by` field is the authoritative source for which edge that is.
 pub fn compute_crossing_points(
-    paths: &HashMap<usize, RoutedPath>,
+    paths: &BTreeMap<usize, RoutedPath>,
     grid: &Grid,
 ) -> HashMap<usize, Vec<(i64, i64)>> {
     // Build cell → edge list.
@@ -321,7 +321,7 @@ mod tests {
     #[test]
     fn test_compute_crossing_points_only_hopper_gets_arc() {
         use crate::routing::astar::RoutedPath;
-        use std::collections::HashMap;
+        use std::collections::BTreeMap;
 
         // edge 0 horizontal, edge 1 vertical — they cross at (3,2).
         let path_a = RoutedPath {
@@ -343,7 +343,7 @@ mod tests {
             total_cost: 0.0,
         };
 
-        let mut paths = HashMap::new();
+        let mut paths = BTreeMap::new();
         paths.insert(0usize, path_a);
         paths.insert(1usize, path_b);
 
@@ -368,7 +368,7 @@ mod tests {
     #[test]
     fn test_reconcile_crossings_rebuilds_flags() {
         use crate::routing::astar::RoutedPath;
-        use std::collections::HashMap;
+        use std::collections::BTreeMap;
 
         let mut grid = Grid::new(10, 10, 10, 0, 0);
 
@@ -391,7 +391,7 @@ mod tests {
             total_cost: 0.0,
         };
 
-        let mut paths = HashMap::new();
+        let mut paths = BTreeMap::new();
         paths.insert(0usize, path_a);
         paths.insert(1usize, path_b);
 

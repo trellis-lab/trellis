@@ -25,7 +25,7 @@ impl PortAssigner for DefaultPortAssigner {
 }
 
 /// Side of a node where a port can be placed
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum Side {
     Top,
     Right,

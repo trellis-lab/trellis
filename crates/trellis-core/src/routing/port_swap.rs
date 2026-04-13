@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeMap, HashMap, HashSet};
 
 use trellis_parser::Graph;
 
@@ -28,7 +28,7 @@ pub fn port_swap(
     graph: &Graph,
     grid: &mut Grid,
     port_assignments: &mut HashMap<usize, EdgePorts>,
-    paths: &mut HashMap<usize, RoutedPath>,
+    paths: &mut BTreeMap<usize, RoutedPath>,
     config: &TrellisConfig,
     pinned_indices: &HashSet<usize>,
 ) -> usize {
@@ -38,7 +38,7 @@ pub fn port_swap(
         // Collect all edges that touch this node, grouped by (side, is_source).
         // We track the side as seen from this node and whether this node is the
         // source or target of each edge.
-        let mut by_side: HashMap<Side, Vec<usize>> = HashMap::new();
+        let mut by_side: BTreeMap<Side, Vec<usize>> = BTreeMap::new();
 
         for (edge_idx, edge) in graph.edges.iter().enumerate() {
             let touches = if edge.from == node.id {
@@ -136,7 +136,7 @@ fn try_swap(
     idx_a: usize,
     idx_b: usize,
     port_assignments: &mut HashMap<usize, EdgePorts>,
-    paths: &mut HashMap<usize, RoutedPath>,
+    paths: &mut BTreeMap<usize, RoutedPath>,
     config: &TrellisConfig,
 ) -> bool {
     let path_a = match paths.get(&idx_a) {
@@ -418,7 +418,7 @@ mod tests {
     fn route_fixture(
         mermaid: &str,
     ) -> (
-        HashMap<usize, RoutedPath>,
+        BTreeMap<usize, RoutedPath>,
         Grid,
         HashMap<usize, EdgePorts>,
         trellis_parser::Graph,

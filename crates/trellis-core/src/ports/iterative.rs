@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeSet, HashMap};
 use trellis_parser::Graph;
 
 use crate::config::TrellisConfig;
@@ -37,7 +37,7 @@ impl PortAssigner for IterativeSwapAssigner {
 /// Scans cells marked as crossings (where `owner` and `crossed_by` differ)
 /// and returns the set of unique (edge_a, edge_b) pairs.
 pub fn find_crossing_edge_pairs(grid: &Grid) -> Vec<(String, String)> {
-    let mut pairs: HashSet<(String, String)> = HashSet::new();
+    let mut pairs: BTreeSet<(String, String)> = BTreeSet::new();
 
     for row in 0..grid.rows {
         for col in 0..grid.cols {

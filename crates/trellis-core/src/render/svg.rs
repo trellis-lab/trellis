@@ -453,7 +453,7 @@ mod tests {
         let graph = Graph::new();
         let grid = Grid::new(1, 1, 10, 0, 0);
         let routing = RoutingResult {
-            paths: std::collections::HashMap::new(),
+            paths: std::collections::BTreeMap::new(),
             crossings: 0,
             total_bends: 0,
             failed_routes: 0,

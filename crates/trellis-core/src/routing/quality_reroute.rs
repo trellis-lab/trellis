@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeMap, HashMap, HashSet};
 
 use trellis_parser::Graph;
 
@@ -21,7 +21,7 @@ use super::commit::{commit_path, uncommit_path};
 /// function is called, before any rerouting happens.
 pub fn resolve_threshold(
     threshold: BendThreshold,
-    paths: &HashMap<usize, RoutedPath>,
+    paths: &BTreeMap<usize, RoutedPath>,
 ) -> Option<usize> {
     match threshold {
         BendThreshold::Disabled => None,
@@ -50,7 +50,7 @@ pub fn quality_reroute(
     graph: &Graph,
     grid: &mut Grid,
     port_assignments: &mut HashMap<usize, EdgePorts>,
-    paths: &mut HashMap<usize, RoutedPath>,
+    paths: &mut BTreeMap<usize, RoutedPath>,
     config: &TrellisConfig,
 ) -> usize {
     let threshold = match resolve_threshold(config.bend_threshold, paths) {
@@ -362,26 +362,26 @@ mod tests {
 
     #[test]
     fn resolve_disabled_returns_none() {
-        let paths = HashMap::new();
+        let paths = BTreeMap::new();
         assert_eq!(resolve_threshold(BendThreshold::Disabled, &paths), None);
     }
 
     #[test]
     fn resolve_fixed_returns_value() {
-        let paths = HashMap::new();
+        let paths = BTreeMap::new();
         assert_eq!(resolve_threshold(BendThreshold::Fixed(5), &paths), Some(5));
     }
 
     #[test]
     fn resolve_auto_empty_paths_returns_none() {
-        let paths = HashMap::new();
+        let paths = BTreeMap::new();
         assert_eq!(resolve_threshold(BendThreshold::Auto, &paths), None);
     }
 
     #[test]
     fn resolve_auto_all_zero_bends_gives_floor() {
         // median=0 → max(2, 0+2) = 2
-        let mut paths = HashMap::new();
+        let mut paths = BTreeMap::new();
         paths.insert(
             0,
             RoutedPath {
@@ -404,7 +404,7 @@ mod tests {
     #[test]
     fn resolve_auto_median_two_gives_four() {
         // median=2 → max(2, 2+2) = 4
-        let mut paths = HashMap::new();
+        let mut paths = BTreeMap::new();
         for i in 0..5usize {
             paths.insert(
                 i,
@@ -422,7 +422,7 @@ mod tests {
     fn resolve_auto_outlier_does_not_inflate_threshold() {
         // Even with one extreme outlier the median stays low.
         // bend_counts = [0, 0, 0, 0, 20] → sorted median = 0 → threshold = 2
-        let mut paths = HashMap::new();
+        let mut paths = BTreeMap::new();
         for i in 0..4usize {
             paths.insert(
                 i,
@@ -449,7 +449,7 @@ mod tests {
     fn resolve_auto_uniform_high_bends_raises_threshold() {
         // All edges have 6 bends → median=6 → threshold=8. Nothing gets flagged —
         // this is a global routing problem, not individual outliers.
-        let mut paths = HashMap::new();
+        let mut paths = BTreeMap::new();
         for i in 0..4usize {
             paths.insert(
                 i,
@@ -469,7 +469,7 @@ mod tests {
         mermaid: &str,
         threshold: BendThreshold,
     ) -> (
-        HashMap<usize, RoutedPath>,
+        BTreeMap<usize, RoutedPath>,
         Grid,
         HashMap<usize, EdgePorts>,
         trellis_parser::Graph,

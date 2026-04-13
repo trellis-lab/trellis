@@ -414,14 +414,16 @@ pub fn segments_to_svg_path(segments: &[EdgeSegment]) -> String {
                     exit.x, exit.y,
                 ));
             }
-            EdgeSegment::HopSkip { entry, foot_in, foot_out, exit } => {
+            EdgeSegment::HopSkip {
+                entry,
+                foot_in,
+                foot_out,
+                exit,
+            } => {
                 // -| |- : stub → gap → stub
                 d.push_str(&format!(
                     " L {:.1} {:.1} L {:.1} {:.1} M {:.1} {:.1} L {:.1} {:.1}",
-                    entry.x, entry.y,
-                    foot_in.x, foot_in.y,
-                    foot_out.x, foot_out.y,
-                    exit.x, exit.y,
+                    entry.x, entry.y, foot_in.x, foot_in.y, foot_out.x, foot_out.y, exit.x, exit.y,
                 ));
             }
         }
@@ -678,8 +680,12 @@ mod tests {
         assert!(!d.contains('A'), "no arc expected: {d}");
 
         let skip = segs.iter().find_map(|s| match s {
-            EdgeSegment::HopSkip { entry, foot_in, foot_out, exit } =>
-                Some((*entry, *foot_in, *foot_out, *exit)),
+            EdgeSegment::HopSkip {
+                entry,
+                foot_in,
+                foot_out,
+                exit,
+            } => Some((*entry, *foot_in, *foot_out, *exit)),
             _ => None,
         });
         let (entry, foot_in, foot_out, exit) = skip.expect("HopSkip segment expected");

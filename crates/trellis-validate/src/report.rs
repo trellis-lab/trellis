@@ -250,7 +250,7 @@ mod tests {
         }
     }
 
-    fn make_routing_result(paths: HashMap<usize, RoutedPath>) -> RoutingResult {
+    fn make_routing_result(paths: BTreeMap<usize, RoutedPath>) -> RoutingResult {
         RoutingResult {
             paths,
             crossings: 0,
@@ -268,7 +268,7 @@ mod tests {
     #[test]
     fn report_fixture_name_preserved() {
         let graph = make_graph_with_edges(&[("A", "B")]);
-        let mut paths = HashMap::new();
+        let mut paths = BTreeMap::new();
         paths.insert(0, make_path(vec![(0, 0), (1, 0)], 0));
         let rr = make_routing_result(paths);
         let mut pa = HashMap::new();
@@ -283,7 +283,7 @@ mod tests {
     #[test]
     fn report_edge_fields_match_schema() {
         let graph = make_graph_with_edges(&[("A", "B")]);
-        let mut paths = HashMap::new();
+        let mut paths = BTreeMap::new();
         paths.insert(0, make_path(vec![(0, 0), (1, 0), (2, 0)], 0));
         let rr = make_routing_result(paths);
         let mut pa = HashMap::new();
@@ -305,7 +305,7 @@ mod tests {
     #[test]
     fn global_metrics_counts_correctly() {
         let graph = make_graph_with_edges(&[("A", "B"), ("C", "D")]);
-        let mut paths = HashMap::new();
+        let mut paths = BTreeMap::new();
         paths.insert(0, make_path(vec![(0, 0), (1, 0)], 0));
         paths.insert(1, make_path(vec![(2, 0), (3, 0)], 1));
         let mut rr = make_routing_result(paths);
@@ -328,7 +328,7 @@ mod tests {
     #[test]
     fn report_serialises_to_valid_json() {
         let graph = make_graph_with_edges(&[("X", "Y")]);
-        let mut paths = HashMap::new();
+        let mut paths = BTreeMap::new();
         paths.insert(0, make_path(vec![(0, 0), (0, 1)], 0));
         let rr = make_routing_result(paths);
         let mut pa = HashMap::new();
@@ -349,7 +349,7 @@ mod tests {
     fn self_loop_edge_serialises_with_finite_detour() {
         // Test that a self-loop edge (A-->A) produces valid JSON with detour_factor=1.0
         let graph = make_graph_with_edges(&[("A", "A")]);
-        let mut paths = HashMap::new();
+        let mut paths = BTreeMap::new();
         paths.insert(0, make_path(vec![(0, 0)], 0));
         let rr = make_routing_result(paths);
         let mut pa = HashMap::new();

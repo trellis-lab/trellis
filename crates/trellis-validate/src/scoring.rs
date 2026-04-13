@@ -324,7 +324,7 @@ mod tests {
 
     #[test]
     fn score_all_edges_returns_sorted_results() {
-        use std::collections::HashMap;
+        use std::collections::BTreeMap;
         use trellis_core::routing::RoutingResult;
         use trellis_parser::Graph;
 
@@ -335,7 +335,7 @@ mod tests {
         let path0 = make_path(vec![(0, 0), (1, 0)], 0);
         let path1 = make_path(vec![(2, 0), (3, 0)], 0);
 
-        let mut paths = HashMap::new();
+        let mut paths = BTreeMap::new();
         paths.insert(0usize, path0);
         paths.insert(1usize, path1);
 

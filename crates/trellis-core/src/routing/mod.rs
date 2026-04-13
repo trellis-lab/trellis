@@ -7,7 +7,7 @@ pub mod port_swap;
 pub mod priority;
 pub mod quality_reroute;
 
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 
 use crate::config::TrellisConfig;
 use crate::deadlock;
@@ -23,7 +23,7 @@ use trellis_parser::Graph;
 #[derive(Debug, Clone)]
 pub struct RoutingResult {
     /// Routed paths indexed by edge index
-    pub paths: HashMap<usize, RoutedPath>,
+    pub paths: BTreeMap<usize, RoutedPath>,
     /// Total number of crossing points (grid cells shared by two distinct paths)
     pub crossings: usize,
     /// Total number of bends across all paths
@@ -81,7 +81,7 @@ fn route_all_edges_inner(
     deadlock_enabled: bool,
 ) -> RoutingResult {
     let mut result = RoutingResult {
-        paths: HashMap::new(),
+        paths: BTreeMap::new(),
         crossings: 0,
         total_bends: 0,
         failed_routes: 0,

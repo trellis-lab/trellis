@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeMap, HashMap, HashSet};
 
 use trellis_parser::{Direction, Graph};
 
@@ -33,7 +33,7 @@ pub fn crossing_reroute(
     graph: &Graph,
     grid: &mut Grid,
     port_assignments: &mut HashMap<usize, EdgePorts>,
-    paths: &mut HashMap<usize, RoutedPath>,
+    paths: &mut BTreeMap<usize, RoutedPath>,
     config: &TrellisConfig,
 ) -> usize {
     // Collect edges that have at least one crossing with any other path.
@@ -220,7 +220,7 @@ fn allowed_target_sides(direction: Direction) -> Vec<Side> {
 }
 
 /// Count how many cells in edge `idx`'s path are shared with any other path.
-fn crossing_count_for_edge(idx: usize, paths: &HashMap<usize, RoutedPath>) -> usize {
+fn crossing_count_for_edge(idx: usize, paths: &BTreeMap<usize, RoutedPath>) -> usize {
     let path = match paths.get(&idx) {
         Some(p) => p,
         None => return 0,
@@ -358,7 +358,7 @@ mod tests {
     fn route_fixture(
         mermaid: &str,
     ) -> (
-        HashMap<usize, RoutedPath>,
+        BTreeMap<usize, RoutedPath>,
         Grid,
         HashMap<usize, EdgePorts>,
         Graph,

@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
 use crate::grid::Grid;
 use crate::labels::collision::collides;
@@ -204,7 +204,7 @@ fn generate_candidates(
 /// Place labels on all edges that have labels.
 pub fn place_all_labels(
     graph: &Graph,
-    routing_result: &HashMap<usize, RoutedPath>,
+    routing_result: &BTreeMap<usize, RoutedPath>,
     grid: &Grid,
 ) -> Vec<LabelPlacement> {
     let mut placements = Vec::new();
