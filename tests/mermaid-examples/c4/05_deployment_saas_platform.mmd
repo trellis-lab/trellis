@@ -1,0 +1,45 @@
+C4Deployment
+title Deployment diagram for SaaS Platform
+
+Deployment_Node(aws, "AWS Cloud", "Amazon Web Services") {
+    Deployment_Node(vpc, "Production VPC", "Virtual Private Cloud") {
+        Deployment_Node(alb, "Application Load Balancer", "AWS ALB") {
+            Container(lb, "Load Balancer", "HTTPS:443", "Routes traffic across app servers")
+        }
+
+        Deployment_Node(ecs, "ECS Cluster", "AWS Fargate") {
+            Container(api1, "API Instance 1", "Docker / Node.js", "Handles REST API requests")
+            Container(api2, "API Instance 2", "Docker / Node.js", "Handles REST API requests")
+        }
+
+        Deployment_Node(rds_primary, "RDS Primary", "PostgreSQL 15") {
+            ContainerDb(db_primary, "Primary DB", "PostgreSQL", "Stores all application data")
+        }
+
+        Deployment_Node(rds_replica, "RDS Read Replica", "PostgreSQL 15") {
+            ContainerDb(db_replica, "Read Replica", "PostgreSQL", "Read-only replica for reports and analytics")
+        }
+
+        Deployment_Node(elasticache, "ElastiCache", "Redis 7") {
+            ContainerDb(cache, "Cache Cluster", "Redis", "Session store, rate limiting, hot data")
+        }
+    }
+
+    Deployment_Node(cdn, "CloudFront CDN", "Edge Network") {
+        Container(static, "Static Assets", "S3 + CloudFront", "JS/CSS/images served globally")
+    }
+}
+
+Deployment_Node(user_device, "User's Browser", "Chrome / Firefox / Safari") {
+    Container(browser, "Web App", "React SPA", "Single page application")
+}
+
+Rel(browser, static, "Loads assets", "HTTPS")
+Rel(browser, lb, "API calls", "HTTPS / REST")
+Rel(lb, api1, "Routes to", "HTTP")
+Rel(lb, api2, "Routes to", "HTTP")
+Rel(api1, db_primary, "Reads/Writes", "TCP 5432")
+Rel(api2, db_primary, "Reads/Writes", "TCP 5432")
+Rel(api1, db_replica, "Reads", "TCP 5432")
+Rel(api1, cache, "Cache ops", "TCP 6379")
+Rel(api2, cache, "Cache ops", "TCP 6379")

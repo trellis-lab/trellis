@@ -1,0 +1,61 @@
+---
+title: Blog Platform Database Schema
+---
+erDiagram
+    USER {
+        int id PK
+        string username UK
+        string email UK
+        string passwordHash
+        string role "admin | author | reader"
+        datetime createdAt
+        datetime updatedAt
+    }
+
+    POST {
+        int id PK
+        string title
+        string slug UK
+        text content
+        string status "draft | published | archived"
+        int authorId FK
+        int categoryId FK
+        datetime publishedAt
+        datetime createdAt
+    }
+
+    CATEGORY {
+        int id PK
+        string name UK
+        string slug UK
+        int parentId FK "Self-referencing for subcategories"
+    }
+
+    TAG {
+        int id PK
+        string name UK
+        string slug UK
+    }
+
+    POST_TAG {
+        int postId PK, FK
+        int tagId PK, FK
+    }
+
+    COMMENT {
+        int id PK
+        text body
+        int postId FK
+        int authorId FK
+        int parentId FK "Self-referencing for replies"
+        datetime createdAt
+    }
+
+    USER ||--o{ POST : "writes"
+    USER ||--o{ COMMENT : "makes"
+    POST ||--o{ COMMENT : "has"
+    POST }o--|| CATEGORY : "belongs to"
+    POST ||--o{ POST_TAG : "tagged via"
+    TAG ||--o{ POST_TAG : "used in"
+    CATEGORY }o--o| CATEGORY : "parent of"
+    COMMENT }o--o| COMMENT : "replied to"

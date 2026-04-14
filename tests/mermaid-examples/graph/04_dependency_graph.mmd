@@ -1,0 +1,19 @@
+graph LR
+    App --> CoreLib
+    App --> UILib
+    App --> AuthLib
+    CoreLib --> Utils
+    CoreLib --> Logger
+    UILib --> CoreLib
+    UILib --> IconLib
+    AuthLib --> CoreLib
+    AuthLib --> CryptoLib
+    CryptoLib --> Utils
+
+    classDef app fill:#4af,stroke:#038,color:#000
+    classDef lib fill:#fa4,stroke:#840,color:#000
+    classDef util fill:#aaa,stroke:#555,color:#000
+
+    class App app
+    class CoreLib,UILib,AuthLib lib
+    class Utils,Logger,IconLib,CryptoLib util

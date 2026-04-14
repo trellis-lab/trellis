@@ -1,0 +1,24 @@
+graph LR
+    subgraph main
+        M1((main)) --> M2((main)) --> M3((main))
+    end
+
+    subgraph feature/login
+        F1((feat)) --> F2((feat))
+    end
+
+    subgraph hotfix/bug-42
+        H1((fix))
+    end
+
+    M1 --> F1
+    F2 -->|merge PR| M2
+    M2 --> H1
+    H1 -->|hotfix merge| M3
+
+    style M1 fill:#6af,stroke:#048
+    style M2 fill:#6af,stroke:#048
+    style M3 fill:#6af,stroke:#048
+    style F1 fill:#fa6,stroke:#840
+    style F2 fill:#fa6,stroke:#840
+    style H1 fill:#f66,stroke:#900

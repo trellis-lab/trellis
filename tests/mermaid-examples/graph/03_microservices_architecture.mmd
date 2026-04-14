@@ -1,0 +1,38 @@
+graph TB
+    subgraph Client Layer
+        Web[Web Browser]
+        Mobile[Mobile App]
+    end
+
+    subgraph API Gateway
+        GW[API Gateway / Kong]
+    end
+
+    subgraph Services
+        Auth[Auth Service]
+        Users[User Service]
+        Orders[Order Service]
+        Notify[Notification Service]
+        Inventory[Inventory Service]
+    end
+
+    subgraph Data Layer
+        AuthDB[(Auth DB\nPostgres)]
+        UserDB[(User DB\nMongo)]
+        OrderDB[(Order DB\nPostgres)]
+        Cache[(Redis Cache)]
+        MQ[[Message Queue\nRabbitMQ]]
+    end
+
+    Web --> GW
+    Mobile --> GW
+    GW --> Auth
+    GW --> Users
+    GW --> Orders
+    Auth --> AuthDB
+    Auth --> Cache
+    Users --> UserDB
+    Orders --> OrderDB
+    Orders --> MQ
+    MQ --> Notify
+    MQ --> Inventory

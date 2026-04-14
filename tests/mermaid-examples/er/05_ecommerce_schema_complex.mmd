@@ -1,0 +1,89 @@
+---
+title: E-Commerce Platform Schema
+---
+erDiagram
+    CUSTOMER {
+        int id PK
+        string firstName
+        string lastName
+        string email UK
+        string phone
+        datetime createdAt
+    }
+
+    ADDRESS {
+        int id PK
+        int customerId FK
+        string street
+        string city
+        string state
+        string postalCode
+        string country
+        boolean isDefault
+    }
+
+    PRODUCT {
+        int id PK
+        string sku UK
+        string name
+        text description
+        int categoryId FK
+        decimal basePrice
+        boolean isActive
+    }
+
+    PRODUCT_VARIANT {
+        int id PK
+        int productId FK
+        string size
+        string color
+        decimal priceAdjustment
+        int stockQty
+    }
+
+    CATEGORY {
+        int id PK
+        string name
+        int parentId FK
+    }
+
+    ORDER {
+        int id PK
+        int customerId FK
+        int shippingAddressId FK
+        string status "pending|confirmed|shipped|delivered|cancelled"
+        decimal subtotal
+        decimal taxAmount
+        decimal shippingCost
+        decimal totalAmount
+        datetime placedAt
+    }
+
+    ORDER_ITEM {
+        int id PK
+        int orderId FK
+        int variantId FK
+        int quantity
+        decimal unitPrice
+        decimal totalPrice
+    }
+
+    PAYMENT {
+        int id PK
+        int orderId FK
+        string method "card|paypal|crypto"
+        string status "pending|success|failed|refunded"
+        decimal amount
+        string transactionRef
+        datetime processedAt
+    }
+
+    CUSTOMER ||--o{ ADDRESS : "has"
+    CUSTOMER ||--o{ ORDER : "places"
+    ORDER ||--|{ ORDER_ITEM : "contains"
+    ORDER ||--|| PAYMENT : "paid via"
+    ORDER }o--|| ADDRESS : "ships to"
+    ORDER_ITEM }o--|| PRODUCT_VARIANT : "references"
+    PRODUCT_VARIANT }o--|| PRODUCT : "variant of"
+    PRODUCT }o--|| CATEGORY : "in"
+    CATEGORY }o--o| CATEGORY : "subcategory of"

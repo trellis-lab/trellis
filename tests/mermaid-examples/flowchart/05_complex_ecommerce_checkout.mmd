@@ -1,0 +1,38 @@
+---
+title: E-Commerce Checkout Flow
+---
+flowchart TD
+    A([Customer starts checkout]) --> B[/Review cart/]
+    B --> C{Cart empty?}
+    C -->|Yes| D[Redirect to shop]
+    C -->|No| E[Enter shipping address]
+    E --> F{Address valid?}
+    F -->|No| G[Show address error]
+    G --> E
+    F -->|Yes| H[Select shipping method]
+    H --> I[Enter payment details]
+    I --> J{Payment method}
+    J -->|Credit card| K[Validate card]
+    J -->|PayPal| L[Redirect to PayPal]
+    J -->|Crypto| M[Show wallet QR]
+    K --> N{Card valid?}
+    N -->|No| O[Show card error]
+    O --> I
+    N -->|Yes| P[Calculate final total]
+    L --> P
+    M --> P
+    P --> Q[Show order summary]
+    Q --> R{User confirms?}
+    R -->|No| S[Back to cart]
+    R -->|Yes| T[Process payment]
+    T --> U{Payment success?}
+    U -->|No| V[Show payment failure]
+    V --> I
+    U -->|Yes| W[(Create order in DB)]
+    W --> X[/Send confirmation email/]
+    X --> Y[Update inventory]
+    Y --> Z([Show order confirmation])
+
+    style D fill:#faa,stroke:#c00
+    style Z fill:#afa,stroke:#090
+    style V fill:#faa,stroke:#c00

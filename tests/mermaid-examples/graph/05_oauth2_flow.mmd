@@ -1,0 +1,16 @@
+graph TD
+    User -->|1 - Click Login| App
+    App -->|2 - Redirect with client_id + scope| AuthServer[Authorization Server]
+    AuthServer -->|3 - Show consent screen| User
+    User -->|4 - Grant permission| AuthServer
+    AuthServer -->|5 - Redirect with auth_code| App
+    App -->|6 - Exchange code + client_secret| AuthServer
+    AuthServer -->|7 - Return access_token + refresh_token| App
+    App -->|8 - API request with Bearer token| ResourceServer[Resource Server]
+    ResourceServer -->|9 - Validate token| AuthServer
+    ResourceServer -->|10 - Return protected data| App
+    App -->|11 - Display data| User
+
+    style AuthServer fill:#ffb,stroke:#880
+    style ResourceServer fill:#bfb,stroke:#080
+    style App fill:#bbf,stroke:#008

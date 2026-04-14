@@ -1,0 +1,15 @@
+erDiagram
+    User {
+        Int id PK
+        String username
+        String email UK
+        Int serverId FK
+    }
+
+    Server {
+        Int id PK
+        String serverName
+        String region
+    }
+
+    Server ||--o{ User : has
