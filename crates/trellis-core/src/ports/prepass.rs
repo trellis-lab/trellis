@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use trellis_parser::{Graph, Node};
+use trellis_parser::{Graph, Node, NodeShape};
 
 use crate::grid::{CellState, Grid};
 
@@ -164,11 +164,9 @@ fn try_vertical(
         return None; // Nodes overlap vertically.
     };
 
-    // Connector columns (non-corner boundary points): gc+1 ..= gc+w-2.
-    let src_col_min = gc_src + 1;
-    let src_col_max = gc_src + w_src - 2;
-    let tgt_col_min = gc_tgt + 1;
-    let tgt_col_max = gc_tgt + w_tgt - 2;
+    // Connector columns: for diamonds, only the centre column; others gc+1..gc+w-2.
+    let (src_col_min, src_col_max) = connector_col_range(src, gc_src, w_src);
+    let (tgt_col_min, tgt_col_max) = connector_col_range(tgt, gc_tgt, w_tgt);
 
     let overlap_min = src_col_min.max(tgt_col_min);
     let overlap_max = src_col_max.min(tgt_col_max);
@@ -240,11 +238,9 @@ fn try_horizontal(
         return None; // Nodes overlap horizontally.
     };
 
-    // Connector rows (non-corner boundary points): gr+1 ..= gr+h-2.
-    let src_row_min = gr_src + 1;
-    let src_row_max = gr_src + h_src - 2;
-    let tgt_row_min = gr_tgt + 1;
-    let tgt_row_max = gr_tgt + h_tgt - 2;
+    // Connector rows: for diamonds, only the centre row; others gr+1..gr+h-2.
+    let (src_row_min, src_row_max) = connector_row_range(src, gr_src, h_src);
+    let (tgt_row_min, tgt_row_max) = connector_row_range(tgt, gr_tgt, h_tgt);
 
     let overlap_min = src_row_min.max(tgt_row_min);
     let overlap_max = src_row_max.min(tgt_row_max);
@@ -343,6 +339,28 @@ fn unobstructed_horizontal(grid: &Grid, row: i64, start_col: i64, end_col: i64) 
 }
 
 // ─── Small helpers ────────────────────────────────────────────────────────────
+
+/// Return the (min, max) column range of valid connectors on the Top/Bottom side.
+/// For diamonds only the centre column is valid; all other shapes use gc+1..gc+w-2.
+fn connector_col_range(node: &Node, gc: i64, w: i64) -> (i64, i64) {
+    if node.shape == NodeShape::Diamond {
+        let mid = gc + w / 2;
+        (mid, mid)
+    } else {
+        (gc + 1, gc + w - 2)
+    }
+}
+
+/// Return the (min, max) row range of valid connectors on the Left/Right side.
+/// For diamonds only the centre row is valid; all other shapes use gr+1..gr+h-2.
+fn connector_row_range(node: &Node, gr: i64, h: i64) -> (i64, i64) {
+    if node.shape == NodeShape::Diamond {
+        let mid = gr + h / 2;
+        (mid, mid)
+    } else {
+        (gr + 1, gr + h - 2)
+    }
+}
 
 /// Compute (grid_col, grid_row, w_points, h_points) for a node.
 fn node_grid_coords(node: &Node, cs: f64, ox: f64, oy: f64) -> (i64, i64, i64, i64) {

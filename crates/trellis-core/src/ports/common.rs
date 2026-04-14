@@ -1,5 +1,5 @@
 use std::collections::{HashMap, HashSet, VecDeque};
-use trellis_parser::{Direction, Graph, Node};
+use trellis_parser::{Direction, Graph, Node, NodeShape};
 
 use super::assignment::Side;
 
@@ -257,6 +257,46 @@ pub fn enumerate_connectors(
 
     let w_points = (node.width / cs).round() as i64 + 1;
     let h_points = (node.height / cs).round() as i64 + 1;
+
+    // Diamond: only one port per side — the visual corner at the midpoint of each bbox edge.
+    // Since diamonds are forced square (w_points == h_points, odd), the center index is exact.
+    if node.shape == NodeShape::Diamond {
+        let mid_col = gc + w_points / 2;
+        let mid_row = gr + h_points / 2;
+        let connector = match side {
+            Side::Top => Connector {
+                grid_row: gr,
+                grid_col: mid_col,
+                x: mid_col as f64 * cs + ox,
+                y: gr as f64 * cs + oy,
+            },
+            Side::Bottom => {
+                let bottom_row = gr + h_points - 1;
+                Connector {
+                    grid_row: bottom_row,
+                    grid_col: mid_col,
+                    x: mid_col as f64 * cs + ox,
+                    y: bottom_row as f64 * cs + oy,
+                }
+            }
+            Side::Left => Connector {
+                grid_row: mid_row,
+                grid_col: gc,
+                x: gc as f64 * cs + ox,
+                y: mid_row as f64 * cs + oy,
+            },
+            Side::Right => {
+                let right_col = gc + w_points - 1;
+                Connector {
+                    grid_row: mid_row,
+                    grid_col: right_col,
+                    x: right_col as f64 * cs + ox,
+                    y: mid_row as f64 * cs + oy,
+                }
+            }
+        };
+        return vec![connector];
+    }
 
     let mut connectors = Vec::new();
 
