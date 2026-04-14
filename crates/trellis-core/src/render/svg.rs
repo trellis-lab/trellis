@@ -18,6 +18,13 @@ use crate::theme::Theme;
 use crate::types::{BoundingBox, SubgraphTree};
 use trellis_parser::{DiagramType, Graph, NodeShape};
 
+// ── Title caption constants ───────────────────────────────────────────────────
+
+const TITLE_FONT_SIZE: f64 = 16.0;
+const TITLE_PADDING: f64 = 8.0;
+/// Total vertical space reserved for the title caption bar.
+const TITLE_HEIGHT: f64 = TITLE_FONT_SIZE + TITLE_PADDING * 2.0;
+
 /// Build the complete SVG document from graph, grid, routing data, and label placements.
 pub fn build_svg(
     graph: &Graph,
@@ -39,7 +46,14 @@ pub fn build_svg(
     }
 
     // Calculate viewBox from node positions, routed paths, and subgraph boxes
-    let (vx, vy, vw, vh) = calculate_viewbox(graph, grid, routing_result, subgraph_data);
+    let (vx, mut vy, vw, mut vh) = calculate_viewbox(graph, grid, routing_result, subgraph_data);
+
+    // Expand viewBox upward to accommodate the title caption when shown.
+    let show_caption = graph.title.is_some() && config.show_title;
+    if show_caption {
+        vy -= TITLE_HEIGHT;
+        vh += TITLE_HEIGHT;
+    }
 
     let mut svg = String::with_capacity(4096);
 
@@ -50,6 +64,12 @@ pub fn build_svg(
          viewBox=\"{:.1} {:.1} {:.1} {:.1}\">\n",
         vw, vh, vx, vy, vw, vh,
     ));
+
+    // Accessibility title (always emitted when the diagram has a title,
+    // regardless of `show_title` — invisible in rendered output).
+    if let Some(ref title) = graph.title {
+        svg.push_str(&format!("<title>{}</title>\n", escape_xml(title)));
+    }
 
     // Style block
     svg.push_str(
@@ -63,6 +83,21 @@ pub fn build_svg(
         "<rect x=\"{}\" y=\"{}\" width=\"{}\" height=\"{}\" fill=\"{}\"/>\n",
         vx, vy, vw, vh, theme.background
     ));
+
+    // Visible title caption (centred above diagram body).
+    if show_caption {
+        if let Some(ref title) = graph.title {
+            let tx = vx + vw / 2.0;
+            let ty = vy + TITLE_PADDING + TITLE_FONT_SIZE;
+            svg.push_str(&format!(
+                "<text x=\"{:.1}\" y=\"{:.1}\" \
+                 font-family=\"Arial, Helvetica, sans-serif\" \
+                 font-size=\"{:.0}\" font-weight=\"bold\" \
+                 fill=\"{}\" text-anchor=\"middle\">{}</text>\n",
+                tx, ty, TITLE_FONT_SIZE, theme.title_text, escape_xml(title)
+            ));
+        }
+    }
 
     // Show grid
     if config.show_grid {

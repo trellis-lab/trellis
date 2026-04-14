@@ -8,6 +8,8 @@ pub struct Graph {
     pub subgraphs: Vec<Subgraph>,
     pub direction: Direction,
     pub diagram_type: DiagramType,
+    /// Title extracted from YAML frontmatter (`--- title: ... ---`).
+    pub title: Option<String>,
 }
 
 /// A node in the graph

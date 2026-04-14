@@ -460,6 +460,7 @@ mod tests {
             subgraphs: Vec::new(),
             direction: Direction::TB,
             diagram_type: DiagramType::Flowchart,
+            title: None,
         }
     }
 

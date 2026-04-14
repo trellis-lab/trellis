@@ -105,6 +105,10 @@ pub struct Theme {
     pub subgraph_fill: [&'static str; 4],
     pub subgraph_stroke: [&'static str; 4],
     pub subgraph_label: [&'static str; 4],
+
+    // ── Diagram title caption ─────────────────────────────────────────────────
+    /// Colour of the visible title caption rendered above the diagram.
+    pub title_text: &'static str,
 }
 
 // ── Theme selector ────────────────────────────────────────────────────────────
@@ -219,6 +223,7 @@ pub mod themes {
         subgraph_fill: ["#f0f4f8", "#e2e8f0", "#cbd5e1", "#94a3b8"],
         subgraph_stroke: ["#b0bec5", "#90a4ae", "#78909c", "#607d8b"],
         subgraph_label: ["#546e7a", "#455a64", "#37474f", "#263238"],
+        title_text: "#111",
     };
 
     // ── L2 — paper ───────────────────────────────────────────────────────────
@@ -290,6 +295,7 @@ pub mod themes {
         subgraph_fill: ["#f0ece4", "#e8e0d8", "#ddd4c8", "#c8bca8"],
         subgraph_stroke: ["#c8b89a", "#b0a088", "#9a8870", "#806858"],
         subgraph_label: ["#6b5744", "#5c4834", "#4d3c28", "#3d2b1a"],
+        title_text: "#1a0f00",
     };
 
     // ── L3 — blueprint ────────────────────────────────────────────────────────
@@ -361,6 +367,7 @@ pub mod themes {
         subgraph_fill: ["#dbeafe", "#bfdbfe", "#93c5fd", "#60a5fa"],
         subgraph_stroke: ["#3b82f6", "#2563eb", "#1d4ed8", "#1e40af"],
         subgraph_label: ["#1e40af", "#1d4ed8", "#1e3a8a", "#172554"],
+        title_text: "#1e3a5f",
     };
 
     // ── D1 — dark ─────────────────────────────────────────────────────────────
@@ -432,6 +439,7 @@ pub mod themes {
         subgraph_fill: ["#252525", "#2d2d2d", "#353535", "#3d3d3d"],
         subgraph_stroke: ["#555555", "#666666", "#777777", "#888888"],
         subgraph_label: ["#bdbdbd", "#c8c8c8", "#d0d0d0", "#e0e0e0"],
+        title_text: "#e0e0e0",
     };
 
     // ── D2 — midnight ─────────────────────────────────────────────────────────
@@ -503,6 +511,7 @@ pub mod themes {
         subgraph_fill: ["#161b22", "#1c2128", "#212830", "#272e38"],
         subgraph_stroke: ["#30363d", "#3d444f", "#484f58", "#535b62"],
         subgraph_label: ["#8b949e", "#9ba3ab", "#adb5bc", "#c9d1d9"],
+        title_text: "#c9d1d9",
     };
 
     // ── D3 — forest ───────────────────────────────────────────────────────────
@@ -574,6 +583,7 @@ pub mod themes {
         subgraph_fill: ["#111a11", "#162216", "#1a2a1a", "#1e321e"],
         subgraph_stroke: ["#1e3a1e", "#265226", "#2e6a2e", "#38823e"],
         subgraph_label: ["#86efac", "#a7f3c0", "#b8f5cc", "#d1fae5"],
+        title_text: "#d1fae5",
     };
 
     // ── C1 — classic blueprint ───────────────────────────────────────────────────────────
@@ -645,6 +655,7 @@ pub mod themes {
         subgraph_fill: ["#003153", "#003153", "#a7a7a7", "#1B3F6E"],
         subgraph_stroke: ["#E8F4FB", "#E8F4FB", "#E8F4FB", "#E8F4FB"],
         subgraph_label: ["#E8F4FB", "#E8F4FB", "#E8F4FB", "#E8F4FB"],
+        title_text: "#E8F4FB",
     };
 }
 
@@ -670,8 +681,8 @@ mod tests {
         ];
         for name in names {
             let theme = name.resolve();
-            // Background must be a non-empty string
             assert!(!theme.background.is_empty());
+            assert!(!theme.title_text.is_empty());
         }
     }
 

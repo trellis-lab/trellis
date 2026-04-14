@@ -49,6 +49,9 @@ fn default_bend_threshold() -> BendThreshold {
 fn default_crossing_reroute() -> bool {
     true
 }
+fn default_show_title() -> bool {
+    true
+}
 fn default_routing_costs() -> RoutingCosts {
     RoutingCosts::default()
 }
@@ -160,6 +163,14 @@ pub struct TrellisConfig {
     /// Built-in themes: `default`, `paper`, `blueprint`, `dark`, `midnight`, `forest`.
     #[serde(default = "default_theme")]
     pub theme: ThemeName,
+
+    /// Render the diagram title as a visible caption above the diagram.
+    ///
+    /// When `false`, the title is still extracted and stored in `Graph.title`
+    /// (for tooling / metadata use), and the SVG `<title>` accessibility element
+    /// is still emitted — only the visible caption and its viewBox expansion are suppressed.
+    #[serde(default = "default_show_title")]
+    pub show_title: bool,
 }
 
 /// A* routing cost constants
@@ -268,6 +279,7 @@ impl Default for TrellisConfig {
             bend_threshold: BendThreshold::Auto,
             crossing_reroute: true,
             theme: ThemeName::Default,
+            show_title: true,
         }
     }
 }
@@ -311,6 +323,7 @@ pub fn configuration_factory(config_type: ConfigurationType) -> TrellisConfig {
             bend_threshold: BendThreshold::Auto,
             crossing_reroute: true,
             theme: ThemeName::Default,
+            show_title: true,
         },
     }
 }
@@ -336,5 +349,18 @@ mod tests {
             config.port_assignment,
             PortAssignmentStrategy::Default
         ));
+    }
+
+    #[test]
+    fn show_title_defaults_true() {
+        let config: TrellisConfig = serde_json::from_str("{}").unwrap();
+        assert!(config.show_title);
+    }
+
+    #[test]
+    fn show_title_parses_false() {
+        let config: TrellisConfig =
+            serde_json::from_str(r#"{"show_title": false}"#).unwrap();
+        assert!(!config.show_title);
     }
 }

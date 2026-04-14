@@ -245,6 +245,7 @@ fn place_subgraph_recursive(
         subgraphs: Vec::new(),
         direction: graph.direction,
         diagram_type: graph.diagram_type,
+        title: None,
     };
 
     // Snap local node dimensions to grid before layout
