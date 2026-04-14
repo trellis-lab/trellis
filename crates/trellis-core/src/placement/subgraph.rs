@@ -211,13 +211,30 @@ fn place_subgraph_recursive(
         return;
     }
 
-    // Collect edges that connect nodes within this level
+    // Collect edges that connect nodes within this level.
+    //
+    // Edges may reference real nodes inside child subgraphs, not the subgraph
+    // IDs themselves. Build a representative map: real_node_id → the node or
+    // child-subgraph ID that represents it at this level, then collapse edges.
     let local_node_ids: HashSet<String> = local_nodes.iter().map(|n| n.id.clone()).collect();
+    let repr_map = build_representative_map(subtree_id, tree);
+    let mut seen_edges: HashSet<(String, String)> = HashSet::new();
     for edge in &graph.edges {
-        let from_local = local_node_ids.contains(&edge.from);
-        let to_local = local_node_ids.contains(&edge.to);
-        if from_local && to_local {
-            local_edges.push(edge.clone());
+        let from_repr = repr_map.get(&edge.from);
+        let to_repr = repr_map.get(&edge.to);
+        if let (Some(from_id), Some(to_id)) = (from_repr, to_repr) {
+            // Both endpoints resolve to nodes at this level, and they are different
+            if from_id != to_id
+                && local_node_ids.contains(from_id.as_str())
+                && local_node_ids.contains(to_id.as_str())
+                && seen_edges.insert((from_id.clone(), to_id.clone()))
+            {
+                local_edges.push(Edge {
+                    from: from_id.clone(),
+                    to: to_id.clone(),
+                    ..Default::default()
+                });
+            }
         }
     }
 
@@ -442,6 +459,41 @@ fn enforce_subgraph_margin(
             node.y += best_dy;
         }
     }
+}
+
+// ---------------------------------------------------------------------------
+// Representative map helpers
+// ---------------------------------------------------------------------------
+
+/// Collect all real node IDs that live anywhere inside `subtree_id` (recursive).
+fn collect_all_nodes_in_subtree(subtree_id: &str, tree: &SubgraphTree) -> Vec<String> {
+    let mut nodes = Vec::new();
+    if let Some(tree_node) = tree.nodes.get(subtree_id) {
+        nodes.extend(tree_node.direct_node_ids.iter().cloned());
+        for child_id in &tree_node.children {
+            nodes.extend(collect_all_nodes_in_subtree(child_id, tree));
+        }
+    }
+    nodes
+}
+
+/// Build a map from real_node_id → representative ID at `subtree_id`'s level.
+///
+/// Direct nodes of this subtree map to themselves.
+/// Nodes inside a child subgraph map to that child subgraph's ID.
+fn build_representative_map(subtree_id: &str, tree: &SubgraphTree) -> HashMap<String, String> {
+    let mut map = HashMap::new();
+    if let Some(tree_node) = tree.nodes.get(subtree_id) {
+        for node_id in &tree_node.direct_node_ids {
+            map.insert(node_id.clone(), node_id.clone());
+        }
+        for child_id in &tree_node.children {
+            for node_id in collect_all_nodes_in_subtree(child_id, tree) {
+                map.insert(node_id, child_id.clone());
+            }
+        }
+    }
+    map
 }
 
 // ---------------------------------------------------------------------------
