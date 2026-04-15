@@ -171,6 +171,16 @@ pub struct TrellisConfig {
     /// is still emitted — only the visible caption and its viewBox expansion are suppressed.
     #[serde(default = "default_show_title")]
     pub show_title: bool,
+
+    /// Path to write the structured pipeline debug log (JSON).
+    ///
+    /// `None` means no debug log is written. Set by the `--debug-log` CLI flag;
+    /// not meaningful in TOML config files.
+    ///
+    /// Only compiled when the `debug-log` feature is enabled.
+    #[cfg(feature = "debug-log")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub debug_log_path: Option<std::path::PathBuf>,
 }
 
 /// A* routing cost constants
@@ -280,6 +290,8 @@ impl Default for TrellisConfig {
             crossing_reroute: true,
             theme: ThemeName::Default,
             show_title: true,
+            #[cfg(feature = "debug-log")]
+            debug_log_path: None,
         }
     }
 }
@@ -324,6 +336,8 @@ pub fn configuration_factory(config_type: ConfigurationType) -> TrellisConfig {
             crossing_reroute: true,
             theme: ThemeName::Default,
             show_title: true,
+            #[cfg(feature = "debug-log")]
+            debug_log_path: None,
         },
     }
 }

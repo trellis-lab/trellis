@@ -10,6 +10,9 @@ repository.workspace = true
 name = "trellis"
 path = "src/main.rs"
 
+[features]
+debug-log = ["trellis-core/debug-log"]
+
 [dependencies]
 trellis-parser = { path = "../trellis-parser" }
 trellis-core = { path = "../trellis-core" }

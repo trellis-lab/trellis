@@ -1,3 +1,5 @@
+#[cfg(feature = "debug-log")]
+pub mod debug;
 pub mod config;
 pub mod deadlock;
 pub mod grid;

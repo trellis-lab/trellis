@@ -10,6 +10,7 @@ repository.workspace = true
 default = ["png", "diagnostics"]
 png = ["dep:resvg"]
 diagnostics = []
+debug-log = []
 
 [dependencies]
 trellis-parser = { path = "../trellis-parser" }

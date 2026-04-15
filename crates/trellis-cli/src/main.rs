@@ -50,6 +50,12 @@ EXAMPLES
         /// Print rendering metrics as JSON to stderr
         #[arg(long)]
         metrics: bool,
+
+        /// Write structured pipeline debug log to FILE.
+        /// Omit FILE to use <output>.debug.json in the same directory.
+        /// Requires build with --features debug-log.
+        #[arg(long, value_name = "FILE", num_args = 0..=1, hide = true)]
+        debug_log: Option<Option<PathBuf>>,
     },
 
     /// Render all .mmd files in a directory (parallel)
@@ -279,11 +285,25 @@ fn count_subgraphs(subgraphs: &[trellis_parser::Subgraph]) -> usize {
 
 // ─── command implementations ──────────────────────────────────────────────────
 
+/// Derive the default debug-log path from the output path:
+/// `<stem>.debug.json` in the same directory.
+#[cfg(feature = "debug-log")]
+fn derive_default_debug_path(output: &Path) -> PathBuf {
+    let stem = output
+        .file_stem()
+        .unwrap_or_default()
+        .to_string_lossy()
+        .into_owned();
+    output.with_file_name(format!("{stem}.debug.json"))
+}
+
 fn cmd_render(
     input: &PathBuf,
     output: &PathBuf,
     format: &str,
     print_metrics: bool,
+    #[cfg_attr(not(feature = "debug-log"), allow(unused_variables))]
+    debug_log_flag: &Option<Option<PathBuf>>,
     config: &TrellisConfig,
 ) -> Result<(), AppError> {
     let content = read_input(input)?;
@@ -294,6 +314,15 @@ fn cmd_render(
 
     let mut config = config.clone();
     config.print_metrics = print_metrics;
+
+    #[cfg(feature = "debug-log")]
+    {
+        config.debug_log_path = match debug_log_flag {
+            None => None,
+            Some(None) => Some(derive_default_debug_path(output)),
+            Some(Some(p)) => Some(p.clone()),
+        };
+    }
 
     let result = trellis_core::render(&graph, &config, output_format)
         .map_err(|e| AppError::Render(e.to_string()))?;
@@ -1196,7 +1225,8 @@ fn run() -> i32 {
             output,
             format,
             metrics,
-        } => cmd_render(input, output, format, *metrics, &config),
+            debug_log,
+        } => cmd_render(input, output, format, *metrics, debug_log, &config),
 
         Commands::RenderBatch {
             input_dir,

@@ -13,6 +13,13 @@ use crate::{
 };
 use trellis_parser::{DiagramType, Graph};
 
+#[cfg(feature = "debug-log")]
+use crate::debug::{
+    CrossingLog, CrossingReroutePhase, CrossingsPhase, DeadlockPhase, DebugLog, EdgeRoutingLog,
+    GridPhase, LabelPlacementLog, LabelsPhase, NodePos, PlacementPhase, PortAssignment,
+    PortsPhase, QualityReroutePhase, RoutingPhase, StraightEdgePin,
+};
+
 /// Returns elapsed milliseconds since `start`. In WASM builds, always returns 0
 /// because `std::time::Instant` is unavailable on `wasm32-unknown-unknown`.
 #[cfg(not(target_arch = "wasm32"))]
@@ -56,8 +63,39 @@ fn run_pipeline(
     let mut graph = graph.clone();
     let cell_size = config.cell_size;
 
+    // Debug log — constructed only when --debug-log is active and feature compiled in.
+    #[cfg(feature = "debug-log")]
+    let mut debug_log: Option<DebugLog> = config.debug_log_path.as_ref().map(|_| {
+        let dt = format!("{:?}", graph.diagram_type);
+        DebugLog::new(dt, cell_size)
+    });
+
     // Phase 2: Node placement
     let subgraph_data = placement::place_nodes(&mut graph, cell_size);
+
+    // P3 — capture placement phase
+    #[cfg(feature = "debug-log")]
+    if let Some(ref mut log) = debug_log {
+        let algorithm = match graph.diagram_type {
+            DiagramType::Flowchart => "sugiyama",
+            DiagramType::ClassDiagram => "class",
+            DiagramType::ErDiagram => "force-directed",
+            DiagramType::C4Diagram => "row-flow",
+        };
+        log.phases.placement = PlacementPhase {
+            algorithm: algorithm.to_string(),
+            iterations: None, // populated by P3 inner instrumentation
+            node_positions: graph
+                .nodes
+                .iter()
+                .map(|n| NodePos {
+                    id: n.id.clone(),
+                    x: n.x,
+                    y: n.y,
+                })
+                .collect(),
+        };
+    }
 
     // Phase 2.5: Resolve subgraph edges (flowchart only)
     if graph.diagram_type == DiagramType::Flowchart {
@@ -69,6 +107,17 @@ fn run_pipeline(
     // Phase 3: Grid construction (node footprints only — no edges yet)
     let extent = calculate_grid_extent(&graph, cell_size);
     let prepass_grid = build_grid(&graph, cell_size, &extent);
+
+    // P3 — capture grid phase
+    #[cfg(feature = "debug-log")]
+    if let Some(ref mut log) = debug_log {
+        log.phases.grid = GridPhase {
+            cols: prepass_grid.cols,
+            rows: prepass_grid.rows,
+            offset_x: prepass_grid.offset_x,
+            offset_y: prepass_grid.offset_y,
+        };
+    }
 
     // Phase 3a: Straight-edge pre-pass — pin ports for axis-aligned node pairs
     let pinned = straight_edge_prepass(
@@ -98,6 +147,75 @@ fn run_pipeline(
     };
     let port_assignments = assigner.assign_ports(&port_ctx);
 
+    // P4 — capture ports phase (final assignments; candidate lists need inner instrumentation)
+    #[cfg(feature = "debug-log")]
+    if let Some(ref mut log) = debug_log {
+        use crate::ports::assignment::Side;
+        let strategy_name = format!("{:?}", config.port_assignment);
+        let straight_pins: Vec<StraightEdgePin> = pinned_indices
+            .iter()
+            .map(|&idx| StraightEdgePin {
+                edge_index: idx,
+                reason: "straight-edge-prepass".to_string(),
+            })
+            .collect();
+
+        // Build per-node assignment summary from the flat port_assignments map.
+        let mut by_node: std::collections::BTreeMap<String, Vec<(usize, &crate::ports::EdgePorts)>> =
+            std::collections::BTreeMap::new();
+        for (edge_idx, ep) in &port_assignments {
+            if let Some(edge) = graph.edges.get(*edge_idx) {
+                by_node
+                    .entry(edge.from.clone())
+                    .or_default()
+                    .push((*edge_idx, ep));
+            }
+        }
+        let assignments = by_node
+            .into_iter()
+            .map(|(node_id, edges)| {
+                use crate::debug::EdgePortLog;
+                let edge_logs = edges
+                    .into_iter()
+                    .map(|(edge_idx, ep)| {
+                        let side_str = |s: &Side| match s {
+                            Side::Top => "Top",
+                            Side::Right => "Right",
+                            Side::Bottom => "Bottom",
+                            Side::Left => "Left",
+                        };
+                        EdgePortLog {
+                            edge_index: edge_idx,
+                            edge_label: graph
+                                .edges
+                                .get(edge_idx)
+                                .and_then(|e| e.label.clone()),
+                            candidates: vec![],
+                            selected: PortAssignment {
+                                side: side_str(&ep.source_port.side).to_string(),
+                                connector: (
+                                    ep.source_port.grid_col as i32,
+                                    ep.source_port.grid_row as i32,
+                                ),
+                            },
+                            rejection_reasons: vec![],
+                        }
+                    })
+                    .collect();
+                crate::debug::NodePortLog {
+                    node_id,
+                    edges: edge_logs,
+                }
+            })
+            .collect();
+
+        log.phases.ports = PortsPhase {
+            strategy: strategy_name,
+            straight_edge_prepass: straight_pins,
+            assignments,
+        };
+    }
+
     // Phase 5-6: Edge routing (A* pathfinding), with optional refinement loop
     let use_refinement = if config.port_assignment == crate::config::PortAssignmentStrategy::Auto {
         config.port_refinement_rounds > 0
@@ -126,6 +244,36 @@ fn run_pipeline(
         (port_assignments, grid, result)
     };
 
+    // P5 — capture routing phase (final paths; individual A* attempts need inner instrumentation)
+    #[cfg(feature = "debug-log")]
+    if let Some(ref mut log) = debug_log {
+        let edge_logs: Vec<EdgeRoutingLog> = routing_result
+            .paths
+            .iter()
+            .map(|(&edge_idx, routed)| {
+                let edge_label = graph.edges.get(edge_idx).and_then(|e| e.label.clone());
+                let final_path = routed
+                    .points
+                    .iter()
+                    .map(|p| (p.row, p.col))
+                    .collect::<Vec<_>>();
+                let path_length = routed.points.len();
+                EdgeRoutingLog {
+                    edge_index: edge_idx,
+                    edge_label,
+                    priority_score: 0.0, // needs inner instrumentation
+                    attempts: vec![],    // needs inner instrumentation
+                    selected_attempt: 0,
+                    final_path,
+                    bend_count: routed.bend_count,
+                    path_length,
+                    total_cost: routed.total_cost,
+                }
+            })
+            .collect();
+        log.phases.routing = RoutingPhase { edges: edge_logs };
+    }
+
     // Phase 5a: Quality rerouting — rip-up edges with excessive bends and
     // try alternative port-side combinations to find a lower-bend route.
     if config.bend_threshold != crate::config::BendThreshold::Disabled {
@@ -140,6 +288,34 @@ fn run_pipeline(
         routing_result.total_bends = routing_result.paths.values().map(|p| p.bend_count).sum();
     }
 
+    // P6 — capture quality reroute phase summary
+    #[cfg(feature = "debug-log")]
+    if let Some(ref mut log) = debug_log {
+        use crate::config::BendThreshold;
+        let (threshold_used, threshold_source) = match config.bend_threshold {
+            BendThreshold::Disabled => (0, "disabled".to_string()),
+            BendThreshold::Fixed(n) => (n, format!("fixed({n})")),
+            BendThreshold::Auto => {
+                // Mirror the auto formula from quality_reroute.rs
+                let bends: Vec<usize> = routing_result.paths.values().map(|p| p.bend_count).collect();
+                let median = if bends.is_empty() {
+                    0
+                } else {
+                    let mut sorted = bends.clone();
+                    sorted.sort_unstable();
+                    sorted[sorted.len() / 2]
+                };
+                let t = median.saturating_add(2).max(2);
+                (t, format!("auto(median={median})"))
+            }
+        };
+        log.phases.quality_reroute = QualityReroutePhase {
+            threshold_used,
+            threshold_source,
+            rerouted_edges: vec![], // per-edge detail needs inner instrumentation
+        };
+    }
+
     // Phase 5b: Port-swap pass — for each node side, detect adjacent port pairs
     // whose edges geometrically cross and swap them if doing so reduces bends.
     // Straight edges (pinned by the pre-pass) are never disturbed.
@@ -152,6 +328,13 @@ fn run_pipeline(
         &pinned_indices,
     );
     routing_result.total_bends = routing_result.paths.values().map(|p| p.bend_count).sum();
+
+    // P6 — capture port swap phase (swap details need inner instrumentation)
+    #[cfg(feature = "debug-log")]
+    if let Some(ref mut log) = debug_log {
+        use crate::debug::PortSwapPhase;
+        log.phases.port_swap = PortSwapPhase { swaps: vec![] };
+    }
 
     // Phase 5c: Crossing-reduction reroute — rip up any edge that still
     // crosses another committed path and try all 16 side combinations,
@@ -172,6 +355,16 @@ fn run_pipeline(
         0
     };
 
+    // P6 — capture crossing reroute phase
+    #[cfg(feature = "debug-log")]
+    if let Some(ref mut log) = debug_log {
+        log.phases.crossing_reroute = CrossingReroutePhase {
+            enabled: config.crossing_reroute,
+            edges_rerouted: crossing_improved,
+            details: vec![], // per-edge detail needs inner instrumentation
+        };
+    }
+
     // Phase 5d: Second quality-reroute pass — runs only when crossing_reroute
     // moved at least one edge (the grid state has changed, so the median bend
     // count may be lower and previously-below-threshold edges can now qualify).
@@ -190,6 +383,20 @@ fn run_pipeline(
     // authoritative paths after all reroute passes. Ensures the grid reflects
     // actual committed paths (guards against stale flags from rerouting).
     reconcile_crossings(&mut grid, &routing_result.paths);
+
+    // P7 — capture deadlock phase
+    #[cfg(feature = "debug-log")]
+    if let Some(ref mut log) = debug_log {
+        log.phases.deadlock = DeadlockPhase {
+            triggered: routing_result.deadlock_recoveries > 0,
+            resolution_method: if routing_result.deadlock_recoveries > 0 {
+                Some("rip-up-reroute".to_string())
+            } else {
+                None
+            },
+            edges_affected: vec![], // per-edge list needs deadlock instrumentation
+        };
+    }
 
     // Collect metrics
     let routed_count = routing_result.paths.len();
@@ -240,6 +447,63 @@ fn run_pipeline(
     // Phase 8: Edge label placement
     let label_placements = labels::place_all_labels(&graph, &routing_result.paths, &grid);
 
+    // P7 — capture labels phase
+    #[cfg(feature = "debug-log")]
+    if let Some(ref mut log) = debug_log {
+        // label_placements is a Vec<LabelPlacement>; we don't have edge_index here,
+        // so emit by placement order (index == edge iteration order from place_all_labels).
+        let logs: Vec<LabelPlacementLog> = label_placements
+            .iter()
+            .enumerate()
+            .map(|(i, lp)| LabelPlacementLog {
+                edge_index: i,
+                text: lp.text.clone(),
+                position: (lp.x, lp.y),
+                collision_resolved: false, // inner flag not yet exposed
+            })
+            .collect();
+        log.phases.labels = LabelsPhase { labels: logs };
+    }
+
+    // P7 — capture crossings phase from grid after reconcile
+    #[cfg(feature = "debug-log")]
+    if let Some(ref mut log) = debug_log {
+        use crate::config::CrossingStyle;
+        let style_str = match config.crossing_style {
+            CrossingStyle::None => "None",
+            CrossingStyle::Arc => "Arc",
+            CrossingStyle::Rectangular => "Rectangular",
+            CrossingStyle::Skip => "Skip",
+        };
+        let mut crossings: Vec<CrossingLog> = Vec::new();
+        for row in 0..grid.rows {
+            for col in 0..grid.cols {
+                if let Some(cell) = grid.get(row, col) {
+                    if cell.crossing {
+                        if let (Some(owner), Some(hopper)) =
+                            (&cell.owner, &cell.crossed_by)
+                        {
+                            let hop_rendered = !matches!(
+                                config.crossing_style,
+                                CrossingStyle::None
+                            );
+                            crossings.push(CrossingLog {
+                                owner_edge: owner.clone(),
+                                hopper_edge: hopper.clone(),
+                                cell: (row, col),
+                                hop_rendered,
+                            });
+                        }
+                    }
+                }
+            }
+        }
+        log.phases.crossings = CrossingsPhase {
+            style: style_str.to_string(),
+            crossings,
+        };
+    }
+
     // Phase 9: SVG rendering
     let svg_data = crate::render::svg::build_svg(
         &graph,
@@ -249,6 +513,14 @@ fn run_pipeline(
         &label_placements,
         subgraph_data.as_ref(),
     );
+
+    // Write debug log if active
+    #[cfg(feature = "debug-log")]
+    if let (Some(path), Some(log)) = (&config.debug_log_path, debug_log) {
+        if let Err(e) = crate::debug::writer::write_debug_log(path, &log) {
+            eprintln!("Warning: failed to write debug log to {:?}: {}", path, e);
+        }
+    }
 
     Ok(PipelineOutput {
         graph,

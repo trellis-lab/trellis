@@ -10,7 +10,9 @@ use crate::render::class_shapes::{class_marker_defs, render_class_node};
 use crate::render::edges::{arrow_marker_defs, render_edge, render_fallback_edge};
 use crate::render::er_shapes::render_er_node;
 use crate::render::grid::render_grid_dot;
-use crate::render::nodes::{render_node, render_nodes};
+use crate::render::nodes::render_node;
+#[cfg(not(feature = "debug-log"))]
+use crate::render::nodes::render_nodes;
 use crate::render::subgraph::render_subgraph_backgrounds;
 use crate::routing::commit::compute_crossing_points;
 use crate::routing::RoutingResult;
@@ -188,9 +190,13 @@ pub fn build_svg(
                 config.crossing_style,
                 theme,
             );
+            #[cfg(feature = "debug-log")]
+            svg.push_str(&format!("  <g data-edge-index=\"{edge_idx}\">\n"));
             svg.push_str("  ");
             svg.push_str(&edge_svg);
             svg.push('\n');
+            #[cfg(feature = "debug-log")]
+            svg.push_str("  </g>\n");
         }
     }
 
@@ -203,9 +209,13 @@ pub fn build_svg(
         let to_node = graph.nodes.iter().find(|n| n.id == edge.to);
         if let (Some(f), Some(t)) = (from_node, to_node) {
             let edge_svg = render_fallback_edge(edge, f.x, f.y, t.x, t.y, theme);
+            #[cfg(feature = "debug-log")]
+            svg.push_str(&format!("  <g data-edge-index=\"{edge_idx}\" data-fallback=\"true\">\n"));
             svg.push_str("  ");
             svg.push_str(&edge_svg);
             svg.push('\n');
+            #[cfg(feature = "debug-log")]
+            svg.push_str("  </g>\n");
         }
     }
 
@@ -230,11 +240,15 @@ pub fn build_svg(
             } else {
                 render_node(node, theme)
             };
+            #[cfg(feature = "debug-log")]
+            svg.push_str(&format!("  <g data-node-id=\"{}\">\n", node.id));
             for line in node_svg.lines() {
                 svg.push_str("  ");
                 svg.push_str(line);
                 svg.push('\n');
             }
+            #[cfg(feature = "debug-log")]
+            svg.push_str("  </g>\n");
         }
     } else if graph.diagram_type == DiagramType::ErDiagram {
         // ER diagram: use dedicated entity box renderer for ErBox nodes
@@ -244,11 +258,15 @@ pub fn build_svg(
             } else {
                 render_node(node, theme)
             };
+            #[cfg(feature = "debug-log")]
+            svg.push_str(&format!("  <g data-node-id=\"{}\">\n", node.id));
             for line in node_svg.lines() {
                 svg.push_str("  ");
                 svg.push_str(line);
                 svg.push('\n');
             }
+            #[cfg(feature = "debug-log")]
+            svg.push_str("  </g>\n");
         }
     } else if graph.diagram_type == DiagramType::C4Diagram {
         // C4 diagram: use dedicated C4 element renderer; skip boundary nodes
@@ -258,18 +276,38 @@ pub fn build_svg(
                 continue; // drawn separately as boundary frames
             }
             let node_svg = render_c4_node(node, theme);
+            #[cfg(feature = "debug-log")]
+            svg.push_str(&format!("  <g data-node-id=\"{}\">\n", node.id));
             for line in node_svg.lines() {
                 svg.push_str("  ");
                 svg.push_str(line);
                 svg.push('\n');
             }
+            #[cfg(feature = "debug-log")]
+            svg.push_str("  </g>\n");
         }
     } else {
-        let nodes_svg = render_nodes(&visible_nodes, theme);
-        for line in nodes_svg.lines() {
-            svg.push_str("  ");
-            svg.push_str(line);
-            svg.push('\n');
+        // Flowchart and other types: render_nodes returns a bulk string,
+        // so wrap per-node by iterating individually.
+        #[cfg(not(feature = "debug-log"))]
+        {
+            let nodes_svg = render_nodes(&visible_nodes, theme);
+            for line in nodes_svg.lines() {
+                svg.push_str("  ");
+                svg.push_str(line);
+                svg.push('\n');
+            }
+        }
+        #[cfg(feature = "debug-log")]
+        for node in &visible_nodes {
+            let node_svg = render_node(node, theme);
+            svg.push_str(&format!("  <g data-node-id=\"{}\">\n", node.id));
+            for line in node_svg.lines() {
+                svg.push_str("  ");
+                svg.push_str(line);
+                svg.push('\n');
+            }
+            svg.push_str("  </g>\n");
         }
     }
     svg.push_str("</g>\n");
