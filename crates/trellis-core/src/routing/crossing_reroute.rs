@@ -35,6 +35,7 @@ pub fn crossing_reroute(
     port_assignments: &mut HashMap<usize, EdgePorts>,
     paths: &mut BTreeMap<usize, RoutedPath>,
     config: &TrellisConfig,
+    #[cfg(feature = "debug-log")] debug_details: &mut Vec<crate::debug::CrossingRerouteLog>,
 ) -> usize {
     // Collect edges that have at least one crossing with any other path.
     // Sort worst-first so edges with more crossings are processed first.
@@ -113,8 +114,19 @@ pub fn crossing_reroute(
         let mut best_ports = current_ports.clone();
         let mut best_path = current_path.clone();
 
+        #[cfg(feature = "debug-log")]
+        let mut attempts: Vec<crate::debug::CrossingAttempt> = Vec::new();
+
         for &src_side in &src_sides {
             for &tgt_side in &tgt_sides {
+                #[cfg(feature = "debug-log")]
+                let side_str = |s: Side| match s {
+                    Side::Top => "Top",
+                    Side::Right => "Right",
+                    Side::Bottom => "Bottom",
+                    Side::Left => "Left",
+                };
+
                 let candidate_ports = match ports_for_sides(
                     src_node,
                     tgt_node,
@@ -126,7 +138,19 @@ pub fn crossing_reroute(
                     grid,
                 ) {
                     Some(p) => p,
-                    None => continue,
+                    None => {
+                        #[cfg(feature = "debug-log")]
+                        attempts.push(crate::debug::CrossingAttempt {
+                            src_side: side_str(src_side).to_string(),
+                            tgt_side: side_str(tgt_side).to_string(),
+                            result: crate::debug::CrossingAttemptResult::NoConnectors,
+                            rejection_reason: Some("no connectors on requested side".to_string()),
+                            crossings_after: None,
+                            bend_count: None,
+                            path_length: None,
+                        });
+                        continue;
+                    }
                 };
 
                 let source = GridPoint {
@@ -146,28 +170,89 @@ pub fn crossing_reroute(
                 restore_cell(grid, source, src_state);
                 restore_cell(grid, target, tgt_state);
 
-                if let Some(path) = try_path {
-                    let new_len = path.points.len().saturating_sub(1);
-
-                    // Fix 1: reject paths that bloat bends or detour excessively.
-                    if path.bend_count > bend_budget || new_len > len_budget {
-                        continue;
+                match try_path {
+                    None => {
+                        #[cfg(feature = "debug-log")]
+                        attempts.push(crate::debug::CrossingAttempt {
+                            src_side: side_str(src_side).to_string(),
+                            tgt_side: side_str(tgt_side).to_string(),
+                            result: crate::debug::CrossingAttemptResult::NoPath,
+                            rejection_reason: Some("obstacle: A* found no route".to_string()),
+                            crossings_after: None,
+                            bend_count: None,
+                            path_length: None,
+                        });
                     }
+                    Some(path) => {
+                        let new_len = path.points.len().saturating_sub(1);
 
-                    let crossings: usize = other_sets
-                        .iter()
-                        .map(|s| {
-                            path.points
-                                .iter()
-                                .filter(|pt| s.contains(&(pt.row, pt.col)))
-                                .count()
-                        })
-                        .sum();
+                        // Fix 1: reject paths that bloat bends or detour excessively.
+                        if path.bend_count > bend_budget || new_len > len_budget {
+                            #[cfg(feature = "debug-log")]
+                            {
+                                let reason = if path.bend_count > bend_budget {
+                                    format!(
+                                        "cost-exceeded: bends {} > budget {}",
+                                        path.bend_count, bend_budget
+                                    )
+                                } else {
+                                    format!(
+                                        "cost-exceeded: length {} > budget {}",
+                                        new_len, len_budget
+                                    )
+                                };
+                                attempts.push(crate::debug::CrossingAttempt {
+                                    src_side: side_str(src_side).to_string(),
+                                    tgt_side: side_str(tgt_side).to_string(),
+                                    result: crate::debug::CrossingAttemptResult::BudgetExceeded,
+                                    rejection_reason: Some(reason),
+                                    crossings_after: None,
+                                    bend_count: Some(path.bend_count),
+                                    path_length: Some(new_len),
+                                });
+                            }
+                            continue;
+                        }
 
-                    if crossings < best_crossings {
-                        best_crossings = crossings;
-                        best_ports = candidate_ports;
-                        best_path = path;
+                        let crossings: usize = other_sets
+                            .iter()
+                            .map(|s| {
+                                path.points
+                                    .iter()
+                                    .filter(|pt| s.contains(&(pt.row, pt.col)))
+                                    .count()
+                            })
+                            .sum();
+
+                        if crossings < best_crossings {
+                            #[cfg(feature = "debug-log")]
+                            attempts.push(crate::debug::CrossingAttempt {
+                                src_side: side_str(src_side).to_string(),
+                                tgt_side: side_str(tgt_side).to_string(),
+                                result: crate::debug::CrossingAttemptResult::NewBest,
+                                rejection_reason: None,
+                                crossings_after: Some(crossings),
+                                bend_count: Some(path.bend_count),
+                                path_length: Some(path.points.len().saturating_sub(1)),
+                            });
+                            best_crossings = crossings;
+                            best_ports = candidate_ports;
+                            best_path = path;
+                        } else {
+                            #[cfg(feature = "debug-log")]
+                            attempts.push(crate::debug::CrossingAttempt {
+                                src_side: side_str(src_side).to_string(),
+                                tgt_side: side_str(tgt_side).to_string(),
+                                result: crate::debug::CrossingAttemptResult::StillCrossing,
+                                rejection_reason: Some(format!(
+                                    "still-crossing: {} crossings (best so far {})",
+                                    crossings, best_crossings
+                                )),
+                                crossings_after: Some(crossings),
+                                bend_count: Some(path.bend_count),
+                                path_length: Some(path.points.len().saturating_sub(1)),
+                            });
+                        }
                     }
                 }
             }
@@ -175,11 +260,23 @@ pub fn crossing_reroute(
 
         commit_path(grid, &best_path.points, &edge_id, &config.routing_costs);
 
-        if best_crossings < crossings_before {
+        let outcome = if best_crossings < crossings_before {
             port_assignments.insert(edge_idx, best_ports);
             paths.insert(edge_idx, best_path);
             improved += 1;
-        }
+            "improved"
+        } else {
+            "no-improvement-kept-original"
+        };
+
+        #[cfg(feature = "debug-log")]
+        debug_details.push(crate::debug::CrossingRerouteLog {
+            edge_index: edge_idx,
+            crossings_before,
+            crossings_after: best_crossings,
+            outcome: outcome.to_string(),
+            attempts,
+        });
     }
 
     improved

@@ -341,6 +341,9 @@ fn run_pipeline(
     // keeping whichever reduces total crossings.  Runs after port_swap so
     // it only needs to handle crossings that the swap pass could not fix
     // (e.g. two edges that don't share a node side).
+    #[cfg(feature = "debug-log")]
+    let mut cr_details: Vec<crate::debug::CrossingRerouteLog> = Vec::new();
+
     let crossing_improved = if config.crossing_reroute {
         let n = routing::crossing_reroute::crossing_reroute(
             &graph,
@@ -348,6 +351,8 @@ fn run_pipeline(
             &mut port_assignments,
             &mut routing_result.paths,
             config,
+            #[cfg(feature = "debug-log")]
+            &mut cr_details,
         );
         routing_result.total_bends = routing_result.paths.values().map(|p| p.bend_count).sum();
         n
@@ -361,7 +366,7 @@ fn run_pipeline(
         log.phases.crossing_reroute = CrossingReroutePhase {
             enabled: config.crossing_reroute,
             edges_rerouted: crossing_improved,
-            details: vec![], // per-edge detail needs inner instrumentation
+            details: cr_details,
         };
     }
 

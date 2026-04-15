@@ -227,6 +227,37 @@ pub struct CrossingRerouteLog {
     pub crossings_after: usize,
     /// "improved" | "no-improvement-kept-original"
     pub outcome: String,
+    /// One entry per (src_side, tgt_side) combination tried.
+    pub attempts: Vec<CrossingAttempt>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct CrossingAttempt {
+    /// "Top" | "Right" | "Bottom" | "Left"
+    pub src_side: String,
+    /// "Top" | "Right" | "Bottom" | "Left"
+    pub tgt_side: String,
+    pub result: CrossingAttemptResult,
+    /// Human-readable rejection reason when result is not NewBest.
+    pub rejection_reason: Option<String>,
+    /// Crossing count against all other paths (None when route failed).
+    pub crossings_after: Option<usize>,
+    pub bend_count: Option<usize>,
+    pub path_length: Option<usize>,
+}
+
+#[derive(Debug, Serialize)]
+pub enum CrossingAttemptResult {
+    /// `ports_for_sides` returned None — side has no connectors.
+    NoConnectors,
+    /// A* returned no path — all routes blocked by obstacles.
+    NoPath,
+    /// Path found but bend count or length exceeds budget.
+    BudgetExceeded,
+    /// Path found but does not reduce crossings below current best.
+    StillCrossing,
+    /// Path reduces crossings — new best candidate recorded.
+    NewBest,
 }
 
 // ─── Deadlock ─────────────────────────────────────────────────────────────────
