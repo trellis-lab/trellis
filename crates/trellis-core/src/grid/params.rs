@@ -108,8 +108,8 @@ pub fn calculate_grid_extent(graph: &Graph, cell_size: i32) -> GridExtent {
     // Snap offsets to cell_size multiples (round down so the grid origin is before the nodes)
     let raw_offset_x = min_x - (bounding_width * (k - 1.0) / 2.0);
     let raw_offset_y = min_y - (bounding_height * (k - 1.0) / 2.0);
-    let offset_x = (raw_offset_x / cs).floor() as i32 * cell_size;
-    let offset_y = (raw_offset_y / cs).floor() as i32 * cell_size;
+    let offset_x = ((raw_offset_x / cs).floor() * cs) as i32;
+    let offset_y = ((raw_offset_y / cs).floor() * cs) as i32;
 
     // Recompute width/height to cover from offset to max + margin, snapped up
     let needed_w = max_x - offset_x as f64 + bounding_width * (k - 1.0) / 2.0;

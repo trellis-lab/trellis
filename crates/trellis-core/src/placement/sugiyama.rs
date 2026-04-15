@@ -59,7 +59,9 @@ pub fn break_cycles(
     let mut adj: Vec<Vec<(usize, usize)>> = vec![Vec::new(); n];
     for (ei, edge) in edges.iter().enumerate() {
         if let (Some(&from), Some(&to)) = (node_index.get(&edge.from), node_index.get(&edge.to)) {
-            adj[from].push((to, ei));
+            if from != to {
+                adj[from].push((to, ei));
+            }
         }
     }
 
@@ -123,8 +125,10 @@ pub fn assign_layers(
 
     for edge in edges {
         if let (Some(&from), Some(&to)) = (node_index.get(&edge.from), node_index.get(&edge.to)) {
-            adj[from].push(to);
-            in_degree[to] += 1;
+            if from != to {
+                adj[from].push(to);
+                in_degree[to] += 1;
+            }
         }
     }
 

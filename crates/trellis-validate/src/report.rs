@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
-use trellis_core::{grid::Grid, ports::EdgePorts, routing::RoutingResult};
+use trellis_core::{ports::EdgePorts, routing::RoutingResult};
 use trellis_parser::Graph;
 
 use crate::scoring::{score_all_edges, EdgeQuality};
@@ -72,15 +72,13 @@ pub struct DiagramReport {
 /// * `graph`            — the parsed graph (provides node/edge counts and IDs).
 /// * `routing_result`   — committed routing output (paths, crossings, bends).
 /// * `port_assignments` — source/target port for every routed edge.
-/// * `grid`             — final routing grid (used to read cell coordinates and crossing flags).
 pub fn generate_report(
     fixture_name: &str,
     graph: &Graph,
     routing_result: &RoutingResult,
     port_assignments: &HashMap<usize, EdgePorts>,
-    grid: &Grid,
 ) -> DiagramReport {
-    let scored = score_all_edges(graph, routing_result, port_assignments, grid);
+    let scored = score_all_edges(graph, routing_result, port_assignments);
 
     let edges: Vec<EdgeReport> = scored
         .iter()
@@ -200,7 +198,6 @@ mod tests {
     use super::*;
     use std::collections::BTreeMap;
     use trellis_core::{
-        grid::Grid,
         ports::assignment::{EdgePorts, Port, Side},
         routing::{
             astar::{GridPoint, RoutedPath},
@@ -274,9 +271,7 @@ mod tests {
         let rr = make_routing_result(paths);
         let mut pa = HashMap::new();
         pa.insert(0, make_ports(0, 0, 1, 0));
-        let grid = Grid::new(5, 5, 10, 0, 0);
-
-        let report = generate_report("b05.mmd", &graph, &rr, &pa, &grid);
+        let report = generate_report("b05.mmd", &graph, &rr, &pa);
 
         assert_eq!(report.fixture, "b05.mmd");
     }
@@ -289,9 +284,7 @@ mod tests {
         let rr = make_routing_result(paths);
         let mut pa = HashMap::new();
         pa.insert(0, make_ports(0, 0, 2, 0));
-        let grid = Grid::new(5, 5, 10, 0, 0);
-
-        let report = generate_report("test.mmd", &graph, &rr, &pa, &grid);
+        let report = generate_report("test.mmd", &graph, &rr, &pa);
 
         assert_eq!(report.edges.len(), 1);
         let e = &report.edges[0];
@@ -314,9 +307,7 @@ mod tests {
         let mut pa = HashMap::new();
         pa.insert(0, make_ports(0, 0, 1, 0));
         pa.insert(1, make_ports(2, 0, 3, 0));
-        let grid = Grid::new(10, 10, 10, 0, 0);
-
-        let report = generate_report("multi.mmd", &graph, &rr, &pa, &grid);
+        let report = generate_report("multi.mmd", &graph, &rr, &pa);
 
         let gm = &report.global_metrics;
         assert_eq!(gm.total_edges, 2);
@@ -334,9 +325,7 @@ mod tests {
         let rr = make_routing_result(paths);
         let mut pa = HashMap::new();
         pa.insert(0, make_ports(0, 0, 0, 1));
-        let grid = Grid::new(5, 5, 10, 0, 0);
-
-        let report = generate_report("x.mmd", &graph, &rr, &pa, &grid);
+        let report = generate_report("x.mmd", &graph, &rr, &pa);
         let json = serde_json::to_string_pretty(&report).expect("serialisation failed");
 
         assert!(json.contains("\"fixture\""));
@@ -355,9 +344,7 @@ mod tests {
         let rr = make_routing_result(paths);
         let mut pa = HashMap::new();
         pa.insert(0, make_ports(0, 0, 0, 0)); // same position
-        let grid = Grid::new(5, 5, 10, 0, 0);
-
-        let report = generate_report("self-loop.mmd", &graph, &rr, &pa, &grid);
+        let report = generate_report("self-loop.mmd", &graph, &rr, &pa);
         let json = serde_json::to_string_pretty(&report).expect("serialisation failed");
 
         // Verify JSON is valid and contains expected fields

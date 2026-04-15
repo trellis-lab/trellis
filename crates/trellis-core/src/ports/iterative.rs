@@ -1,9 +1,10 @@
-use std::collections::{BTreeSet, HashMap};
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 use trellis_parser::Graph;
 
 use crate::config::TrellisConfig;
 use crate::grid::{build_grid, calculate_grid_extent, Grid};
 use crate::routing;
+use crate::routing::astar::RoutedPath;
 
 use super::assignment::EdgePorts;
 use super::common::build_edge_side_map;
@@ -32,29 +33,32 @@ impl PortAssigner for IterativeSwapAssigner {
     }
 }
 
-/// Find edge pairs that cross on the grid.
+/// Find edge pairs that cross in the routed paths.
 ///
-/// Scans cells marked as crossings (where `owner` and `crossed_by` differ)
-/// and returns the set of unique (edge_a, edge_b) pairs.
-pub fn find_crossing_edge_pairs(grid: &Grid) -> Vec<(String, String)> {
-    let mut pairs: BTreeSet<(String, String)> = BTreeSet::new();
+/// Scans for grid cells shared by two or more distinct paths and returns the
+/// set of unique (edge_a, edge_b) id-string pairs.  Derives crossing info from
+/// the authoritative `paths` map — no stale grid cell flags needed.
+pub fn find_crossing_edge_pairs(paths: &BTreeMap<usize, RoutedPath>) -> Vec<(String, String)> {
+    use std::collections::HashMap;
 
-    for row in 0..grid.rows {
-        for col in 0..grid.cols {
-            if let Some(cell) = grid.get(row, col) {
-                if cell.crossing {
-                    if let (Some(owner), Some(crossed_by)) = (&cell.owner, &cell.crossed_by) {
-                        // Canonical ordering to avoid duplicates
-                        let pair = if owner < crossed_by {
-                            (owner.clone(), crossed_by.clone())
-                        } else {
-                            (crossed_by.clone(), owner.clone())
-                        };
-                        pairs.insert(pair);
-                    }
-                }
-            }
+    let mut cell_edges: HashMap<(i64, i64), Vec<usize>> = HashMap::new();
+    for (&idx, path) in paths {
+        for pt in &path.points {
+            cell_edges.entry((pt.row, pt.col)).or_default().push(idx);
         }
+    }
+
+    let mut pairs: BTreeSet<(String, String)> = BTreeSet::new();
+    for edges in cell_edges.values() {
+        let mut sorted = edges.clone();
+        sorted.sort_unstable();
+        sorted.dedup();
+        if sorted.len() < 2 {
+            continue;
+        }
+        let a = format!("edge_{}", sorted[0]);
+        let b = format!("edge_{}", sorted[1]);
+        pairs.insert((a, b));
     }
 
     pairs.into_iter().collect()
@@ -182,8 +186,8 @@ pub fn refine_ports(
     best_result = result;
 
     for _round in 0..max_rounds {
-        // Find crossing edge pairs
-        let crossing_pairs = find_crossing_edge_pairs(&best_grid);
+        // Find crossing edge pairs from the authoritative paths map.
+        let crossing_pairs = find_crossing_edge_pairs(&best_result.paths);
         if crossing_pairs.is_empty() {
             break;
         }
@@ -259,7 +263,6 @@ pub fn estimate_inversions(graph: &Graph, cell_size: i32, offset_x: i32, offset_
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::grid::{CellState, Grid};
 
     #[test]
     fn parse_edge_index_valid() {
@@ -274,23 +277,37 @@ mod tests {
     }
 
     #[test]
-    fn find_crossing_pairs_empty_grid() {
-        let grid = Grid::new(5, 5, 10, 0, 0);
-        let pairs = find_crossing_edge_pairs(&grid);
+    fn find_crossing_pairs_empty_paths() {
+        let paths: BTreeMap<usize, RoutedPath> = BTreeMap::new();
+        let pairs = find_crossing_edge_pairs(&paths);
         assert!(pairs.is_empty());
     }
 
     #[test]
     fn find_crossing_pairs_detects_crossing() {
-        let mut grid = Grid::new(5, 5, 10, 0, 0);
-        // Simulate a crossing at (2,2)
-        let cell = grid.get_mut(2, 2).unwrap();
-        cell.state = CellState::Occupied;
-        cell.owner = Some("edge_0".to_string());
-        cell.crossing = true;
-        cell.crossed_by = Some("edge_1".to_string());
+        use crate::routing::astar::GridPoint;
+        let mut paths: BTreeMap<usize, RoutedPath> = BTreeMap::new();
+        // edge_0 and edge_1 both pass through (2,2)
+        paths.insert(0, RoutedPath {
+            points: vec![
+                GridPoint { row: 2, col: 1 },
+                GridPoint { row: 2, col: 2 },
+                GridPoint { row: 2, col: 3 },
+            ],
+            bend_count: 0,
+            total_cost: 0.0,
+        });
+        paths.insert(1, RoutedPath {
+            points: vec![
+                GridPoint { row: 1, col: 2 },
+                GridPoint { row: 2, col: 2 },
+                GridPoint { row: 3, col: 2 },
+            ],
+            bend_count: 0,
+            total_cost: 0.0,
+        });
 
-        let pairs = find_crossing_edge_pairs(&grid);
+        let pairs = find_crossing_edge_pairs(&paths);
         assert_eq!(pairs.len(), 1);
         let (a, b) = &pairs[0];
         assert!(

@@ -161,12 +161,19 @@ fn er_assign_coordinates(
         // Left-to-right sweep: push any node right if it would overlap the previous.
         // `min_cx` tracks the minimum allowed center-x for the next node.
         // Starting at NEG_INFINITY means the first node keeps its ideal position.
+        // Nodes with no known parent positions (ideal_x == INFINITY) are placed at
+        // the current right edge so they don't produce non-finite coordinates.
         let mut min_cx = f64::NEG_INFINITY;
         for (ni, ideal_x) in &mut ideal {
             let half_w = graph.nodes[*ni].width / 2.0;
-            // Clamp ideal to at least `min_cx + half_w` (which is NEG_INFINITY for first node).
-            *ideal_x = ideal_x.max(min_cx + half_w);
-            min_cx = *ideal_x + half_w + NODE_SPACING;
+            let clamped = if ideal_x.is_finite() {
+                ideal_x.max(min_cx + half_w)
+            } else {
+                // No parent positions known — place after all previously placed nodes.
+                (min_cx + half_w).max(0.0)
+            };
+            *ideal_x = clamped;
+            min_cx = clamped + half_w + NODE_SPACING;
         }
 
         for (ni, final_cx) in ideal {

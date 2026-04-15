@@ -4,7 +4,7 @@ use crate::config::{RoutingCosts, TrellisConfig};
 use crate::grid::{CellState, Grid};
 use crate::ports::EdgePorts;
 use crate::routing::astar::{route_edge, GridPoint, RoutedPath};
-use crate::routing::commit::{commit_path, uncommit_path};
+use crate::routing::commit::{build_other_cell_owners, commit_path, restore_path, uncommit_path};
 use crate::routing::RoutingResult;
 
 /// Find edges that are blocking the path of a failed edge.
@@ -103,11 +103,15 @@ pub fn rip_up_and_reroute(
         // Save old paths for potential rollback
         let mut saved_paths: Vec<(usize, RoutedPath)> = Vec::new();
 
-        // Uncommit blocking edges
+        // Uncommit blocking edges. Each path is removed from result.paths before
+        // uncommitting, so result.paths contains only the remaining committed edges —
+        // used to keep shared cells occupied.
         for &blocking_idx in &blocking_edges {
             if let Some(path) = result.paths.remove(&blocking_idx) {
                 let edge_id = format!("edge_{}", blocking_idx);
-                uncommit_path(grid, &path.points, &edge_id, &config.routing_costs);
+                let other_owners =
+                    build_other_cell_owners(&result.paths, &std::collections::HashSet::new());
+                uncommit_path(grid, &path.points, &edge_id, &other_owners);
                 result.total_bends = result.total_bends.saturating_sub(path.bend_count);
                 saved_paths.push((blocking_idx, path));
             }
@@ -126,7 +130,7 @@ pub fn rip_up_and_reroute(
         if let Some(path) = failed_path {
             // Commit the failed edge's new path
             let edge_id = format!("edge_{}", failed_edge_idx);
-            commit_path(grid, &path.points, &edge_id, &config.routing_costs);
+            commit_path(grid, &path.points, &edge_id);
             result.total_bends += path.bend_count;
 
             // Try to re-route all blocking edges
@@ -154,7 +158,7 @@ pub fn rip_up_and_reroute(
 
                     if let Some(rp) = re_path {
                         let b_edge_id = format!("edge_{}", blocking_idx);
-                        commit_path(grid, &rp.points, &b_edge_id, &config.routing_costs);
+                        commit_path(grid, &rp.points, &b_edge_id);
                         result.total_bends += rp.bend_count;
                         rerouted_paths.push((blocking_idx, rp));
                     } else {
@@ -173,31 +177,39 @@ pub fn rip_up_and_reroute(
                 return Some(path);
             }
 
-            // Rollback: uncommit what we just committed
+            // Rollback: uncommit what we just committed.
+            // Use result.paths (original committed edges) as the "other" set —
+            // cells shared with originals are kept occupied, cells only in the
+            // just-committed rerouted paths are freed.
+            let rollback_others =
+                build_other_cell_owners(&result.paths, &std::collections::HashSet::new());
+
             // Uncommit rerouted blocking edges
             for (idx, rp) in &rerouted_paths {
                 let eid = format!("edge_{}", idx);
-                uncommit_path(grid, &rp.points, &eid, &config.routing_costs);
+                uncommit_path(grid, &rp.points, &eid, &rollback_others);
                 result.total_bends = result.total_bends.saturating_sub(rp.bend_count);
             }
 
             // Uncommit the failed edge
-            uncommit_path(grid, &path.points, &edge_id, &config.routing_costs);
+            uncommit_path(grid, &path.points, &edge_id, &rollback_others);
             result.total_bends = result.total_bends.saturating_sub(path.bend_count);
 
-            // Restore original blocking edge paths
+            // Restore original blocking edge paths. Use restore_path to
+            // force-reclaim any cells whose owner was transferred during
+            // uncommit — otherwise future uncommits of these edges would
+            // miss those cells (ghost occupied cells).
             for (idx, sp) in saved_paths {
                 let eid = format!("edge_{}", idx);
-                commit_path(grid, &sp.points, &eid, &config.routing_costs);
+                restore_path(grid, &sp.points, &eid);
                 result.total_bends += sp.bend_count;
                 result.paths.insert(idx, sp);
             }
         } else {
             // Failed edge couldn't be routed even with blocking edges removed.
-            // Restore blocking edges and try next iteration (with different blocking candidates?)
             for (idx, sp) in saved_paths {
                 let eid = format!("edge_{}", idx);
-                commit_path(grid, &sp.points, &eid, &config.routing_costs);
+                restore_path(grid, &sp.points, &eid);
                 result.total_bends += sp.bend_count;
                 result.paths.insert(idx, sp);
             }

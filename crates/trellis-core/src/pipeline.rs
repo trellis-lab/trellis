@@ -8,7 +8,7 @@ use crate::{
         compute_topo_rank, create_port_assigner, needs_refinement, straight_edge_prepass,
         EdgePorts, PortAssignmentContext,
     },
-    routing::{self, commit::reconcile_crossings, RoutingResult},
+    routing::{self, RoutingResult},
     types::*,
 };
 use trellis_parser::{DiagramType, Graph};
@@ -384,11 +384,6 @@ fn run_pipeline(
         routing_result.total_bends = routing_result.paths.values().map(|p| p.bend_count).sum();
     }
 
-    // Phase 5e: Reconcile crossing metadata — rebuild grid crossing flags from
-    // authoritative paths after all reroute passes. Ensures the grid reflects
-    // actual committed paths (guards against stale flags from rerouting).
-    reconcile_crossings(&mut grid, &routing_result.paths);
-
     // P7 — capture deadlock phase
     #[cfg(feature = "debug-log")]
     if let Some(ref mut log) = debug_log {
@@ -474,33 +469,34 @@ fn run_pipeline(
     #[cfg(feature = "debug-log")]
     if let Some(ref mut log) = debug_log {
         use crate::config::CrossingStyle;
+        use crate::routing::commit::compute_crossing_points;
         let style_str = match config.crossing_style {
             CrossingStyle::None => "None",
             CrossingStyle::Arc => "Arc",
             CrossingStyle::Rectangular => "Rectangular",
             CrossingStyle::Skip => "Skip",
         };
+        // Derive crossing info from the authoritative paths map (no grid cell flags needed).
+        let crossing_pts = compute_crossing_points(&routing_result.paths);
+        let hop_rendered = !matches!(config.crossing_style, CrossingStyle::None);
         let mut crossings: Vec<CrossingLog> = Vec::new();
-        for row in 0..grid.rows {
-            for col in 0..grid.cols {
-                if let Some(cell) = grid.get(row, col) {
-                    if cell.crossing {
-                        if let (Some(owner), Some(hopper)) =
-                            (&cell.owner, &cell.crossed_by)
-                        {
-                            let hop_rendered = !matches!(
-                                config.crossing_style,
-                                CrossingStyle::None
-                            );
-                            crossings.push(CrossingLog {
-                                owner_edge: owner.clone(),
-                                hopper_edge: hopper.clone(),
-                                cell: (row, col),
-                                hop_rendered,
-                            });
-                        }
-                    }
-                }
+        for (&hopper_idx, cells) in &crossing_pts {
+            let hopper_edge = format!("edge_{}", hopper_idx);
+            for &(row, col) in cells {
+                // The owner is the lower-index edge that shares this cell.
+                let owner_edge = routing_result
+                    .paths
+                    .iter()
+                    .filter(|(&idx, _)| idx != hopper_idx)
+                    .find(|(_, p)| p.points.iter().any(|pt| pt.row == row && pt.col == col))
+                    .map(|(&idx, _)| format!("edge_{}", idx))
+                    .unwrap_or_else(|| "unknown".to_string());
+                crossings.push(CrossingLog {
+                    owner_edge,
+                    hopper_edge: hopper_edge.clone(),
+                    cell: (row as usize, col as usize),
+                    hop_rendered,
+                });
             }
         }
         log.phases.crossings = CrossingsPhase {

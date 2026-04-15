@@ -31,10 +31,6 @@ pub struct Cell {
     pub state: CellState,
     pub cost: f64,
     pub owner: Option<String>,
-    pub crossing: bool,
-    /// When `crossing` is true, the ID of the second edge that caused the crossing.
-    /// The first edge's ID is in `owner`.
-    pub crossed_by: Option<String>,
     /// If set, this cell is on or adjacent to a node boundary on the given side.
     /// The cost function uses this to penalize movement parallel to this side,
     /// forcing edges to approach nodes perpendicularly.
@@ -52,8 +48,6 @@ impl Default for Cell {
             state: CellState::Free,
             cost: 1.0,
             owner: None,
-            crossing: false,
-            crossed_by: None,
             boundary_side: None,
             is_boundary_connector: false,
         }
@@ -136,11 +130,6 @@ impl Grid {
             .iter()
             .filter(|c| c.state == CellState::Blocked)
             .count()
-    }
-
-    /// Count the number of cells flagged as crossings (two routed paths share a cell)
-    pub fn count_crossings(&self) -> usize {
-        self.cells.iter().filter(|c| c.crossing).count()
     }
 
     /// Calculate grid utilization (fraction of non-free cells)

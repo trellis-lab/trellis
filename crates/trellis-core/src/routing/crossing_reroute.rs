@@ -8,10 +8,19 @@ use crate::ports::assignment::{EdgePorts, Port, Side};
 use crate::ports::common::enumerate_connectors;
 
 use super::astar::{route_edge, GridPoint, RoutedPath};
-use super::commit::{commit_path, uncommit_path};
+use super::commit::{build_other_cell_owners, commit_path, restore_path, uncommit_path};
 
 /// Maximum additional bends a reroute may introduce relative to the original.
 const MAX_EXTRA_BENDS: usize = 2;
+
+/// Absolute minimum bend budget regardless of the original bend count.
+///
+/// Detour routes around crossings typically require at least 4 bends even
+/// when the original path is nearly straight (bend_count ≤ 1).  Without this
+/// floor, `original_bends + MAX_EXTRA_BENDS` evaluates to 2–3 for straight
+/// edges, which pre-emptively rejects every valid alternate and prevents any
+/// crossing resolution on long, low-bend paths.
+const MIN_BEND_BUDGET: usize = 4;
 
 /// Maximum path-length growth factor a reroute may introduce.
 const MAX_LENGTH_FACTOR: f64 = 1.3;
@@ -79,7 +88,9 @@ pub fn crossing_reroute(
         };
 
         let edge_id = format!("edge_{}", edge_idx);
-        uncommit_path(grid, &current_path.points, &edge_id, &config.routing_costs);
+        let excluded: std::collections::HashSet<usize> = [edge_idx].iter().cloned().collect();
+        let other_owners = build_other_cell_owners(paths, &excluded);
+        uncommit_path(grid, &current_path.points, &edge_id, &other_owners);
 
         // Pre-build occupied-cell sets for all other committed paths.
         // These are stable for the duration of the 16 trials below.
@@ -101,7 +112,10 @@ pub fn crossing_reroute(
             .sum();
 
         let current_len = current_path.points.len().saturating_sub(1);
-        let bend_budget = current_path.bend_count.saturating_add(MAX_EXTRA_BENDS);
+        let bend_budget = current_path
+            .bend_count
+            .saturating_add(MAX_EXTRA_BENDS)
+            .max(MIN_BEND_BUDGET);
         let len_budget = (current_len as f64 * MAX_LENGTH_FACTOR).ceil() as usize;
 
         // Fix 3: restrict sides to those consistent with the graph flow direction.
@@ -258,7 +272,10 @@ pub fn crossing_reroute(
             }
         }
 
-        commit_path(grid, &best_path.points, &edge_id, &config.routing_costs);
+        // Use restore_path: this edge was just uncommitted, so any cells shared
+        // with a third edge may have had their owner transferred. restore_path
+        // force-reclaims them so future uncommits of this edge work correctly.
+        restore_path(grid, &best_path.points, &edge_id);
 
         let outcome = if best_crossings < crossings_before {
             port_assignments.insert(edge_idx, best_ports);

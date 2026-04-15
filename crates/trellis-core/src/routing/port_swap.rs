@@ -7,7 +7,7 @@ use crate::grid::Grid;
 use crate::ports::assignment::{EdgePorts, Port, Side};
 
 use super::astar::{route_edge, GridPoint, RoutedPath};
-use super::commit::{commit_path, uncommit_path};
+use super::commit::{build_other_cell_owners, commit_path, restore_path, uncommit_path};
 
 /// Attempt to reduce crossings by swapping the ports of pairs of edges that
 /// share a node side and whose paths are geometrically inverted (i.e. they
@@ -162,8 +162,11 @@ fn try_swap(
     let id_a = format!("edge_{}", idx_a);
     let id_b = format!("edge_{}", idx_b);
 
-    uncommit_path(grid, &path_a.points, &id_a, &config.routing_costs);
-    uncommit_path(grid, &path_b.points, &id_b, &config.routing_costs);
+    // Exclude both edges being swapped so cells shared only between them are freed.
+    let excluded: std::collections::HashSet<usize> = [idx_a, idx_b].iter().cloned().collect();
+    let other_owners = build_other_cell_owners(paths, &excluded);
+    uncommit_path(grid, &path_a.points, &id_a, &other_owners);
+    uncommit_path(grid, &path_b.points, &id_b, &other_owners);
 
     // Build swapped port assignments: exchange the port on `side`
     // between the two edges while keeping the other end unchanged.
@@ -184,24 +187,27 @@ fn try_swap(
                 || (crossings_after == crossings_before && bends_after < bends_before);
 
             if accept {
-                commit_path(grid, &new_a.points, &id_a, &config.routing_costs);
-                commit_path(grid, &new_b.points, &id_b, &config.routing_costs);
+                commit_path(grid, &new_a.points, &id_a);
+                commit_path(grid, &new_b.points, &id_b);
                 port_assignments.insert(idx_a, swapped_a);
                 port_assignments.insert(idx_b, swapped_b);
                 paths.insert(idx_a, new_a);
                 paths.insert(idx_b, new_b);
                 true
             } else {
-                // Restore originals.
-                commit_path(grid, &path_a.points, &id_a, &config.routing_costs);
-                commit_path(grid, &path_b.points, &id_b, &config.routing_costs);
+                // Restore originals. Use restore_path (not commit_path) to
+                // force-reclaim any cells whose owner was transferred to a
+                // third edge during uncommit — otherwise future uncommits of
+                // these edges would miss those cells (ghost occupied cells).
+                restore_path(grid, &path_a.points, &id_a);
+                restore_path(grid, &path_b.points, &id_b);
                 false
             }
         }
         _ => {
             // One or both edges failed to re-route — restore originals.
-            commit_path(grid, &path_a.points, &id_a, &config.routing_costs);
-            commit_path(grid, &path_b.points, &id_b, &config.routing_costs);
+            restore_path(grid, &path_a.points, &id_a);
+            restore_path(grid, &path_b.points, &id_b);
             false
         }
     }

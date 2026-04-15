@@ -594,7 +594,6 @@ fn cmd_evaluate(
         &validation.graph,
         &validation.routing_result,
         &validation.port_assignments,
-        &validation.grid,
     );
     let json = serde_json::to_string_pretty(&report)
         .map_err(|e| AppError::Render(format!("JSON serialisation failed: {}", e)))?;
@@ -717,7 +716,6 @@ fn cmd_evaluate_batch(
                                 &validation.graph,
                                 &validation.routing_result,
                                 &validation.port_assignments,
-                                &validation.grid,
                             );
 
                             // Write {stem}_{strategy}.svg
@@ -786,7 +784,6 @@ fn cmd_evaluate_batch(
                             &validation.graph,
                             &validation.routing_result,
                             &validation.port_assignments,
-                            &validation.grid,
                         );
 
                         let svg_path = output_dir.join(format!("{}.svg", stem));

@@ -173,8 +173,18 @@ fn route_all_edges_inner(
         }
     }
 
-    // Count crossing points from the committed grid state
-    result.crossings = grid.count_crossings();
+    // Count crossing points from the authoritative paths map.
+    // Two paths sharing a cell = one crossing point.
+    {
+        use std::collections::{HashMap, HashSet};
+        let mut cell_edges: HashMap<(i64, i64), HashSet<usize>> = HashMap::new();
+        for (&idx, path) in &result.paths {
+            for pt in &path.points {
+                cell_edges.entry((pt.row, pt.col)).or_default().insert(idx);
+            }
+        }
+        result.crossings = cell_edges.values().filter(|s| s.len() >= 2).count();
+    }
 
     result
 }
@@ -218,7 +228,7 @@ fn route_single_edge(
             result.total_path_length += path.points.len().saturating_sub(1);
             result.total_routing_cost += path.total_cost;
             let edge_id = format!("edge_{}", edge_idx);
-            commit_path(grid, &path.points, &edge_id, &config.routing_costs);
+            commit_path(grid, &path.points, &edge_id);
             result.paths.insert(edge_idx, path);
         }
         None => {

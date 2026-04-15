@@ -90,18 +90,15 @@ mod tests {
             }
         }
 
-        for ((row, col), owners) in &point_owners {
-            if owners.len() > 1 {
-                let cell = setup
-                    .grid
-                    .get(*row as usize, *col as usize)
-                    .expect("point should be within grid bounds");
-                assert!(
-                    cell.crossing,
-                    "Invariant violated – edges {:?} share grid cell ({}, {}) which is NOT marked as a crossing",
-                    owners, row, col
-                );
-            }
+        // Crossing detection is now paths-based (no per-cell flag).
+        // Verify that any detected shared cells are accounted for in result.crossings.
+        let shared_cell_count = point_owners.values().filter(|v| v.len() > 1).count();
+        if shared_cell_count > 0 {
+            assert!(
+                setup.result.crossings > 0,
+                "Invariant violated – {} shared grid cells found but result.crossings == 0",
+                shared_cell_count
+            );
         }
     }
 

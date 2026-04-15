@@ -1,8 +1,7 @@
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 
 use serde::{Deserialize, Serialize};
 use trellis_core::{
-    grid::Grid,
     ports::{EdgePorts, Side},
     routing::{astar::RoutedPath, RoutingResult},
 };
@@ -53,17 +52,17 @@ pub struct EdgeQuality {
 
 /// Score a single routed edge.
 ///
-/// * `edge_idx` — index of the edge in `graph.edges`; used to look up cells in the grid.
+/// * `edge_idx` — index of the edge in `graph.edges`.
 /// * `edge`     — the parsed edge (provides `from`/`to` node IDs).
 /// * `path`     — the committed routed path for this edge.
 /// * `ports`    — source and target port assignments.
-/// * `grid`     — the final committed routing grid (used to count crossing cells).
+/// * `paths`    — all committed paths (used to detect shared cells = crossings).
 pub fn score_edge(
     edge_idx: usize,
     edge: &Edge,
     path: &RoutedPath,
     ports: &EdgePorts,
-    grid: &Grid,
+    paths: &BTreeMap<usize, RoutedPath>,
 ) -> EdgeQuality {
     let path_length = path.points.len().saturating_sub(1);
     let manhattan_distance = ((ports.source_port.grid_row - ports.target_port.grid_row)
@@ -77,7 +76,7 @@ pub fn score_edge(
         1.0
     };
 
-    let crossings = count_edge_crossings(edge_idx, path, grid);
+    let crossings = count_edge_crossings(edge_idx, path, paths);
 
     let quality_score = compute_score(path.bend_count, detour_factor, crossings);
     let flags = build_flags(path.bend_count, detour_factor, crossings);
@@ -106,15 +105,14 @@ pub fn score_all_edges(
     graph: &Graph,
     routing_result: &RoutingResult,
     port_assignments: &HashMap<usize, EdgePorts>,
-    grid: &Grid,
 ) -> Vec<EdgeQuality> {
-    let mut scores: Vec<(usize, EdgeQuality)> = routing_result
-        .paths
+    let paths = &routing_result.paths;
+    let mut scores: Vec<(usize, EdgeQuality)> = paths
         .iter()
         .filter_map(|(&edge_idx, path)| {
             let edge = graph.edges.get(edge_idx)?;
             let ports = port_assignments.get(&edge_idx)?;
-            Some((edge_idx, score_edge(edge_idx, edge, path, ports, grid)))
+            Some((edge_idx, score_edge(edge_idx, edge, path, ports, paths)))
         })
         .collect();
 
@@ -124,23 +122,24 @@ pub fn score_all_edges(
 
 // --- Private helpers ----------------------------------------------------------
 
-/// Count the number of cells on `path` that are marked as crossing points
-/// and whose owner or `crossed_by` matches `"edge_{edge_idx}"`.
-fn count_edge_crossings(edge_idx: usize, path: &RoutedPath, grid: &Grid) -> usize {
-    let id = format!("edge_{}", edge_idx);
+/// Count the number of cells on `path` that are shared with at least one other
+/// committed edge path.  Uses the authoritative `paths` map — no grid flags needed.
+fn count_edge_crossings(
+    edge_idx: usize,
+    path: &RoutedPath,
+    paths: &BTreeMap<usize, RoutedPath>,
+) -> usize {
+    use std::collections::HashSet;
+    // Build set of all cells occupied by *other* edges.
+    let other_cells: HashSet<(i64, i64)> = paths
+        .iter()
+        .filter(|(&idx, _)| idx != edge_idx)
+        .flat_map(|(_, p)| p.points.iter().map(|pt| (pt.row, pt.col)))
+        .collect();
+
     path.points
         .iter()
-        .filter(|pt| {
-            if !grid.in_bounds(pt.row, pt.col) {
-                return false;
-            }
-            let Some(cell) = grid.get(pt.row as usize, pt.col as usize) else {
-                return false;
-            };
-            cell.crossing
-                && (cell.owner.as_deref() == Some(id.as_str())
-                    || cell.crossed_by.as_deref() == Some(id.as_str()))
-        })
+        .filter(|pt| other_cells.contains(&(pt.row, pt.col)))
         .count()
 }
 
@@ -197,7 +196,6 @@ fn side_name(side: Side) -> String {
 mod tests {
     use super::*;
     use trellis_core::{
-        grid::Grid,
         ports::assignment::{EdgePorts, Port, Side},
         routing::astar::{GridPoint, RoutedPath},
     };
@@ -246,10 +244,9 @@ mod tests {
         // 4-step path, 4 manhattan steps, 0 bends, no crossings
         let path = make_path(vec![(0, 0), (1, 0), (2, 0), (3, 0), (4, 0)], 0);
         let ports = make_ports(0, 0, 4, 0);
-        let grid = Grid::new(10, 10, 10, 0, 0);
         let edge = make_edge("A", "B");
 
-        let q = score_edge(0, &edge, &path, &ports, &grid);
+        let q = score_edge(0, &edge, &path, &ports, &BTreeMap::new());
 
         assert_eq!(q.path_length, 4);
         assert_eq!(q.manhattan_distance, 4);
@@ -283,10 +280,9 @@ mod tests {
             4,
         );
         let ports = make_ports(0, 0, 0, 4);
-        let grid = Grid::new(10, 10, 10, 0, 0);
         let edge = make_edge("A", "B");
 
-        let q = score_edge(0, &edge, &path, &ports, &grid);
+        let q = score_edge(0, &edge, &path, &ports, &BTreeMap::new());
 
         assert!(
             q.detour_factor >= DETOUR_THRESHOLD,
@@ -300,10 +296,9 @@ mod tests {
     fn excessive_bends_flagged() {
         let path = make_path(vec![(0, 0), (1, 0), (2, 0)], BEND_THRESHOLD);
         let ports = make_ports(0, 0, 2, 0);
-        let grid = Grid::new(10, 10, 10, 0, 0);
         let edge = make_edge("A", "B");
 
-        let q = score_edge(0, &edge, &path, &ports, &grid);
+        let q = score_edge(0, &edge, &path, &ports, &BTreeMap::new());
 
         assert!(q.flags.contains(&"excessive_bends".to_string()));
     }
@@ -312,10 +307,9 @@ mod tests {
     fn edge_id_format() {
         let path = make_path(vec![(0, 0), (1, 0)], 0);
         let ports = make_ports(0, 0, 1, 0);
-        let grid = Grid::new(5, 5, 10, 0, 0);
         let edge = make_edge("Foo", "Bar");
 
-        let q = score_edge(0, &edge, &path, &ports, &grid);
+        let q = score_edge(0, &edge, &path, &ports, &BTreeMap::new());
 
         assert_eq!(q.edge_id, "Foo-->Bar");
         assert_eq!(q.port_side_source, "South");
@@ -356,8 +350,7 @@ mod tests {
         port_assignments.insert(0usize, make_ports(0, 0, 1, 0));
         port_assignments.insert(1usize, make_ports(2, 0, 3, 0));
 
-        let grid = Grid::new(10, 10, 10, 0, 0);
-        let scores = score_all_edges(&graph, &routing_result, &port_assignments, &grid);
+        let scores = score_all_edges(&graph, &routing_result, &port_assignments);
 
         assert_eq!(scores.len(), 2);
         assert_eq!(scores[0].source, "A");
@@ -370,10 +363,9 @@ mod tests {
         // Path with 1 point (self-loop), manhattan distance = 0
         let path = make_path(vec![(0, 0)], 0);
         let ports = make_ports(0, 0, 0, 0); // same position
-        let grid = Grid::new(5, 5, 10, 0, 0);
         let edge = make_edge("A", "A");
 
-        let q = score_edge(0, &edge, &path, &ports, &grid);
+        let q = score_edge(0, &edge, &path, &ports, &BTreeMap::new());
 
         assert!(
             q.detour_factor.is_finite(),

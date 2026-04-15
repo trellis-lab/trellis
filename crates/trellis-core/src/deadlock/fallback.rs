@@ -78,26 +78,8 @@ pub fn route_with_crossings_allowed(
     }
 
     if let Some(path) = path {
-        // Mark crossing points: cells where our path crosses an existing occupied cell
-        for point in &path.points {
-            if !grid.in_bounds(point.row, point.col) {
-                continue;
-            }
-            let row = point.row as usize;
-            let col = point.col as usize;
-            if let Some(cell) = grid.get(row, col) {
-                if cell.state == CellState::Occupied {
-                    // This point crosses an existing edge
-                    if let Some(cell_mut) = grid.get_mut(row, col) {
-                        cell_mut.crossing = true;
-                    }
-                }
-            }
-        }
-
-        // Commit the path (cells that are already occupied become crossings)
         let edge_id = format!("edge_{}", failed_edge_idx);
-        commit_path(grid, &path.points, &edge_id, &config.routing_costs);
+        commit_path(grid, &path.points, &edge_id);
 
         return Some(path);
     }
@@ -190,12 +172,13 @@ mod tests {
         let path = path.unwrap();
         assert!(!path.points.is_empty());
 
-        // Verify at least one crossing point was marked
-        let has_crossing = (0..grid.rows)
-            .any(|r| (0..grid.cols).any(|c| grid.get(r, c).map_or(false, |cell| cell.crossing)));
-        assert!(
-            has_crossing,
-            "Should have marked at least one crossing point"
-        );
+        // Verify the path crosses through at least one previously-occupied cell (col 5).
+        // Crossing detection is now paths-based; the wall at col 5 was committed as Occupied,
+        // so any path point at col 5 indicates a crossing.
+        let crosses_wall = path
+            .points
+            .iter()
+            .any(|pt| pt.col == 5 && grid.in_bounds(pt.row, pt.col));
+        assert!(crosses_wall, "Path should cross through the wall at col 5");
     }
 }

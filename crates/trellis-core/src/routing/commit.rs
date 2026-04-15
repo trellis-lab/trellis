@@ -1,16 +1,18 @@
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeMap, HashMap, HashSet};
 
-use crate::config::RoutingCosts;
 use crate::grid::{CellState, Grid};
 use crate::routing::astar::{GridPoint, RoutedPath};
-use crate::routing::cost::ALL_DIRECTIONS;
 
-/// Commit a routed path to the grid, marking cells as occupied
-/// and increasing costs of adjacent cells.
+/// Commit a routed path to the grid, marking cells as occupied.
 ///
-/// This ensures that subsequent edge routes will avoid this path
-/// and maintain separation between edges.
-pub fn commit_path(grid: &mut Grid, path: &[GridPoint], edge_id: &str, costs: &RoutingCosts) {
+/// Only Free cells are claimed; cells already Occupied (by a previously
+/// committed edge that crosses this one) are left unchanged.  Blocked cells
+/// (node interiors / corners) are never touched.
+///
+/// Adjacent cost inflation is NOT stored on cells — the A* cost function
+/// (`movement_cost`) derives the adjacent penalty from live cell states at
+/// query time, so pre-cached values would only go stale after reroutes.
+pub fn commit_path(grid: &mut Grid, path: &[GridPoint], edge_id: &str) {
     for point in path {
         if !grid.in_bounds(point.row, point.col) {
             continue;
@@ -23,42 +25,55 @@ pub fn commit_path(grid: &mut Grid, path: &[GridPoint], edge_id: &str, costs: &R
             if cell.state == CellState::Free {
                 cell.state = CellState::Occupied;
                 cell.owner = Some(edge_id.to_string());
-            } else if cell.state == CellState::Occupied {
-                // Two paths share this cell – mark it as a crossing so the
-                // renderer draws a bridge and the invariant check accepts it.
-                cell.crossing = true;
-                cell.crossed_by = Some(edge_id.to_string());
             }
-        }
-
-        // Increase cost of adjacent cells to encourage separation
-        for &dir in &ALL_DIRECTIONS {
-            let (dr, dc) = dir.delta();
-            let nr = point.row + dr;
-            let nc = point.col + dc;
-
-            if grid.in_bounds(nr, nc) {
-                if let Some(adj_cell) = grid.get_mut(nr as usize, nc as usize) {
-                    if adj_cell.state == CellState::Free {
-                        adj_cell.cost += costs.adjacent_cost;
-                    }
-                }
-            }
+            // Occupied or Blocked cells are left as-is.
+            // Crossings between edges are detected purely from the `paths`
+            // map at render time via `compute_crossing_points`.
         }
     }
 }
 
-/// Uncommit (release) a previously committed path from the grid.
-/// Used by rip-up-and-reroute in deadlock handling (M7).
+/// Build a map of `(row, col) → edge_id` for all cells used by committed
+/// paths *excluding* the given indices.
 ///
-/// Handles crossing cells correctly:
-/// - If this edge was the first occupant (`owner`) at a crossing, the second
-///   occupant (`crossed_by`) is promoted to `owner` and the crossing flag is
-///   cleared. The cell stays `Occupied`.
-/// - If this edge was the second occupant (`crossed_by`), the `crossed_by`
-///   field and `crossing` flag are cleared. The original `owner` keeps the cell.
-/// - Otherwise the cell is freed normally.
-pub fn uncommit_path(grid: &mut Grid, path: &[GridPoint], edge_id: &str, costs: &RoutingCosts) {
+/// Used by `uncommit_path` callers to identify cells that must stay Occupied
+/// because another committed edge still passes through them.
+pub fn build_other_cell_owners(
+    paths: &BTreeMap<usize, RoutedPath>,
+    excluded: &HashSet<usize>,
+) -> HashMap<(i64, i64), String> {
+    let mut map: HashMap<(i64, i64), String> = HashMap::new();
+    for (&idx, path) in paths {
+        if excluded.contains(&idx) {
+            continue;
+        }
+        let id = format!("edge_{}", idx);
+        for pt in &path.points {
+            // First writer wins: lowest-index edge becomes the canonical owner
+            // for any cell shared by multiple edges.
+            map.entry((pt.row, pt.col)).or_insert_with(|| id.clone());
+        }
+    }
+    map
+}
+
+/// Uncommit (release) a previously committed path from the grid.
+///
+/// For each cell in `path`:
+/// - If only this edge uses the cell (not in `other_cell_owners`): free it.
+/// - If another committed edge also passes through the cell: keep it Occupied
+///   and update the owner to that other edge so future uncommits work correctly.
+///
+/// `other_cell_owners` is built by the caller via `build_other_cell_owners`,
+/// which excludes all edges being uncommitted in the same operation (e.g. both
+/// sides of a port-swap).  This ensures cells shared only between simultaneously
+/// uncommitted edges are freed, while cells shared with stable edges are kept.
+pub fn uncommit_path(
+    grid: &mut Grid,
+    path: &[GridPoint],
+    edge_id: &str,
+    other_cell_owners: &HashMap<(i64, i64), String>,
+) {
     for point in path {
         if !grid.in_bounds(point.row, point.col) {
             continue;
@@ -69,36 +84,17 @@ pub fn uncommit_path(grid: &mut Grid, path: &[GridPoint], edge_id: &str, costs: 
 
         if let Some(cell) = grid.get_mut(row, col) {
             if cell.owner.as_deref() == Some(edge_id) {
-                if cell.crossing {
-                    // Edge was the first occupant. Promote crossed_by to owner,
-                    // clear crossing state. Cell stays Occupied.
-                    cell.owner = cell.crossed_by.take();
-                    cell.crossing = false;
-                } else {
-                    // Normal non-crossing cell: free it.
-                    cell.state = CellState::Free;
-                    cell.owner = None;
-                    cell.cost = costs.base_cost;
-                }
-            } else if cell.crossed_by.as_deref() == Some(edge_id) {
-                // Edge was the second occupant. Owner keeps the cell; clear crossing.
-                cell.crossed_by = None;
-                cell.crossing = false;
-            }
-        }
-    }
-
-    // Reset adjacent cell costs for newly freed cells
-    for point in path {
-        for &dir in &ALL_DIRECTIONS {
-            let (dr, dc) = dir.delta();
-            let nr = point.row + dr;
-            let nc = point.col + dc;
-
-            if grid.in_bounds(nr, nc) {
-                if let Some(adj_cell) = grid.get_mut(nr as usize, nc as usize) {
-                    if adj_cell.state == CellState::Free {
-                        adj_cell.cost = costs.base_cost;
+                match other_cell_owners.get(&(point.row, point.col)) {
+                    Some(other_id) => {
+                        // Cell is also used by another committed edge.
+                        // Keep it Occupied; transfer ownership so the other
+                        // edge's future uncommit can free it correctly.
+                        cell.owner = Some(other_id.clone());
+                    }
+                    None => {
+                        // This edge is the sole occupant — free the cell.
+                        cell.state = CellState::Free;
+                        cell.owner = None;
                     }
                 }
             }
@@ -106,62 +102,64 @@ pub fn uncommit_path(grid: &mut Grid, path: &[GridPoint], edge_id: &str, costs: 
     }
 }
 
-/// Rebuild all crossing metadata on the grid from the authoritative `paths` map.
+/// Restore a previously committed path after a rejected reroute attempt.
 ///
-/// Clears every `crossing` / `crossed_by` flag, then re-derives them by
-/// scanning which cells are shared by two or more committed edge paths.
-/// Call this after any reroute pass so the grid reflects the actual paths.
-pub fn reconcile_crossings(grid: &mut Grid, paths: &BTreeMap<usize, RoutedPath>) {
-    // Step 1: Clear all crossing metadata.
-    for row in 0..grid.rows {
-        for col in 0..grid.cols {
-            if let Some(cell) = grid.get_mut(row, col) {
-                cell.crossing = false;
-                cell.crossed_by = None;
-            }
+/// Unlike `commit_path`, this function force-sets `cell.owner` even on cells
+/// that are already Occupied.  This is necessary when a rollback needs to undo
+/// an ownership transfer that `uncommit_path` performed during the attempt:
+///
+/// ```text
+/// edge_A owned cell (r,c) → uncommit transferred owner to edge_C
+///                          → attempt rejected → commit_path restores A's path
+///                          → but commit_path sees Occupied → leaves owner as edge_C
+///                          → next uncommit of A misses (r,c) → ghost cell
+/// ```
+///
+/// `restore_path` fixes this by always writing `edge_id` as owner for any
+/// Occupied cell on the path.  Blocked cells (node interiors) are never touched.
+pub fn restore_path(grid: &mut Grid, path: &[GridPoint], edge_id: &str) {
+    for point in path {
+        if !grid.in_bounds(point.row, point.col) {
+            continue;
         }
-    }
 
-    // Step 2: Build cell → edge-index list from paths.
-    let mut cell_edges: HashMap<(usize, usize), Vec<usize>> = HashMap::new();
-    for (&edge_idx, path) in paths {
-        for pt in &path.points {
-            if grid.in_bounds(pt.row, pt.col) {
-                cell_edges
-                    .entry((pt.row as usize, pt.col as usize))
-                    .or_default()
-                    .push(edge_idx);
-            }
-        }
-    }
+        let row = point.row as usize;
+        let col = point.col as usize;
 
-    // Step 3: Mark cells shared by 2+ edges as crossings.
-    for ((row, col), edges) in &cell_edges {
-        if edges.len() >= 2 {
-            if let Some(cell) = grid.get_mut(*row, *col) {
-                cell.crossing = true;
-                let mut sorted = edges.clone();
-                sorted.sort_unstable();
-                // owner is already set by commit_path; just set crossed_by.
-                cell.crossed_by = Some(format!("edge_{}", sorted[1]));
+        if let Some(cell) = grid.get_mut(row, col) {
+            match cell.state {
+                CellState::Free => {
+                    cell.state = CellState::Occupied;
+                    cell.owner = Some(edge_id.to_string());
+                }
+                CellState::Occupied => {
+                    // Force-restore ownership. This cell may have had its owner
+                    // transferred to another edge during the failed attempt's
+                    // uncommit. Reclaim it so future uncommits of this edge work.
+                    cell.owner = Some(edge_id.to_string());
+                }
+                CellState::Blocked => {
+                    // Never touch node interior cells.
+                }
             }
         }
     }
 }
 
-/// Derive per-edge crossing-point lists from the `paths` map.
+/// Derive per-edge crossing-point lists purely from the `paths` map.
 ///
-/// Only the **second** occupant at each crossing cell (the edge identified by
-/// `cell.crossed_by` after `reconcile_crossings`) receives a hop arc.  The
-/// first occupant (`cell.owner`) passes straight through unchanged.
+/// For every grid cell shared by two or more distinct edges, the edge with the
+/// **higher** index is designated as the "hopper" that renders the arc or
+/// bridge decoration.  The lower-index edge (committed first) passes straight
+/// through unchanged.
 ///
-/// This ensures exactly one edge hops at every crossing — the grid's
-/// `crossed_by` field is the authoritative source for which edge that is.
+/// This function is self-contained: it does not read any grid crossing metadata
+/// (which could be stale after reroutes) — crossing state is always derived
+/// fresh from the authoritative `paths` map.
 pub fn compute_crossing_points(
     paths: &BTreeMap<usize, RoutedPath>,
-    grid: &Grid,
 ) -> HashMap<usize, Vec<(i64, i64)>> {
-    // Build cell → edge list.
+    // Map each cell to all edge indices whose path includes it.
     let mut cell_edges: HashMap<(i64, i64), Vec<usize>> = HashMap::new();
     for (&edge_idx, path) in paths {
         for pt in &path.points {
@@ -172,28 +170,24 @@ pub fn compute_crossing_points(
         }
     }
 
-    // For each crossing cell, give the hop arc only to the second occupant.
+    // For each crossing cell, assign the hop to the higher-index edge.
     let mut result: HashMap<usize, Vec<(i64, i64)>> = HashMap::new();
     for ((row, col), edges) in &cell_edges {
         if edges.len() < 2 {
             continue;
         }
 
-        // `reconcile_crossings` sets `crossed_by` to "edge_N" for the second
-        // occupant. Parse that to find which edge index hops.
-        let hopper = if grid.in_bounds(*row, *col) {
-            grid.get(*row as usize, *col as usize)
-                .and_then(|cell| cell.crossed_by.as_deref())
-                .and_then(|id| id.strip_prefix("edge_"))
-                .and_then(|s| s.parse::<usize>().ok())
-                .filter(|idx| edges.contains(idx))
-        } else {
-            None
-        };
+        let mut sorted = edges.clone();
+        sorted.sort_unstable();
+        sorted.dedup();
+        if sorted.len() < 2 {
+            // Same edge visited this cell twice (tight U-turn) — not a crossing.
+            continue;
+        }
 
-        // Fallback: if grid has no crossing metadata yet, assign the hop to
-        // the edge with the highest index (last-routed approximation).
-        let hopper_idx = hopper.unwrap_or_else(|| *edges.iter().max().unwrap());
+        // sorted[0] = lower index (owner / passes straight)
+        // sorted[1] = higher index (hopper / renders arc)
+        let hopper_idx = sorted[1];
         result.entry(hopper_idx).or_default().push((*row, *col));
     }
     result
@@ -202,23 +196,29 @@ pub fn compute_crossing_points(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::config::RoutingCosts;
-    use crate::grid::Grid;
+    use crate::grid::{CellState, Grid};
 
-    fn default_costs() -> RoutingCosts {
-        RoutingCosts::default()
+    fn make_path(points: &[(i64, i64)]) -> Vec<GridPoint> {
+        points
+            .iter()
+            .map(|&(row, col)| GridPoint { row, col })
+            .collect()
+    }
+
+    fn routed(points: &[(i64, i64)]) -> RoutedPath {
+        RoutedPath {
+            points: make_path(points),
+            bend_count: 0,
+            total_cost: 0.0,
+        }
     }
 
     #[test]
     fn test_commit_path_marks_occupied() {
         let mut grid = Grid::new(10, 10, 10, 0, 0);
-        let path = vec![
-            GridPoint { row: 5, col: 0 },
-            GridPoint { row: 5, col: 1 },
-            GridPoint { row: 5, col: 2 },
-        ];
+        let path = make_path(&[(5, 0), (5, 1), (5, 2)]);
 
-        commit_path(&mut grid, &path, "edge_0", &default_costs());
+        commit_path(&mut grid, &path, "edge_0");
 
         for p in &path {
             let cell = grid.get(p.row as usize, p.col as usize).unwrap();
@@ -228,26 +228,22 @@ mod tests {
     }
 
     #[test]
-    fn test_commit_increases_adjacent_costs() {
+    fn test_commit_does_not_overwrite_blocked() {
         let mut grid = Grid::new(10, 10, 10, 0, 0);
-        let path = vec![GridPoint { row: 5, col: 5 }];
+        grid.get_mut(5, 5).unwrap().state = CellState::Blocked;
 
-        let original_cost = grid.get(4, 5).unwrap().cost;
-        commit_path(&mut grid, &path, "edge_0", &default_costs());
+        commit_path(&mut grid, &make_path(&[(5, 5)]), "edge_0");
 
-        // Adjacent cells should have increased cost
-        let adj_cost = grid.get(4, 5).unwrap().cost;
-        assert!(adj_cost > original_cost);
+        assert_eq!(grid.get(5, 5).unwrap().state, CellState::Blocked);
     }
 
     #[test]
-    fn test_uncommit_restores_free() {
+    fn test_uncommit_frees_sole_occupant() {
         let mut grid = Grid::new(10, 10, 10, 0, 0);
-        let path = vec![GridPoint { row: 5, col: 0 }, GridPoint { row: 5, col: 1 }];
+        let path = make_path(&[(5, 0), (5, 1)]);
 
-        let costs = default_costs();
-        commit_path(&mut grid, &path, "edge_0", &costs);
-        uncommit_path(&mut grid, &path, "edge_0", &costs);
+        commit_path(&mut grid, &path, "edge_0");
+        uncommit_path(&mut grid, &path, "edge_0", &HashMap::new());
 
         for p in &path {
             let cell = grid.get(p.row as usize, p.col as usize).unwrap();
@@ -257,149 +253,117 @@ mod tests {
     }
 
     #[test]
-    fn test_commit_does_not_overwrite_blocked() {
+    fn test_uncommit_keeps_shared_cell_occupied() {
         let mut grid = Grid::new(10, 10, 10, 0, 0);
-        grid.get_mut(5, 5).unwrap().state = CellState::Blocked;
 
-        let path = vec![GridPoint { row: 5, col: 5 }];
-        commit_path(&mut grid, &path, "edge_0", &default_costs());
+        // Simulate edge_0 owns (5,5) but edge_1 also passes through it.
+        let cell = grid.get_mut(5, 5).unwrap();
+        cell.state = CellState::Occupied;
+        cell.owner = Some("edge_0".to_string());
 
-        // Should still be blocked
-        assert_eq!(grid.get(5, 5).unwrap().state, CellState::Blocked);
-    }
+        let path = make_path(&[(5, 5)]);
+        // other_cell_owners says edge_1 also uses (5,5)
+        let mut other = HashMap::new();
+        other.insert((5_i64, 5_i64), "edge_1".to_string());
 
-    #[test]
-    fn test_uncommit_owner_at_crossing_promotes_crossed_by() {
-        let mut grid = Grid::new(10, 10, 10, 0, 0);
-        let costs = default_costs();
-
-        // Simulate a crossing at (5,5): edge_0 is owner, edge_1 is crossed_by
-        {
-            let cell = grid.get_mut(5, 5).unwrap();
-            cell.state = CellState::Occupied;
-            cell.owner = Some("edge_0".to_string());
-            cell.crossing = true;
-            cell.crossed_by = Some("edge_1".to_string());
-        }
-
-        let path = vec![GridPoint { row: 5, col: 5 }];
-        uncommit_path(&mut grid, &path, "edge_0", &costs);
+        uncommit_path(&mut grid, &path, "edge_0", &other);
 
         let cell = grid.get(5, 5).unwrap();
-        // Cell stays Occupied under edge_1
+        // Cell must stay Occupied, transferred to edge_1
         assert_eq!(cell.state, CellState::Occupied);
         assert_eq!(cell.owner.as_deref(), Some("edge_1"));
-        assert!(!cell.crossing);
-        assert!(cell.crossed_by.is_none());
-    }
-
-    #[test]
-    fn test_uncommit_crossed_by_clears_crossing_keeps_owner() {
-        let mut grid = Grid::new(10, 10, 10, 0, 0);
-        let costs = default_costs();
-
-        // Simulate a crossing at (5,5): edge_0 is owner, edge_1 is crossed_by
-        {
-            let cell = grid.get_mut(5, 5).unwrap();
-            cell.state = CellState::Occupied;
-            cell.owner = Some("edge_0".to_string());
-            cell.crossing = true;
-            cell.crossed_by = Some("edge_1".to_string());
-        }
-
-        let path = vec![GridPoint { row: 5, col: 5 }];
-        uncommit_path(&mut grid, &path, "edge_1", &costs);
-
-        let cell = grid.get(5, 5).unwrap();
-        // Cell stays Occupied under edge_0
-        assert_eq!(cell.state, CellState::Occupied);
-        assert_eq!(cell.owner.as_deref(), Some("edge_0"));
-        assert!(!cell.crossing);
-        assert!(cell.crossed_by.is_none());
     }
 
     #[test]
     fn test_compute_crossing_points_only_hopper_gets_arc() {
-        use crate::routing::astar::RoutedPath;
-        use std::collections::BTreeMap;
-
-        // edge 0 horizontal, edge 1 vertical — they cross at (3,2).
-        let path_a = RoutedPath {
-            points: vec![
-                GridPoint { row: 3, col: 0 },
-                GridPoint { row: 3, col: 1 },
-                GridPoint { row: 3, col: 2 }, // shared
-            ],
-            bend_count: 0,
-            total_cost: 0.0,
-        };
-        let path_b = RoutedPath {
-            points: vec![
-                GridPoint { row: 2, col: 2 },
-                GridPoint { row: 3, col: 2 }, // shared
-                GridPoint { row: 4, col: 2 },
-            ],
-            bend_count: 0,
-            total_cost: 0.0,
-        };
-
+        // edge 0 horizontal, edge 1 vertical — they share (3,2).
         let mut paths = BTreeMap::new();
-        paths.insert(0usize, path_a);
-        paths.insert(1usize, path_b);
+        paths.insert(0usize, routed(&[(3, 0), (3, 1), (3, 2)]));
+        paths.insert(1usize, routed(&[(2, 2), (3, 2), (4, 2)]));
 
-        // Set up grid with crossing metadata: edge_1 is the hopper.
-        let mut grid = Grid::new(10, 10, 10, 0, 0);
-        {
-            let cell = grid.get_mut(3, 2).unwrap();
-            cell.state = CellState::Occupied;
-            cell.owner = Some("edge_0".to_string());
-            cell.crossing = true;
-            cell.crossed_by = Some("edge_1".to_string());
-        }
+        let crossing_pts = compute_crossing_points(&paths);
 
-        let crossing_pts = compute_crossing_points(&paths, &grid);
-
-        // Only edge 1 (the hopper) should have the arc.
-        assert!(!crossing_pts.contains_key(&0), "owner should not hop");
-        assert!(crossing_pts.contains_key(&1), "crossed_by edge should hop");
+        // edge 1 (higher index) is the hopper.
+        assert!(!crossing_pts.contains_key(&0), "owner (edge_0) must not hop");
+        assert!(crossing_pts.contains_key(&1), "hopper (edge_1) must receive arc");
         assert!(crossing_pts[&1].contains(&(3, 2)));
     }
 
     #[test]
-    fn test_reconcile_crossings_rebuilds_flags() {
-        use crate::routing::astar::RoutedPath;
-        use std::collections::BTreeMap;
+    fn test_compute_crossing_points_no_self_crossing_on_revisit() {
+        // A single path that revisits the same cell (tight U-turn).
+        let mut paths = BTreeMap::new();
+        paths.insert(
+            0usize,
+            routed(&[(3, 0), (3, 1), (4, 1), (3, 1), (3, 2)]),
+        );
 
+        let crossing_pts = compute_crossing_points(&paths);
+        assert!(
+            crossing_pts.is_empty(),
+            "single-edge revisit must not produce a crossing"
+        );
+    }
+
+    #[test]
+    fn test_build_other_cell_owners_excludes_given_indices() {
+        let mut paths = BTreeMap::new();
+        paths.insert(0usize, routed(&[(0, 0), (0, 1)]));
+        paths.insert(1usize, routed(&[(0, 1), (0, 2)]));
+        paths.insert(2usize, routed(&[(0, 2), (0, 3)]));
+
+        let excluded: HashSet<usize> = [1usize].iter().cloned().collect();
+        let owners = build_other_cell_owners(&paths, &excluded);
+
+        // (0,0) owned by edge_0 ✓
+        assert_eq!(owners.get(&(0, 0)).map(|s| s.as_str()), Some("edge_0"));
+        // (0,1) shared by 0 and 1, but 1 is excluded → edge_0 is owner
+        assert_eq!(owners.get(&(0, 1)).map(|s| s.as_str()), Some("edge_0"));
+        // (0,2) shared by 1 (excluded) and 2 → edge_2 is owner
+        assert_eq!(owners.get(&(0, 2)).map(|s| s.as_str()), Some("edge_2"));
+        // (0,3) owned by edge_2 ✓
+        assert_eq!(owners.get(&(0, 3)).map(|s| s.as_str()), Some("edge_2"));
+    }
+
+    #[test]
+    fn test_restore_path_reclaims_transferred_owner() {
+        // Reproduces the ghost-cell bug: edge_A owns (5,5), uncommit transfers
+        // owner to edge_C, then a plain commit_path of edge_A's path leaves the
+        // owner as edge_C. restore_path must force it back to edge_A.
         let mut grid = Grid::new(10, 10, 10, 0, 0);
 
-        // Pre-corrupt: mark a cell as crossing that shouldn't be
-        {
-            let cell = grid.get_mut(1, 1).unwrap();
-            cell.state = CellState::Occupied;
-            cell.crossing = true;
-            cell.crossed_by = Some("stale".to_string());
-        }
+        // edge_A commits (5,5) first.
+        commit_path(&mut grid, &make_path(&[(5, 5)]), "edge_a");
+        assert_eq!(grid.get(5, 5).unwrap().owner.as_deref(), Some("edge_a"));
 
-        let path_a = RoutedPath {
-            points: vec![GridPoint { row: 3, col: 0 }, GridPoint { row: 3, col: 2 }],
-            bend_count: 0,
-            total_cost: 0.0,
-        };
-        let path_b = RoutedPath {
-            points: vec![GridPoint { row: 2, col: 1 }, GridPoint { row: 4, col: 1 }],
-            bend_count: 0,
-            total_cost: 0.0,
-        };
+        // Uncommit edge_A with edge_C listed as other owner → transfers to edge_C.
+        let mut other = HashMap::new();
+        other.insert((5_i64, 5_i64), "edge_c".to_string());
+        uncommit_path(&mut grid, &make_path(&[(5, 5)]), "edge_a", &other);
+        assert_eq!(grid.get(5, 5).unwrap().owner.as_deref(), Some("edge_c"));
 
-        let mut paths = BTreeMap::new();
-        paths.insert(0usize, path_a);
-        paths.insert(1usize, path_b);
+        // Simulate reject: restore edge_A's original path.
+        // commit_path would NOT reclaim the owner (sees Occupied, leaves as edge_C).
+        // restore_path MUST reclaim it.
+        restore_path(&mut grid, &make_path(&[(5, 5)]), "edge_a");
 
-        reconcile_crossings(&mut grid, &paths);
+        let cell = grid.get(5, 5).unwrap();
+        assert_eq!(cell.state, CellState::Occupied);
+        assert_eq!(
+            cell.owner.as_deref(),
+            Some("edge_a"),
+            "restore_path must reclaim ownership from transferred edge_c"
+        );
+    }
 
-        // Stale crossing at (1,1) should be cleared
-        let stale = grid.get(1, 1).unwrap();
-        assert!(!stale.crossing);
-        assert!(stale.crossed_by.is_none());
+    #[test]
+    fn test_restore_path_does_not_touch_blocked() {
+        let mut grid = Grid::new(10, 10, 10, 0, 0);
+        grid.get_mut(5, 5).unwrap().state = CellState::Blocked;
+
+        restore_path(&mut grid, &make_path(&[(5, 5)]), "edge_0");
+
+        assert_eq!(grid.get(5, 5).unwrap().state, CellState::Blocked);
+        assert!(grid.get(5, 5).unwrap().owner.is_none());
     }
 }

@@ -165,7 +165,7 @@ pub fn build_svg(
     let empty_set: HashSet<(i64, i64)> = HashSet::new();
     let crossing_sets: HashMap<usize, HashSet<(i64, i64)>> =
         if config.crossing_style != CrossingStyle::None {
-            compute_crossing_points(&routing_result.paths, grid)
+            compute_crossing_points(&routing_result.paths)
                 .into_iter()
                 .map(|(k, v)| (k, v.into_iter().collect()))
                 .collect()

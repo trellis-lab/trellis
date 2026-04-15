@@ -8,7 +8,7 @@ use crate::ports::assignment::{EdgePorts, Port, Side};
 use crate::ports::common::enumerate_connectors;
 
 use super::astar::{route_edge, GridPoint, RoutedPath};
-use super::commit::{commit_path, uncommit_path};
+use super::commit::{build_other_cell_owners, commit_path, restore_path, uncommit_path};
 
 /// Resolve the effective bend threshold from the config and the current set of
 /// routed paths.
@@ -119,7 +119,9 @@ pub fn quality_reroute(
             .sum();
 
         let edge_id = format!("edge_{}", edge_idx);
-        uncommit_path(grid, &current_path.points, &edge_id, &config.routing_costs);
+        let excluded: std::collections::HashSet<usize> = [edge_idx].iter().cloned().collect();
+        let other_owners = build_other_cell_owners(paths, &excluded);
+        uncommit_path(grid, &current_path.points, &edge_id, &other_owners);
 
         let mut best_bends = current_bends;
         let mut best_crossings = current_crossings;
@@ -201,7 +203,10 @@ pub fn quality_reroute(
             }
         }
 
-        commit_path(grid, &best_path.points, &edge_id, &config.routing_costs);
+        // Use restore_path: this edge was just uncommitted, so any cells shared
+        // with a third edge may have had their owner transferred. restore_path
+        // force-reclaims them so future uncommits of this edge work correctly.
+        restore_path(grid, &best_path.points, &edge_id);
 
         if best_bends < current_bends {
             port_assignments.insert(edge_idx, best_ports);
