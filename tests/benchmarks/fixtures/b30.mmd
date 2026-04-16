@@ -1,0 +1,9 @@
+%% TrellisBasic: center-biased ports produce shorter average paths than even-spacing
+%% Fan-out topology: A feeds B/C/D, B/C/D converge on E
+flowchart LR
+  A --> B
+  A --> C
+  A --> D
+  B --> E
+  C --> E
+  D --> E

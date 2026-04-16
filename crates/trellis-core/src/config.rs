@@ -35,7 +35,7 @@ fn default_decomposition_threshold() -> usize {
     50
 }
 fn default_port_assignment() -> PortAssignmentStrategy {
-    PortAssignmentStrategy::Auto
+    PortAssignmentStrategy::TrellisBasic
 }
 fn default_port_refinement_rounds() -> usize {
     0
@@ -205,7 +205,10 @@ pub struct RoutingCosts {
 /// Port assignment algorithm selection
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub enum PortAssignmentStrategy {
+    /// Greedy center-first with corner-distance side selection (default)
     #[default]
+    TrellisBasic,
+    /// Legacy angle-based even-distribution (kept for regression testing)
     Default,
     /// Barycenter ordering — orders by weighted average position of target neighbourhood
     Barycenter,
@@ -351,7 +354,7 @@ mod tests {
         let config: TrellisConfig = serde_json::from_str("{}").unwrap();
         assert!(matches!(
             config.port_assignment,
-            PortAssignmentStrategy::Auto
+            PortAssignmentStrategy::TrellisBasic
         ));
     }
 

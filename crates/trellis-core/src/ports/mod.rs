@@ -7,6 +7,7 @@ pub mod iterative;
 pub mod median;
 pub mod prepass;
 pub mod stats;
+pub mod trellis_basic;
 pub mod two_phase;
 
 pub use common::compute_topo_rank;
@@ -20,6 +21,7 @@ pub use crossing_greedy::CrossingGreedyPortAssigner;
 pub use iterative::IterativeSwapAssigner;
 pub use median::MedianPortAssigner;
 pub use prepass::{apply_pinned, straight_edge_prepass, PinnedPortMap, PinnedPorts};
+pub use trellis_basic::TrellisBasicAssigner;
 pub use two_phase::TwoPhaseAssigner;
 
 use crate::config::{FlowBias, PortAssignmentStrategy};
@@ -78,6 +80,7 @@ pub fn effective_direction(ctx: &PortAssignmentContext) -> Option<trellis_parser
 /// Resolve a config enum value to a concrete port assigner.
 pub fn create_port_assigner(strategy: PortAssignmentStrategy) -> Box<dyn PortAssigner> {
     match strategy {
+        PortAssignmentStrategy::TrellisBasic => Box::new(TrellisBasicAssigner),
         PortAssignmentStrategy::Default => Box::new(DefaultPortAssigner),
         PortAssignmentStrategy::Barycenter => Box::new(BarycenterPortAssigner),
         PortAssignmentStrategy::Median => Box::new(MedianPortAssigner),
@@ -224,6 +227,7 @@ mod tests {
         ];
 
         let strategies = [
+            PortAssignmentStrategy::TrellisBasic,
             PortAssignmentStrategy::Default,
             PortAssignmentStrategy::Barycenter,
             PortAssignmentStrategy::Median,
