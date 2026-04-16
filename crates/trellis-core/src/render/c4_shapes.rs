@@ -636,7 +636,7 @@ fn c4_type_label(t: C4NodeType) -> &'static str {
 // ── Colour helpers ────────────────────────────────────────────────────────────
 
 /// Return (fill, text_colour, stroke) for box/cylinder/queue elements.
-fn box_colours<'t>(c4_type: C4NodeType, theme: &'t Theme) -> (&'t str, &'t str, &'t str) {
+fn box_colours(c4_type: C4NodeType, theme: &Theme) -> (&str, &str, &str) {
     if c4_type.is_external() {
         return (
             theme.c4_external_fill,

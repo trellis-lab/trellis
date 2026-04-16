@@ -8,7 +8,7 @@ use crate::ports::assignment::{EdgePorts, Port, Side};
 use crate::ports::common::enumerate_connectors;
 
 use super::astar::{route_edge, GridPoint, RoutedPath};
-use super::commit::{build_other_cell_owners, commit_path, restore_path, uncommit_path};
+use super::commit::{build_other_cell_owners, restore_path, uncommit_path};
 
 /// Resolve the effective bend threshold from the config and the current set of
 /// routed paths.

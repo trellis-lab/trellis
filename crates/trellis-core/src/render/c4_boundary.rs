@@ -123,10 +123,7 @@ fn boundary_type_label(c4_type: Option<C4NodeType>) -> &'static str {
     }
 }
 
-fn boundary_colours<'t>(
-    c4_type: Option<C4NodeType>,
-    theme: &'t Theme,
-) -> (&'t str, &'t str) {
+fn boundary_colours(c4_type: Option<C4NodeType>, theme: &Theme) -> (&str, &str) {
     match c4_type {
         Some(C4NodeType::EnterpriseBoundary) => (
             theme.c4_boundary_enterprise_fill,

@@ -227,7 +227,13 @@ fn render_er_glyphs(edge: &Edge, points: &[Point], theme: &Theme) -> (String, f6
             anchor_world.0 + tangent.0 * GLYPH_LENGTH,
             anchor_world.1 + tangent.1 * GLYPH_LENGTH,
         );
-        svg.push_str(&render_glyph(card, anchor, into_box, GlyphEnd::Start, theme));
+        svg.push_str(&render_glyph(
+            card,
+            anchor,
+            into_box,
+            GlyphEnd::Start,
+            theme,
+        ));
         trim_start = GLYPH_LENGTH;
     }
 

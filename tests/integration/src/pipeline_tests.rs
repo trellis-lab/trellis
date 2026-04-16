@@ -308,7 +308,10 @@ mod themes {
         let svg = render_with_theme(ThemeName::Blueprint);
         assert!(svg.contains("<svg"), "missing SVG root");
         // Blueprint theme has a light blue-white background
-        assert!(svg.contains("#f8faff"), "missing blueprint background colour");
+        assert!(
+            svg.contains("#f8faff"),
+            "missing blueprint background colour"
+        );
     }
 
     #[test]
@@ -324,7 +327,10 @@ mod themes {
         let svg = render_with_theme(ThemeName::Midnight);
         assert!(svg.contains("<svg"), "missing SVG root");
         // Midnight theme has a deep navy background
-        assert!(svg.contains("#0d1117"), "missing midnight background colour");
+        assert!(
+            svg.contains("#0d1117"),
+            "missing midnight background colour"
+        );
     }
 
     #[test]

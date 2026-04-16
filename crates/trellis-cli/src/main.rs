@@ -302,8 +302,9 @@ fn cmd_render(
     output: &PathBuf,
     format: &str,
     print_metrics: bool,
-    #[cfg_attr(not(feature = "debug-log"), allow(unused_variables))]
-    debug_log_flag: &Option<Option<PathBuf>>,
+    #[cfg_attr(not(feature = "debug-log"), allow(unused_variables))] debug_log_flag: &Option<
+        Option<PathBuf>,
+    >,
     config: &TrellisConfig,
 ) -> Result<(), AppError> {
     let content = read_input(input)?;

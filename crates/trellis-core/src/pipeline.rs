@@ -16,8 +16,8 @@ use trellis_parser::{DiagramType, Graph};
 #[cfg(feature = "debug-log")]
 use crate::debug::{
     CrossingLog, CrossingReroutePhase, CrossingsPhase, DeadlockPhase, DebugLog, EdgeRoutingLog,
-    GridPhase, LabelPlacementLog, LabelsPhase, NodePos, PlacementPhase, PortAssignment,
-    PortsPhase, QualityReroutePhase, RoutingPhase, StraightEdgePin,
+    GridPhase, LabelPlacementLog, LabelsPhase, NodePos, PlacementPhase, PortAssignment, PortsPhase,
+    QualityReroutePhase, RoutingPhase, StraightEdgePin,
 };
 
 /// Returns elapsed milliseconds since `start`. In WASM builds, always returns 0
@@ -161,8 +161,10 @@ fn run_pipeline(
             .collect();
 
         // Build per-node assignment summary from the flat port_assignments map.
-        let mut by_node: std::collections::BTreeMap<String, Vec<(usize, &crate::ports::EdgePorts)>> =
-            std::collections::BTreeMap::new();
+        let mut by_node: std::collections::BTreeMap<
+            String,
+            Vec<(usize, &crate::ports::EdgePorts)>,
+        > = std::collections::BTreeMap::new();
         for (edge_idx, ep) in &port_assignments {
             if let Some(edge) = graph.edges.get(*edge_idx) {
                 by_node
@@ -186,10 +188,7 @@ fn run_pipeline(
                         };
                         EdgePortLog {
                             edge_index: edge_idx,
-                            edge_label: graph
-                                .edges
-                                .get(edge_idx)
-                                .and_then(|e| e.label.clone()),
+                            edge_label: graph.edges.get(edge_idx).and_then(|e| e.label.clone()),
                             candidates: vec![],
                             selected: PortAssignment {
                                 side: side_str(&ep.source_port.side).to_string(),
@@ -297,7 +296,11 @@ fn run_pipeline(
             BendThreshold::Fixed(n) => (n, format!("fixed({n})")),
             BendThreshold::Auto => {
                 // Mirror the auto formula from quality_reroute.rs
-                let bends: Vec<usize> = routing_result.paths.values().map(|p| p.bend_count).collect();
+                let bends: Vec<usize> = routing_result
+                    .paths
+                    .values()
+                    .map(|p| p.bend_count)
+                    .collect();
                 let median = if bends.is_empty() {
                     0
                 } else {

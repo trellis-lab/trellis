@@ -8,7 +8,7 @@ use crate::ports::assignment::{EdgePorts, Port, Side};
 use crate::ports::common::enumerate_connectors;
 
 use super::astar::{route_edge, GridPoint, RoutedPath};
-use super::commit::{build_other_cell_owners, commit_path, restore_path, uncommit_path};
+use super::commit::{build_other_cell_owners, restore_path, uncommit_path};
 
 /// Maximum additional bends a reroute may introduce relative to the original.
 const MAX_EXTRA_BENDS: usize = 2;
@@ -277,21 +277,23 @@ pub fn crossing_reroute(
         // force-reclaims them so future uncommits of this edge work correctly.
         restore_path(grid, &best_path.points, &edge_id);
 
-        let outcome = if best_crossings < crossings_before {
+        if best_crossings < crossings_before {
             port_assignments.insert(edge_idx, best_ports);
             paths.insert(edge_idx, best_path);
             improved += 1;
-            "improved"
-        } else {
-            "no-improvement-kept-original"
-        };
+        }
 
         #[cfg(feature = "debug-log")]
         debug_details.push(crate::debug::CrossingRerouteLog {
             edge_index: edge_idx,
             crossings_before,
             crossings_after: best_crossings,
-            outcome: outcome.to_string(),
+            outcome: if best_crossings < crossings_before {
+                "improved"
+            } else {
+                "no-improvement-kept-original"
+            }
+            .to_string(),
             attempts,
         });
     }

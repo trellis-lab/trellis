@@ -373,8 +373,7 @@ mod tests {
 
     #[test]
     fn show_title_parses_false() {
-        let config: TrellisConfig =
-            serde_json::from_str(r#"{"show_title": false}"#).unwrap();
+        let config: TrellisConfig = serde_json::from_str(r#"{"show_title": false}"#).unwrap();
         assert!(!config.show_title);
     }
 }

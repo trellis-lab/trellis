@@ -284,8 +284,14 @@ mod tests {
         let crossing_pts = compute_crossing_points(&paths);
 
         // edge 1 (higher index) is the hopper.
-        assert!(!crossing_pts.contains_key(&0), "owner (edge_0) must not hop");
-        assert!(crossing_pts.contains_key(&1), "hopper (edge_1) must receive arc");
+        assert!(
+            !crossing_pts.contains_key(&0),
+            "owner (edge_0) must not hop"
+        );
+        assert!(
+            crossing_pts.contains_key(&1),
+            "hopper (edge_1) must receive arc"
+        );
         assert!(crossing_pts[&1].contains(&(3, 2)));
     }
 
@@ -293,10 +299,7 @@ mod tests {
     fn test_compute_crossing_points_no_self_crossing_on_revisit() {
         // A single path that revisits the same cell (tight U-turn).
         let mut paths = BTreeMap::new();
-        paths.insert(
-            0usize,
-            routed(&[(3, 0), (3, 1), (4, 1), (3, 1), (3, 2)]),
-        );
+        paths.insert(0usize, routed(&[(3, 0), (3, 1), (4, 1), (3, 1), (3, 2)]));
 
         let crossing_pts = compute_crossing_points(&paths);
         assert!(

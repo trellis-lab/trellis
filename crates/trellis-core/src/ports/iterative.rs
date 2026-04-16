@@ -288,24 +288,30 @@ mod tests {
         use crate::routing::astar::GridPoint;
         let mut paths: BTreeMap<usize, RoutedPath> = BTreeMap::new();
         // edge_0 and edge_1 both pass through (2,2)
-        paths.insert(0, RoutedPath {
-            points: vec![
-                GridPoint { row: 2, col: 1 },
-                GridPoint { row: 2, col: 2 },
-                GridPoint { row: 2, col: 3 },
-            ],
-            bend_count: 0,
-            total_cost: 0.0,
-        });
-        paths.insert(1, RoutedPath {
-            points: vec![
-                GridPoint { row: 1, col: 2 },
-                GridPoint { row: 2, col: 2 },
-                GridPoint { row: 3, col: 2 },
-            ],
-            bend_count: 0,
-            total_cost: 0.0,
-        });
+        paths.insert(
+            0,
+            RoutedPath {
+                points: vec![
+                    GridPoint { row: 2, col: 1 },
+                    GridPoint { row: 2, col: 2 },
+                    GridPoint { row: 2, col: 3 },
+                ],
+                bend_count: 0,
+                total_cost: 0.0,
+            },
+        );
+        paths.insert(
+            1,
+            RoutedPath {
+                points: vec![
+                    GridPoint { row: 1, col: 2 },
+                    GridPoint { row: 2, col: 2 },
+                    GridPoint { row: 3, col: 2 },
+                ],
+                bend_count: 0,
+                total_cost: 0.0,
+            },
+        );
 
         let pairs = find_crossing_edge_pairs(&paths);
         assert_eq!(pairs.len(), 1);

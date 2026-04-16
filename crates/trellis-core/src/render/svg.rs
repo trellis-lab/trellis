@@ -96,7 +96,11 @@ pub fn build_svg(
                  font-family=\"Arial, Helvetica, sans-serif\" \
                  font-size=\"{:.0}\" font-weight=\"bold\" \
                  fill=\"{}\" text-anchor=\"middle\">{}</text>\n",
-                tx, ty, TITLE_FONT_SIZE, theme.title_text, escape_xml(title)
+                tx,
+                ty,
+                TITLE_FONT_SIZE,
+                theme.title_text,
+                escape_xml(title)
             ));
         }
     }
@@ -210,7 +214,9 @@ pub fn build_svg(
         if let (Some(f), Some(t)) = (from_node, to_node) {
             let edge_svg = render_fallback_edge(edge, f.x, f.y, t.x, t.y, theme);
             #[cfg(feature = "debug-log")]
-            svg.push_str(&format!("  <g data-edge-index=\"{edge_idx}\" data-fallback=\"true\">\n"));
+            svg.push_str(&format!(
+                "  <g data-edge-index=\"{edge_idx}\" data-fallback=\"true\">\n"
+            ));
             svg.push_str("  ");
             svg.push_str(&edge_svg);
             svg.push('\n');
