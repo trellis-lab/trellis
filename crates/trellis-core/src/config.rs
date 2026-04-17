@@ -26,7 +26,7 @@ fn default_show_grid() -> bool {
     true
 }
 fn default_show_edge_labels() -> bool {
-    false
+    true
 }
 fn default_decomposition() -> DecompositionMode {
     DecompositionMode::None

@@ -6,6 +6,10 @@ use trellis_parser::Node;
 const LABEL_PADDING: f64 = 4.0;
 /// Step size in pixels when sliding along a segment.
 const STEP: f64 = 5.0;
+/// Gap between staggered fallback labels.
+const STAGGER_GAP: f64 = 2.0;
+/// Max stagger attempts before accepting whatever position we have.
+const MAX_STAGGER_STEPS: u32 = 30;
 
 /// Slide a label along a segment to find a collision-free position.
 /// Starts from the midpoint and alternates outward in both directions.
@@ -76,11 +80,45 @@ pub fn slide_label_along_segment(
         offset = abs_offset * step_sign;
     }
 
-    // Fallback: place at segment midpoint above/left (accept collision)
+    // Slide exhausted — stagger perpendicular to the segment to avoid piling
+    // up on top of already-placed labels. For vertical segments we shift Y;
+    // for horizontal segments we shift X. Alternate ±1, ±2, … stagger_step
+    // increments until we find a spot clear of placed labels.
     let (mx, my) = segment.midpoint();
     let default_side = sides[0];
     let (fx, fy) = candidate_position(mx, my, label_width, label_height, default_side);
 
+    let stagger_step = label_height + STAGGER_GAP;
+
+    for stagger in 1..=MAX_STAGGER_STEPS {
+        let sign: f64 = if stagger % 2 == 1 { 1.0 } else { -1.0 };
+        let magnitude = ((stagger + 1) / 2) as f64 * stagger_step;
+        let (sx, sy) = match seg_dir {
+            SegmentDirection::Vertical => (fx, fy + sign * magnitude),
+            SegmentDirection::Horizontal => (fx + sign * magnitude, fy),
+        };
+
+        let bbox = BoundingBox {
+            x: sx,
+            y: sy,
+            width: bbox_width,
+            height: bbox_height,
+        };
+
+        if placed_bboxes.iter().all(|p| !bbox.overlaps(p)) {
+            placed_bboxes.push(bbox);
+            return LabelPlacement {
+                text: label.to_string(),
+                x: sx,
+                y: sy,
+                width: label_width,
+                height: label_height,
+                side: default_side,
+            };
+        }
+    }
+
+    // All stagger positions exhausted — accept the original midpoint position.
     let fallback_bbox = BoundingBox {
         x: fx,
         y: fy,
