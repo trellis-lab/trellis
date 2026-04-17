@@ -10,7 +10,7 @@
 #   docker run --rm -v "$(pwd):/workspace" trellis-wasm-builder
 #   docker run --rm -v "$(pwd):/workspace" trellis-wasm-builder --release
 
-FROM rust:1.93.1-slim
+FROM rust:1.95.0-slim
 
 # ── System dependencies ────────────────────────────────────────────────────────
 # curl + ca-certificates: needed by the wasm-pack installer

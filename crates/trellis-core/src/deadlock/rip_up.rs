@@ -61,7 +61,7 @@ pub fn find_blocking_edges(
 
     // Sort by frequency (most blocking first) and take up to 3
     let mut blocking: Vec<(usize, usize)> = edge_frequency.into_iter().collect();
-    blocking.sort_by(|a, b| b.1.cmp(&a.1));
+    blocking.sort_by_key(|a| std::cmp::Reverse(a.1));
     blocking.into_iter().take(3).map(|(idx, _)| idx).collect()
 }
 

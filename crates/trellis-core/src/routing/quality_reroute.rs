@@ -71,7 +71,7 @@ pub fn quality_reroute(
         .collect();
 
     // Worst first.
-    candidates.sort_by(|a, b| b.1.cmp(&a.1));
+    candidates.sort_by_key(|a| std::cmp::Reverse(a.1));
 
     let mut improved = 0;
 

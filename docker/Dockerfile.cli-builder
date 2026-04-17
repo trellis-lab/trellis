@@ -13,16 +13,16 @@
 #   docker run --rm -v "$(pwd):/workspace" trellis-cli-builder
 #   docker run --rm -v "$(pwd):/workspace" trellis-cli-builder --target x86_64-unknown-linux-gnu
 
-FROM rust:1.93.1-slim
+FROM rust:1.95.0-slim
 
 # ── System dependencies for cross-compilation ─────────────────────────────────
 # gcc-mingw-w64: Windows cross-compiler
 # gcc-aarch64-linux-gnu: needed as a linker base for macOS ARM (actual macOS
 #     cross-compilation requires osxcross or a macOS runner — see CI workflow)
 RUN apt-get update && apt-get install -y --no-install-recommends \
-        pkg-config \
-        libssl-dev \
-        gcc-mingw-w64-x86-64 \
+    pkg-config \
+    libssl-dev \
+    gcc-mingw-w64-x86-64 \
     && rm -rf /var/lib/apt/lists/*
 
 # ── Rust cross-compilation targets ────────────────────────────────────────────

@@ -164,7 +164,7 @@ fn parse_node_ref(input: &str) -> Option<(NodeRef, &str)> {
     // Sort by open-delimiter length descending so that longer (more-specific)
     // delimiters like "((" are always tried before shorter ones like "(".
     let mut sorted_shapes = NODE_SHAPES.to_vec();
-    sorted_shapes.sort_by(|a, b| b.0.len().cmp(&a.0.len()));
+    sorted_shapes.sort_by_key(|a| std::cmp::Reverse(a.0.len()));
 
     for (open, close, shape) in sorted_shapes {
         if let Some(inner) = rest.strip_prefix(open) {

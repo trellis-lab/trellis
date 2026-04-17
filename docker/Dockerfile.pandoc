@@ -11,11 +11,11 @@
 #   docker run --rm -v "$(pwd):/data" trellis-pandoc input.md -o output.pdf
 #   docker run --rm -v "$(pwd):/data" trellis-pandoc input.md -o output.html
 
-FROM rust:1.93.1-slim AS builder
+FROM rust:1.95.0-slim AS builder
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-        pkg-config \
-        libssl-dev \
+    pkg-config \
+    libssl-dev \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /build
@@ -31,9 +31,9 @@ FROM pandoc/extra:latest-ubuntu
 
 # Fonts required by resvg for PNG text rendering
 RUN apt-get update && apt-get install -y --no-install-recommends \
-        fontconfig \
-        fonts-liberation \
-        fonts-dejavu-core \
+    fontconfig \
+    fonts-liberation \
+    fonts-dejavu-core \
     && rm -rf /var/lib/apt/lists/* \
     && fc-cache -f
 
