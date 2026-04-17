@@ -142,7 +142,15 @@ show_grid = true
 
 # Display edge labels/captions in the diagram. When false, all edge labels are
 # omitted from output.
-show_edge_labels = false
+show_edge_labels = true
+
+# Opacity of the edge label background fill.
+# 0.0 = fully transparent (no background), 1.0 = fully opaque (default).
+edge_label_bg_opacity = 1.0
+
+# Stroke width of the edge label border in pixels.
+# 0.0 disables the border entirely.
+edge_label_border_width = 0.5
 
 # ─────────────────────────────────────────────────────────────────────────────
 # DECOMPOSITION CONFIGURATION (for large graphs)

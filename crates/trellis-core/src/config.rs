@@ -28,6 +28,12 @@ fn default_show_grid() -> bool {
 fn default_show_edge_labels() -> bool {
     true
 }
+fn default_edge_label_bg_opacity() -> f64 {
+    1.0
+}
+fn default_edge_label_border_width() -> f64 {
+    0.5
+}
 fn default_decomposition() -> DecompositionMode {
     DecompositionMode::None
 }
@@ -119,6 +125,14 @@ pub struct TrellisConfig {
     /// Enable/disable displaying edge captions
     #[serde(default = "default_show_edge_labels")]
     pub show_edge_labels: bool,
+
+    /// Opacity of edge label background fill (0.0 = transparent, 1.0 = opaque).
+    #[serde(default = "default_edge_label_bg_opacity")]
+    pub edge_label_bg_opacity: f64,
+
+    /// Stroke width of edge label border (0.0 = no border).
+    #[serde(default = "default_edge_label_border_width")]
+    pub edge_label_border_width: f64,
 
     /// Port assignment algorithm
     #[serde(default = "default_port_assignment")]
@@ -285,6 +299,8 @@ impl Default for TrellisConfig {
             crossing_style: default_crossing_style(),
             show_grid: default_show_grid(),
             show_edge_labels: default_show_edge_labels(),
+            edge_label_bg_opacity: default_edge_label_bg_opacity(),
+            edge_label_border_width: default_edge_label_border_width(),
             port_assignment: default_port_assignment(),
             port_refinement_rounds: default_port_refinement_rounds(),
             flow_bias: FlowBias::None,
@@ -331,6 +347,8 @@ pub fn configuration_factory(config_type: ConfigurationType) -> TrellisConfig {
             crossing_style: CrossingStyle::Arc,
             show_grid: false,
             show_edge_labels: true,
+            edge_label_bg_opacity: default_edge_label_bg_opacity(),
+            edge_label_border_width: default_edge_label_border_width(),
             port_assignment: PortAssignmentStrategy::Default,
             port_refinement_rounds: 0,
             flow_bias: FlowBias::Auto,

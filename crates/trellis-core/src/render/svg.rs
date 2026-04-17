@@ -343,7 +343,12 @@ pub fn build_svg(
         svg.push_str("<g class=\"edge-labels\">\n");
         for label in label_placements {
             svg.push_str("  ");
-            svg.push_str(&render_label(label, theme));
+            svg.push_str(&render_label(
+                label,
+                theme,
+                config.edge_label_bg_opacity,
+                config.edge_label_border_width,
+            ));
             svg.push('\n');
         }
         svg.push_str("</g>\n");
@@ -419,7 +424,12 @@ const LABEL_LINE_HEIGHT_PX: f64 = 14.0;
 /// `label.text` may contain `\n` for multi-line labels (e.g. C4 edges that
 /// combine the relation label with a technology annotation).  Each line is
 /// emitted as a `<tspan>` element so the text wraps correctly in SVG.
-fn render_label(label: &LabelPlacement, theme: &Theme) -> String {
+fn render_label(
+    label: &LabelPlacement,
+    theme: &Theme,
+    bg_opacity: f64,
+    border_width: f64,
+) -> String {
     let padding = 3.0;
     let bg_x = label.x;
     let bg_y = label.y;
@@ -459,10 +469,19 @@ fn render_label(label: &LabelPlacement, theme: &Theme) -> String {
     }
     text_svg.push_str("</text>");
 
+    let stroke_attr = if border_width > 0.0 {
+        format!(
+            "stroke=\"{}\" stroke-width=\"{:.2}\"",
+            theme.edge_label_border, border_width
+        )
+    } else {
+        "stroke=\"none\"".to_string()
+    };
+
     format!(
         "<rect x=\"{:.1}\" y=\"{:.1}\" width=\"{:.1}\" height=\"{:.1}\" \
-         fill=\"{}\" stroke=\"{}\" stroke-width=\"0.5\" rx=\"2\"/>{}",
-        bg_x, bg_y, bg_w, bg_h, theme.edge_label_bg, theme.edge_label_border, text_svg
+         fill=\"{}\" fill-opacity=\"{:.2}\" {} rx=\"2\"/>{}",
+        bg_x, bg_y, bg_w, bg_h, theme.edge_label_bg, bg_opacity, stroke_attr, text_svg
     )
 }
 
