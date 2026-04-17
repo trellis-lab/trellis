@@ -47,8 +47,9 @@ pub fn build_svg(
         .into_bytes();
     }
 
-    // Calculate viewBox from node positions, routed paths, and subgraph boxes
-    let (vx, mut vy, vw, mut vh) = calculate_viewbox(graph, grid, routing_result, subgraph_data);
+    // Calculate viewBox from node positions, routed paths, subgraph boxes, and labels
+    let (vx, mut vy, vw, mut vh) =
+        calculate_viewbox(graph, grid, routing_result, subgraph_data, label_placements);
 
     // Expand viewBox upward to accommodate the title caption when shown.
     let show_caption = graph.title.is_some() && config.show_title;
@@ -475,12 +476,13 @@ fn escape_xml(text: &str) -> String {
 }
 
 /// Calculate the viewBox (origin x, origin y, width, height) from nodes, routed paths,
-/// and subgraph bounding boxes.
+/// subgraph bounding boxes, and edge label placements.
 fn calculate_viewbox(
     graph: &Graph,
     grid: &Grid,
     routing_result: &RoutingResult,
     subgraph_data: Option<&(SubgraphTree, HashMap<String, BoundingBox>)>,
+    label_placements: &[LabelPlacement],
 ) -> (f64, f64, f64, f64) {
     let padding = grid.cell_size as f64;
 
@@ -521,6 +523,14 @@ fn calculate_viewbox(
             min_y = min_y.min(bbox.y);
             max_y = max_y.max(bbox.y + bbox.height);
         }
+    }
+
+    // Also consider edge label bounding boxes
+    for lp in label_placements {
+        min_x = min_x.min(lp.x);
+        max_x = max_x.max(lp.x + lp.width);
+        min_y = min_y.min(lp.y);
+        max_y = max_y.max(lp.y + lp.height);
     }
 
     let origin_x = min_x - padding;
