@@ -90,14 +90,14 @@ mod tests {
             }
         }
 
-        // Crossing detection is now paths-based (no per-cell flag).
-        // Verify that any detected shared cells are accounted for in result.crossings.
-        let shared_cell_count = point_owners.values().filter(|v| v.len() > 1).count();
-        if shared_cell_count > 0 {
+        for ((row, col), owners) in &point_owners {
             assert!(
-                setup.result.crossings > 0,
-                "Invariant violated – {} shared grid cells found but result.crossings == 0",
-                shared_cell_count
+                owners.len() <= 2,
+                "Invariant violated – {} edges share grid cell ({}, {}): {:?}",
+                owners.len(),
+                row,
+                col,
+                owners
             );
         }
     }

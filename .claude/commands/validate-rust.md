@@ -26,3 +26,12 @@ Run `cargo fmt --check --all` and `cargo clippy --workspace` to check for Rust f
 4. If clippy reports only **warnings**, list them and ask the user whether to fix them before proceeding
 5. After fixing issues, run `cargo clippy --workspace` again to confirm everything passes
 6. Report a summary of what was fixed
+
+## Part 3: WASM Builder
+
+1. Run command `bash ./scripts/build-wasm-docker.sh`
+2. Monitor the output and detect warnings and errors
+3. If any warnings or errors reported
+   - Read the affected file
+   - Apply the fix
+4. Report a summary of what was fixed

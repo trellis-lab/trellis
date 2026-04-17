@@ -36,6 +36,8 @@ fn elapsed_ms(_start: ()) -> u64 {
 
 /// All outputs produced by one full pipeline run.
 /// Shared by `render` and `render_with_validation`.
+/// Some fields are only used in `render_with_validation`, not in `render`.
+#[allow(dead_code)]
 struct PipelineOutput {
     /// The graph after placement (node positions mutated).
     graph: Graph,

@@ -253,8 +253,7 @@ fn assign_trellis_basic(ctx: &PortAssignmentContext) -> HashMap<usize, EdgePorts
     let offset_y = ctx.offset_y;
     let flow_dir = effective_direction(ctx);
 
-    let node_map: HashMap<&str, &Node> =
-        graph.nodes.iter().map(|n| (n.id.as_str(), n)).collect();
+    let node_map: HashMap<&str, &Node> = graph.nodes.iter().map(|n| (n.id.as_str(), n)).collect();
 
     // Per-node claimed connector sets (BTreeSet for determinism).
     let mut claimed: HashMap<String, BTreeSet<(i64, i64)>> = HashMap::new();
@@ -287,14 +286,18 @@ fn assign_trellis_basic(ctx: &PortAssignmentContext) -> HashMap<usize, EdgePorts
         ) {
             let angle_src = calculate_angle(src, tgt);
             let angle_tgt = calculate_angle(tgt, src);
-            per_node
-                .entry(edge.from.clone())
-                .or_default()
-                .push((edge_idx, edge.to.clone(), true, angle_src));
-            per_node
-                .entry(edge.to.clone())
-                .or_default()
-                .push((edge_idx, edge.from.clone(), false, angle_tgt));
+            per_node.entry(edge.from.clone()).or_default().push((
+                edge_idx,
+                edge.to.clone(),
+                true,
+                angle_src,
+            ));
+            per_node.entry(edge.to.clone()).or_default().push((
+                edge_idx,
+                edge.from.clone(),
+                false,
+                angle_tgt,
+            ));
         }
     }
 
@@ -475,8 +478,16 @@ mod tests {
         let ports = TrellisBasicAssigner.assign_ports(&ctx);
 
         assert_eq!(ports.len(), 1);
-        assert_eq!(ports[&0].source_port.side, Side::Right, "A→B source should exit Right");
-        assert_eq!(ports[&0].target_port.side, Side::Left, "A→B target should enter Left");
+        assert_eq!(
+            ports[&0].source_port.side,
+            Side::Right,
+            "A→B source should exit Right"
+        );
+        assert_eq!(
+            ports[&0].target_port.side,
+            Side::Left,
+            "A→B target should enter Left"
+        );
     }
 
     /// Single edge where B is directly above A: port assigned at center index
@@ -514,9 +525,9 @@ mod tests {
         // B2 directly above right → same angle class, both Top, second claims non-center slot.
         let mut graph = Graph::new();
         graph.nodes = vec![
-            make_rect("A", 0.0, 80.0, 60.0, 20.0),   // center (30,90)
-            make_rect("B1", 0.0, 0.0, 20.0, 20.0),    // center (10,10) — upper-left
-            make_rect("B2", 40.0, 0.0, 20.0, 20.0),   // center (50,10) — upper-right
+            make_rect("A", 0.0, 80.0, 60.0, 20.0),  // center (30,90)
+            make_rect("B1", 0.0, 0.0, 20.0, 20.0),  // center (10,10) — upper-left
+            make_rect("B2", 40.0, 0.0, 20.0, 20.0), // center (50,10) — upper-right
         ];
         // edge 0: A→B1, edge 1: A→B2
         graph.edges = vec![make_edge("A", "B1"), make_edge("A", "B2")];
@@ -556,9 +567,9 @@ mod tests {
         //   Primary sweep center→near: [2(claimed),1,0] → row 10 → assigned (above center).
         let mut graph = Graph::new();
         graph.nodes = vec![
-            make_rect("A", 10.0, 80.0, 40.0, 60.0),   // center (30,110)
+            make_rect("A", 10.0, 80.0, 40.0, 60.0),    // center (30,110)
             make_rect("B1", 210.0, 100.0, 40.0, 20.0), // exactly right → angle 0° → processed first
-            make_rect("B2", 210.0, 40.0, 40.0, 20.0),  // upper-right   → angle 343° → processed second
+            make_rect("B2", 210.0, 40.0, 40.0, 20.0), // upper-right   → angle 343° → processed second
         ];
         graph.edges = vec![make_edge("A", "B1"), make_edge("A", "B2")];
 
@@ -574,7 +585,10 @@ mod tests {
         // B1 (direct right, angle 0°, processed first) gets center (row 11)
         assert_eq!(row_b1, 11, "B1 should get center row");
         // B2 (upper-right) walks toward TR end → assigned above center (row < 11)
-        assert!(row_b2 < row_b1, "B2 (upper-right) should be assigned above center (toward TR)");
+        assert!(
+            row_b2 < row_b1,
+            "B2 (upper-right) should be assigned above center (toward TR)"
+        );
     }
 
     /// When the primary side is at capacity, the algorithm spills to the next
@@ -586,7 +600,7 @@ mod tests {
         // B2 also right-ish  → Right full → spills to Top or Bottom.
         let mut graph = Graph::new();
         graph.nodes = vec![
-            make_rect("A", 0.0, 0.0, 40.0, 20.0),    // center (20,10)
+            make_rect("A", 0.0, 0.0, 40.0, 20.0),     // center (20,10)
             make_rect("B1", 200.0, 0.0, 40.0, 20.0),  // directly right
             make_rect("B2", 200.0, 20.0, 40.0, 20.0), // slightly below-right
         ];

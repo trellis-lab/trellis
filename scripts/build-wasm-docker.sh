@@ -43,8 +43,15 @@ docker build \
 # in editors/vscode/wasm/ and editors/intellij/.../wasm/ on the host.
 echo ""
 echo "==> Running WASM build inside Docker …"
-docker run --rm \
-    --volume "$REPO_ROOT:/workspace" \
+
+# Windows (Git Bash / MSYS2) path fix: convert to Windows format for Docker Desktop
+DOCKER_VOLUME="$REPO_ROOT"
+if command -v cygpath &>/dev/null; then
+    DOCKER_VOLUME="$(cygpath -w "$REPO_ROOT")"
+fi
+
+MSYS_NO_PATHCONV=1 docker run --rm \
+    --volume "$DOCKER_VOLUME:/workspace" \
     "$IMAGE_NAME" \
     $RELEASE_FLAG
 
