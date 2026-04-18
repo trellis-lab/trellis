@@ -2,6 +2,9 @@ use crate::labels::collision::collides;
 use crate::labels::placement::{BoundingBox, LabelPlacement, LabelSide, Segment, SegmentDirection};
 use trellis_parser::Node;
 
+// Re-export for clarity — slide always places labels on-edge.
+const ON_EDGE_SIDES: &[LabelSide] = &[LabelSide::OnEdge];
+
 /// Padding around label text in pixels.
 const LABEL_PADDING: f64 = 4.0;
 /// Step size in pixels when sliding along a segment.
@@ -26,10 +29,7 @@ pub fn slide_label_along_segment(
     let seg_length = segment.length();
     let seg_dir = segment.direction();
 
-    let sides: &[LabelSide] = match seg_dir {
-        SegmentDirection::Horizontal => &[LabelSide::Above, LabelSide::Below],
-        SegmentDirection::Vertical => &[LabelSide::Left, LabelSide::Right],
-    };
+    let sides: &[LabelSide] = ON_EDGE_SIDES;
 
     let bbox_width = label_width + 2.0 * LABEL_PADDING;
     let bbox_height = label_height + 2.0 * LABEL_PADDING;
@@ -88,7 +88,11 @@ pub fn slide_label_along_segment(
     let default_side = sides[0];
     let (fx, fy) = candidate_position(mx, my, label_width, label_height, default_side);
 
-    let stagger_step = label_height + STAGGER_GAP;
+    // Step size matches the label dimension in the stagger direction.
+    let stagger_step = match seg_dir {
+        SegmentDirection::Horizontal => label_width + STAGGER_GAP,
+        SegmentDirection::Vertical => label_height + STAGGER_GAP,
+    };
 
     for stagger in 1..=MAX_STAGGER_STEPS {
         let sign: f64 = if stagger % 2 == 1 { 1.0 } else { -1.0 };
@@ -105,7 +109,7 @@ pub fn slide_label_along_segment(
             height: bbox_height,
         };
 
-        if placed_bboxes.iter().all(|p| !bbox.overlaps(p)) {
+        if !collides(&bbox, nodes, all_segments, placed_bboxes) {
             placed_bboxes.push(bbox);
             return LabelPlacement {
                 text: label.to_string(),
@@ -156,6 +160,10 @@ fn candidate_position(
             anchor_y - label_height / 2.0,
         ),
         LabelSide::Right => (anchor_x + LABEL_PADDING, anchor_y - label_height / 2.0),
+        LabelSide::OnEdge => (
+            anchor_x - label_width / 2.0,
+            anchor_y - label_height / 2.0,
+        ),
     }
 }
 

@@ -31,6 +31,8 @@ pub enum LabelSide {
     Below,
     Left,
     Right,
+    /// Label centered on top of the edge line.
+    OnEdge,
 }
 
 /// A bounding box for collision detection.
@@ -163,42 +165,18 @@ fn select_best_segment(segments: &[Segment], label_width: f64) -> usize {
 }
 
 /// Generate candidate positions for a label on a given segment.
+/// Returns a single candidate centered on the segment midpoint.
 fn generate_candidates(
     segment: &Segment,
     label_width: f64,
     label_height: f64,
 ) -> Vec<(f64, f64, LabelSide)> {
     let (mx, my) = segment.midpoint();
-    let mut candidates = Vec::new();
-
-    match segment.direction() {
-        SegmentDirection::Horizontal => {
-            // Above
-            candidates.push((
-                mx - label_width / 2.0,
-                my - label_height - LABEL_PADDING,
-                LabelSide::Above,
-            ));
-            // Below
-            candidates.push((mx - label_width / 2.0, my + LABEL_PADDING, LabelSide::Below));
-        }
-        SegmentDirection::Vertical => {
-            // Left
-            candidates.push((
-                mx - label_width - LABEL_PADDING,
-                my - label_height / 2.0,
-                LabelSide::Left,
-            ));
-            // Right
-            candidates.push((
-                mx + LABEL_PADDING,
-                my - label_height / 2.0,
-                LabelSide::Right,
-            ));
-        }
-    }
-
-    candidates
+    vec![(
+        mx - label_width / 2.0,
+        my - label_height / 2.0,
+        LabelSide::OnEdge,
+    )]
 }
 
 /// Place labels on all edges that have labels.
@@ -210,10 +188,10 @@ pub fn place_all_labels(
     let mut placements = Vec::new();
     let mut placed_bboxes: Vec<BoundingBox> = Vec::new();
 
-    // Collect all segments from all routed paths for collision detection
-    let all_segments: Vec<Vec<Segment>> = routing_result
-        .values()
-        .map(|path| path_to_segments(path, grid))
+    // Pre-compute segments indexed by edge index so each label can exclude its own edge.
+    let edge_segments: BTreeMap<usize, Vec<Segment>> = routing_result
+        .iter()
+        .map(|(idx, path)| (*idx, path_to_segments(path, grid)))
         .collect();
 
     for (edge_idx, edge) in graph.edges.iter().enumerate() {
@@ -233,21 +211,23 @@ pub fn place_all_labels(
             base_label.to_string()
         };
 
-        let path = match routing_result.get(&edge_idx) {
-            Some(p) => p,
-            None => continue,
+        let segments = match edge_segments.get(&edge_idx) {
+            Some(s) if !s.is_empty() => s,
+            _ => continue,
         };
 
-        let segments = path_to_segments(path, grid);
-        if segments.is_empty() {
-            continue;
-        }
+        // Collision check excludes the host edge so the label can sit on it.
+        let other_segments: Vec<Vec<Segment>> = edge_segments
+            .iter()
+            .filter(|(&idx, _)| idx != edge_idx)
+            .map(|(_, s)| s.clone())
+            .collect();
 
         let label = &display_text;
         let label_width = measure_label_width(label);
         let label_height = measure_label_height(label);
 
-        let best_seg_idx = select_best_segment(&segments, label_width);
+        let best_seg_idx = select_best_segment(segments, label_width);
         let segment = &segments[best_seg_idx];
 
         let candidates = generate_candidates(segment, label_width, label_height);
@@ -266,7 +246,7 @@ pub fn place_all_labels(
                 height: bbox_height,
             };
 
-            if !collides(&bbox, &graph.nodes, &all_segments, &placed_bboxes) {
+            if !collides(&bbox, &graph.nodes, &other_segments, &placed_bboxes) {
                 placed_bboxes.push(bbox);
                 placements.push(LabelPlacement {
                     text: label.clone(),
@@ -289,7 +269,7 @@ pub fn place_all_labels(
                 label_width,
                 label_height,
                 &graph.nodes,
-                &all_segments,
+                &other_segments,
                 &mut placed_bboxes,
             );
             placements.push(placement);
@@ -408,9 +388,11 @@ mod tests {
             y2: 50.0,
         };
         let candidates = generate_candidates(&seg, 30.0, 14.0);
-        assert_eq!(candidates.len(), 2);
-        assert_eq!(candidates[0].2, LabelSide::Above);
-        assert_eq!(candidates[1].2, LabelSide::Below);
+        assert_eq!(candidates.len(), 1);
+        assert_eq!(candidates[0].2, LabelSide::OnEdge);
+        // Centered: x = 50 - 15 = 35, y = 50 - 7 = 43
+        assert!((candidates[0].0 - 35.0).abs() < 0.01);
+        assert!((candidates[0].1 - 43.0).abs() < 0.01);
     }
 
     #[test]
@@ -422,9 +404,11 @@ mod tests {
             y2: 100.0,
         };
         let candidates = generate_candidates(&seg, 30.0, 14.0);
-        assert_eq!(candidates.len(), 2);
-        assert_eq!(candidates[0].2, LabelSide::Left);
-        assert_eq!(candidates[1].2, LabelSide::Right);
+        assert_eq!(candidates.len(), 1);
+        assert_eq!(candidates[0].2, LabelSide::OnEdge);
+        // Centered: x = 50 - 15 = 35, y = 50 - 7 = 43
+        assert!((candidates[0].0 - 35.0).abs() < 0.01);
+        assert!((candidates[0].1 - 43.0).abs() < 0.01);
     }
 
     #[test]
