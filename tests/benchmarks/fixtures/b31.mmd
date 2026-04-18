@@ -1,0 +1,8 @@
+%% Shape port bias: diamond decision node in TD flowchart
+%% Incoming edge should use Top/Bottom; outgoing branches use Right/Left
+flowchart TD
+  A[Start] --> D{Decision}
+  D -- yes --> B[Branch B]
+  D -- no  --> C[Branch C]
+  B --> E[End]
+  C --> E

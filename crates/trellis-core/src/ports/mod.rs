@@ -6,6 +6,7 @@ pub mod crossing_greedy;
 pub mod iterative;
 pub mod median;
 pub mod prepass;
+pub mod shape_bias;
 pub mod stats;
 pub mod trellis_basic;
 pub mod two_phase;

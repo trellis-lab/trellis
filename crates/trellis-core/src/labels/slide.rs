@@ -92,7 +92,7 @@ pub fn slide_label_along_segment(
 
     for stagger in 1..=MAX_STAGGER_STEPS {
         let sign: f64 = if stagger % 2 == 1 { 1.0 } else { -1.0 };
-        let magnitude = ((stagger + 1) / 2) as f64 * stagger_step;
+        let magnitude = stagger.div_ceil(2) as f64 * stagger_step;
         let (sx, sy) = match seg_dir {
             SegmentDirection::Vertical => (fx, fy + sign * magnitude),
             SegmentDirection::Horizontal => (fx + sign * magnitude, fy),

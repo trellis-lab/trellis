@@ -6,6 +6,7 @@ use super::common::{
     angle_to_side, angle_to_side_flow_aware, calculate_angle, enumerate_connectors, Connector,
 };
 use super::prepass::apply_pinned;
+use super::shape_bias::{shape_side_priority, ShapePortContext};
 use super::{effective_direction, PortAssigner, PortAssignmentContext};
 
 /// Trellis Basic port assignment algorithm.
@@ -358,7 +359,14 @@ fn assign_trellis_basic(ctx: &PortAssignmentContext) -> HashMap<usize, EdgePorts
             };
 
             // Step 2: build priority side list.
-            let priority_sides = build_priority_sides(&sorted_dists, n_to_o, flow_dir);
+            let default_sides = build_priority_sides(&sorted_dists, n_to_o, flow_dir);
+            let priority_sides = shape_side_priority(&ShapePortContext {
+                shape: node.shape,
+                effective_dir: flow_dir,
+                is_source,
+            })
+            .map(|arr| arr.to_vec())
+            .unwrap_or(default_sides);
 
             // Steps 3-4: find the best free connector.
             let node_claimed = claimed.entry(node_id.clone()).or_default();
