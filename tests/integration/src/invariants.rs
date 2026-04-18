@@ -16,7 +16,7 @@ mod tests {
     use std::collections::{HashMap, HashSet};
     use trellis_core::{
         config::TrellisConfig,
-        grid::{build_grid, calculate_grid_extent, CellState, Grid},
+        grid::{build_grid, calculate_grid_extent, CellState},
         placement,
         ports::{assign_ports, EdgePorts},
         routing::{route_all_edges, RoutingResult},
@@ -30,7 +30,6 @@ mod tests {
     // ──────────────────────────────────────────────────────────────────────────
     struct RoutingSetup {
         result: RoutingResult,
-        grid: Grid,
         /// Grid cells blocked by nodes, captured before routing.
         pre_routing_blocked: HashSet<(usize, usize)>,
         port_assignments: HashMap<usize, EdgePorts>,
@@ -61,7 +60,6 @@ mod tests {
 
         RoutingSetup {
             result,
-            grid,
             pre_routing_blocked,
             port_assignments,
         }
