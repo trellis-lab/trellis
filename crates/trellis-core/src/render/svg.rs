@@ -343,17 +343,7 @@ pub fn build_svg(
         svg.push_str("<g class=\"edge-labels\">\n");
         for label in label_placements {
             svg.push_str("  ");
-            svg.push_str(&render_label(
-                label,
-                theme,
-                config.edge_label_bg_opacity,
-                config.edge_label_border_width,
-                config.label_leader_line,
-                config.label_leader_line_width,
-                &config.label_font_family,
-                config.label_font_size,
-                config.label_padding,
-            ));
+            svg.push_str(&render_label(label, theme, config));
             svg.push('\n');
         }
         svg.push_str("</g>\n");
@@ -429,17 +419,15 @@ const LABEL_LINE_HEIGHT_PX: f64 = 14.0;
 /// `label.text` may contain `\n` for multi-line labels (e.g. C4 edges that
 /// combine the relation label with a technology annotation).  Each line is
 /// emitted as a `<tspan>` element so the text wraps correctly in SVG.
-fn render_label(
-    label: &LabelPlacement,
-    theme: &Theme,
-    bg_opacity: f64,
-    border_width: f64,
-    leader_line: bool,
-    leader_line_width: f64,
-    font_family: &str,
-    font_size: f64,
-    padding: f64,
-) -> String {
+fn render_label(label: &LabelPlacement, theme: &Theme, config: &TrellisConfig) -> String {
+    let bg_opacity = config.edge_label_bg_opacity;
+    let border_width = config.edge_label_border_width;
+    let leader_line = config.label_leader_line;
+    let leader_line_width = config.label_leader_line_width;
+    let font_family = &config.label_font_family;
+    let font_size = config.label_font_size;
+    let padding = config.label_padding;
+
     let bg_x = label.x;
     let bg_y = label.y;
     let bg_w = label.width + 2.0 * padding;
@@ -500,8 +488,12 @@ fn render_label(
             format!(
                 "<line x1=\"{:.1}\" y1=\"{:.1}\" x2=\"{:.1}\" y2=\"{:.1}\" \
                  stroke=\"{}\" stroke-width=\"{:.2}\" stroke-dasharray=\"3,3\"/>",
-                label_cx, label_cy, label.anchor_x, label.anchor_y,
-                theme.edge_label_border, leader_line_width
+                label_cx,
+                label_cy,
+                label.anchor_x,
+                label.anchor_y,
+                theme.edge_label_border,
+                leader_line_width
             )
         } else {
             String::new()

@@ -15,21 +15,37 @@ const STAGGER_GAP: f64 = 2.0;
 /// Max stagger attempts before accepting whatever position we have.
 const MAX_STAGGER_STEPS: u32 = 30;
 
+pub struct LabelMetrics {
+    pub width: f64,
+    pub height: f64,
+    pub anchor_x: f64,
+    pub anchor_y: f64,
+    pub padding: f64,
+}
+
+pub struct CollisionContext<'a> {
+    pub nodes: &'a [Node],
+    pub all_segments: &'a [Vec<Segment>],
+    pub placed_bboxes: &'a mut Vec<BoundingBox>,
+}
+
 /// Slide a label along a segment to find a collision-free position.
 /// Starts from the midpoint and alternates outward in both directions.
 /// If no collision-free position is found, falls back to the segment midpoint.
 pub fn slide_label_along_segment(
     segment: &Segment,
     label: &str,
-    label_width: f64,
-    label_height: f64,
-    nodes: &[Node],
-    all_segments: &[Vec<Segment>],
-    placed_bboxes: &mut Vec<BoundingBox>,
-    anchor_x: f64,
-    anchor_y: f64,
-    label_padding: f64,
+    metrics: &LabelMetrics,
+    context: &mut CollisionContext,
 ) -> LabelPlacement {
+    let label_width = metrics.width;
+    let label_height = metrics.height;
+    let anchor_x = metrics.anchor_x;
+    let anchor_y = metrics.anchor_y;
+    let label_padding = metrics.padding;
+    let nodes = context.nodes;
+    let all_segments = context.all_segments;
+    let placed_bboxes = &mut context.placed_bboxes;
     let seg_length = segment.length();
     let seg_dir = segment.direction();
 
@@ -52,7 +68,8 @@ pub fn slide_label_along_segment(
         let pos_y = segment.y1 + (segment.y2 - segment.y1) * t;
 
         for &side in sides {
-            let (cx, cy) = candidate_position(pos_x, pos_y, label_width, label_height, side, label_padding);
+            let (cx, cy) =
+                candidate_position(pos_x, pos_y, label_width, label_height, side, label_padding);
             let bbox = BoundingBox {
                 x: cx,
                 y: cy,
@@ -92,7 +109,14 @@ pub fn slide_label_along_segment(
     // increments until we find a spot clear of placed labels.
     let (mx, my) = segment.midpoint();
     let default_side = sides[0];
-    let (fx, fy) = candidate_position(mx, my, label_width, label_height, default_side, label_padding);
+    let (fx, fy) = candidate_position(
+        mx,
+        my,
+        label_width,
+        label_height,
+        default_side,
+        label_padding,
+    );
 
     // Step size matches the label dimension in the stagger direction.
     let stagger_step = match seg_dir {
@@ -171,10 +195,7 @@ fn candidate_position(
             anchor_y - label_height / 2.0,
         ),
         LabelSide::Right => (anchor_x + padding, anchor_y - label_height / 2.0),
-        LabelSide::OnEdge => (
-            anchor_x - label_width / 2.0,
-            anchor_y - label_height / 2.0,
-        ),
+        LabelSide::OnEdge => (anchor_x - label_width / 2.0, anchor_y - label_height / 2.0),
     }
 }
 
@@ -192,10 +213,22 @@ mod tests {
         };
         let mut placed = Vec::new();
 
-        let result = slide_label_along_segment(&segment, "Test", 28.0, 14.0, &[], &[], &mut placed, 100.0, 50.0, DEFAULT_LABEL_PADDING);
+        let metrics = LabelMetrics {
+            width: 28.0,
+            height: 14.0,
+            anchor_x: 100.0,
+            anchor_y: 50.0,
+            padding: DEFAULT_LABEL_PADDING,
+        };
+        let mut context = CollisionContext {
+            nodes: &[],
+            all_segments: &[],
+            placed_bboxes: &mut placed,
+        };
+        let result = slide_label_along_segment(&segment, "Test", &metrics, &mut context);
 
         // Should have placed a label and added to placed_bboxes
-        assert_eq!(placed.len(), 1);
+        assert_eq!(context.placed_bboxes.len(), 1);
         assert_eq!(result.text, "Test");
     }
 
@@ -217,23 +250,49 @@ mod tests {
         };
         let mut placed = vec![blocking];
 
-        let result = slide_label_along_segment(&segment, "Test", 28.0, 14.0, &[], &[], &mut placed, 100.0, 50.0, DEFAULT_LABEL_PADDING);
+        let metrics = LabelMetrics {
+            width: 28.0,
+            height: 14.0,
+            anchor_x: 100.0,
+            anchor_y: 50.0,
+            padding: DEFAULT_LABEL_PADDING,
+        };
+        let mut context = CollisionContext {
+            nodes: &[],
+            all_segments: &[],
+            placed_bboxes: &mut placed,
+        };
+        let result = slide_label_along_segment(&segment, "Test", &metrics, &mut context);
 
         // Should have found a different position
-        assert_eq!(placed.len(), 2);
+        assert_eq!(context.placed_bboxes.len(), 2);
         assert_eq!(result.text, "Test");
     }
 
     #[test]
     fn test_candidate_position_above() {
-        let (x, y) = candidate_position(50.0, 50.0, 20.0, 14.0, LabelSide::Above, DEFAULT_LABEL_PADDING);
+        let (x, y) = candidate_position(
+            50.0,
+            50.0,
+            20.0,
+            14.0,
+            LabelSide::Above,
+            DEFAULT_LABEL_PADDING,
+        );
         assert!((x - 40.0).abs() < 0.01); // 50 - 20/2
         assert!((y - 32.0).abs() < 0.01); // 50 - 14 - 4
     }
 
     #[test]
     fn test_candidate_position_below() {
-        let (x, y) = candidate_position(50.0, 50.0, 20.0, 14.0, LabelSide::Below, DEFAULT_LABEL_PADDING);
+        let (x, y) = candidate_position(
+            50.0,
+            50.0,
+            20.0,
+            14.0,
+            LabelSide::Below,
+            DEFAULT_LABEL_PADDING,
+        );
         assert!((x - 40.0).abs() < 0.01); // 50 - 20/2
         assert!((y - 54.0).abs() < 0.01); // 50 + 4
     }

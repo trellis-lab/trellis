@@ -4,7 +4,7 @@ use crate::config::TrellisConfig;
 use crate::grid::Grid;
 use crate::labels::collision::collides;
 use crate::labels::measure::measure_text_width_multiline;
-use crate::labels::slide::slide_label_along_segment;
+use crate::labels::slide::{slide_label_along_segment, CollisionContext, LabelMetrics};
 use crate::routing::astar::RoutedPath;
 use trellis_parser::{DiagramType, Graph};
 
@@ -224,7 +224,8 @@ pub fn place_all_labels(
             .collect();
 
         let label = &display_text;
-        let label_width = measure_label_width(label, config.label_font_size, &config.label_font_family);
+        let label_width =
+            measure_label_width(label, config.label_font_size, &config.label_font_family);
         let label_height = measure_label_height(label);
 
         let best_seg_idx = select_best_segment(segments, label_width);
@@ -266,18 +267,19 @@ pub fn place_all_labels(
 
         // If no candidate worked, try sliding along the segment
         if !placed {
-            let placement = slide_label_along_segment(
-                segment,
-                label,
-                label_width,
-                label_height,
-                &graph.nodes,
-                &other_segments,
-                &mut placed_bboxes,
+            let metrics = LabelMetrics {
+                width: label_width,
+                height: label_height,
                 anchor_x,
                 anchor_y,
-                config.label_padding,
-            );
+                padding: config.label_padding,
+            };
+            let mut context = CollisionContext {
+                nodes: &graph.nodes,
+                all_segments: &other_segments,
+                placed_bboxes: &mut placed_bboxes,
+            };
+            let placement = slide_label_along_segment(segment, label, &metrics, &mut context);
             placements.push(placement);
         }
     }
