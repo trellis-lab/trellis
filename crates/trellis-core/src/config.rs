@@ -20,10 +20,10 @@ fn default_corner_radius() -> f64 {
     8.0
 }
 fn default_crossing_style() -> CrossingStyle {
-    CrossingStyle::None
+    CrossingStyle::Skip
 }
 fn default_show_grid() -> bool {
-    true
+    false
 }
 fn default_show_edge_labels() -> bool {
     true
@@ -32,7 +32,7 @@ fn default_edge_label_bg_opacity() -> f64 {
     1.0
 }
 fn default_edge_label_border_width() -> f64 {
-    0.5
+    0.0
 }
 fn default_label_leader_line() -> bool {
     true
@@ -59,10 +59,10 @@ fn default_port_assignment() -> PortAssignmentStrategy {
     PortAssignmentStrategy::TrellisBasic
 }
 fn default_port_refinement_rounds() -> usize {
-    0
+    3
 }
 fn default_flow_bias() -> FlowBias {
-    FlowBias::None
+    FlowBias::Auto
 }
 fn default_bend_threshold() -> BendThreshold {
     BendThreshold::Auto
@@ -396,8 +396,8 @@ pub fn configuration_factory(config_type: ConfigurationType) -> TrellisConfig {
             label_font_family: default_label_font_family(),
             label_font_size: default_label_font_size(),
             label_padding: default_label_padding(),
-            port_assignment: PortAssignmentStrategy::Default,
-            port_refinement_rounds: 0,
+            port_assignment: PortAssignmentStrategy::TrellisBasic,
+            port_refinement_rounds: 3,
             flow_bias: FlowBias::Auto,
             print_metrics: false,
             bend_threshold: BendThreshold::Auto,
