@@ -1,0 +1,48 @@
+mode: ContinuousDelivery
+tag-prefix: 'v'
+assembly-versioning-scheme: MajorMinorPatch
+
+major-version-bump-message: "^(feat|fix|refactor|perf|chore|docs|style|test|build|ci)(\\(.+\\))?!:|^BREAKING CHANGE"
+minor-version-bump-message: "^feat(\\(.+\\))?:"
+patch-version-bump-message: "^(fix|refactor|perf|docs|style|chore|test|build|ci)(\\(.+\\))?:"
+no-bump-message: "^(chore|docs)(\\(.+\\))?:\\s*(no-bump|skip-bump)"
+
+branches:
+  main:
+    regex: ^main$
+    tag: ''
+    increment: Patch
+    prevent-increment-of-merged-branch-version: true
+    track-merge-target: false
+
+  develop:
+    regex: ^develop$
+    tag: dev
+    increment: Minor
+    track-merge-target: false
+
+  release:
+    regex: ^release[/-]
+    tag: preview
+    increment: Patch
+    prevent-increment-of-merged-branch-version: true
+    track-merge-target: true
+
+  feature:
+    regex: ^feature[/-]
+    tag: dev
+    increment: Inherit
+
+  hotfix:
+    regex: ^hotfix[/-]
+    tag: ''
+    increment: Patch
+    prevent-increment-of-merged-branch-version: true
+
+  cycle:
+    regex: ^cycle[/-]
+    tag: dev
+    increment: Inherit
+
+ignore:
+  sha: []

@@ -16,6 +16,29 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
+  # ── Compute version from tag ────────────────────────────────────────────────
+  versioning:
+    name: Compute Version
+    runs-on: ubuntu-latest
+    outputs:
+      semver: ${{ steps.gv.outputs.semVer }}
+      major-minor-patch: ${{ steps.gv.outputs.majorMinorPatch }}
+      pre-release-tag: ${{ steps.gv.outputs.preReleaseTag }}
+      informational: ${{ steps.gv.outputs.informationalVersion }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Setup GitVersion
+        uses: gittools/actions/gitversion/setup@v3
+        with:
+          versionSpec: '6.x'
+      - name: Compute version
+        id: gv
+        uses: gittools/actions/gitversion/execute@v3
+      - name: Show version
+        run: echo "Releasing ${{ steps.gv.outputs.semVer }}"
+
   # ── Run full test suite before releasing ────────────────────────────────────
   test:
     name: Test
@@ -29,7 +52,7 @@ jobs:
   build-cli:
     name: CLI (${{ matrix.target }})
     runs-on: ${{ matrix.os }}
-    needs: test
+    needs: [test, versioning]
     strategy:
       fail-fast: false
       matrix:
@@ -54,6 +77,17 @@ jobs:
         with:
           targets: ${{ matrix.target }}
 
+      - name: Stamp version in Cargo.toml
+        shell: bash
+        env:
+          SEMVER: ${{ needs.versioning.outputs.semver }}
+        run: |
+          if [[ "$RUNNER_OS" == "macOS" ]]; then
+            sed -i '' "s/^version = \"0\.0\.0\"/version = \"${SEMVER}\"/" Cargo.toml
+          else
+            sed -i "s/^version = \"0\.0\.0\"/version = \"${SEMVER}\"/" Cargo.toml
+          fi
+
       - name: Build CLI
         shell: bash
         run: bash ./scripts/build-cli.sh --ci --target ${{ matrix.target }}
@@ -61,30 +95,36 @@ jobs:
       - name: Package (tar.gz)
         if: matrix.archive == 'tar.gz'
         shell: bash
+        env:
+          SEMVER: ${{ needs.versioning.outputs.semver }}
         run: |
           cd dist/${{ matrix.target }}
-          tar czf ../../trellis-${{ github.ref_name }}-${{ matrix.target }}.tar.gz trellis
+          tar czf ../../trellis-${SEMVER}-${{ matrix.target }}.tar.gz trellis
           cd ../..
 
       - name: Package (zip)
         if: matrix.archive == 'zip'
         shell: bash
+        env:
+          SEMVER: ${{ needs.versioning.outputs.semver }}
         run: |
           cd dist/${{ matrix.target }}
-          7z a ../../trellis-${{ github.ref_name }}-${{ matrix.target }}.zip trellis.exe
+          7z a ../../trellis-${SEMVER}-${{ matrix.target }}.zip trellis.exe
           cd ../..
 
       - name: Upload release artifact
         uses: actions/upload-artifact@v4
+        env:
+          SEMVER: ${{ needs.versioning.outputs.semver }}
         with:
           name: release-cli-${{ matrix.target }}
-          path: trellis-${{ github.ref_name }}-${{ matrix.target }}.*
+          path: trellis-${{ needs.versioning.outputs.semver }}-${{ matrix.target }}.*
 
   # ── Build WASM + editor extensions ─────────────────────────────────────────
   build-editors:
     name: Editor Extensions
     runs-on: ubuntu-latest
-    needs: test
+    needs: [test, versioning]
 
     steps:
       - uses: actions/checkout@v4
@@ -104,6 +144,12 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 24
+
+      - name: Stamp VS Code extension version
+        working-directory: editors/vscode
+        env:
+          SEMVER: ${{ needs.versioning.outputs.semver }}
+        run: npm version "$SEMVER" --no-git-tag-version
 
       - name: Build VS Code extension
         working-directory: editors/vscode
@@ -128,7 +174,9 @@ jobs:
 
       - name: Build IntelliJ plugin
         working-directory: editors/intellij
-        run: bash ./gradlew buildPlugin -x buildSearchableOptions
+        env:
+          SEMVER: ${{ needs.versioning.outputs.semver }}
+        run: bash ./gradlew buildPlugin -Pplugin.version="$SEMVER" -x buildSearchableOptions
 
       - name: Upload IntelliJ plugin
         uses: actions/upload-artifact@v4
@@ -140,7 +188,7 @@ jobs:
   docker:
     name: Docker Image
     runs-on: ubuntu-latest
-    needs: test
+    needs: [test, versioning]
 
     steps:
       - uses: actions/checkout@v4
@@ -158,15 +206,19 @@ jobs:
           context: .
           file: docker/Dockerfile.pandoc
           push: true
+          labels: |
+            org.opencontainers.image.version=${{ needs.versioning.outputs.semver }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
           tags: |
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.ref_name }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ needs.versioning.outputs.semver }}
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
 
   # ── Create GitHub Release ──────────────────────────────────────────────────
   release:
     name: Create Release
     runs-on: ubuntu-latest
-    needs: [build-cli, build-editors, docker]
+    needs: [build-cli, build-editors, docker, versioning]
 
     steps:
       - uses: actions/checkout@v4
@@ -188,7 +240,7 @@ jobs:
           generate_release_notes: true
           files: release-assets/*
           body: |
-            ## Trellis ${{ github.ref_name }}
+            ## Trellis ${{ needs.versioning.outputs.semver }}
 
             ### Installation
 
@@ -197,10 +249,10 @@ jobs:
 
             | Platform | Archive |
             |---|---|
-            | Linux x86_64 | `trellis-${{ github.ref_name }}-x86_64-unknown-linux-gnu.tar.gz` |
-            | macOS x86_64 | `trellis-${{ github.ref_name }}-x86_64-apple-darwin.tar.gz` |
-            | macOS ARM | `trellis-${{ github.ref_name }}-aarch64-apple-darwin.tar.gz` |
-            | Windows x86_64 | `trellis-${{ github.ref_name }}-x86_64-pc-windows-gnu.zip` |
+            | Linux x86_64 | `trellis-${{ needs.versioning.outputs.semver }}-x86_64-unknown-linux-gnu.tar.gz` |
+            | macOS x86_64 | `trellis-${{ needs.versioning.outputs.semver }}-x86_64-apple-darwin.tar.gz` |
+            | macOS ARM | `trellis-${{ needs.versioning.outputs.semver }}-aarch64-apple-darwin.tar.gz` |
+            | Windows x86_64 | `trellis-${{ needs.versioning.outputs.semver }}-x86_64-pc-windows-gnu.zip` |
 
             **VS Code:** Install the `.vsix` from this release via `code --install-extension <file>.vsix`.
 
@@ -208,5 +260,5 @@ jobs:
 
             **Docker:**
             ```bash
-            docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.ref_name }}
+            docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ needs.versioning.outputs.semver }}
             ```

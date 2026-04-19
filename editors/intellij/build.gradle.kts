@@ -8,7 +8,7 @@ plugins {
 }
 
 group = "com.trellis"
-version = "0.1.0"
+version = providers.gradleProperty("plugin.version").getOrElse("0.0.0-dev")
 
 kotlin {
     jvmToolchain(21)
@@ -31,7 +31,7 @@ intellijPlatform {
     pluginConfiguration {
         id = "com.trellis.plugin"
         name = "Trellis Mermaid Preview"
-        version = "0.1.0"
+        version = providers.gradleProperty("plugin.version").getOrElse("0.0.0-dev")
         description = """
             Live preview for Mermaid .mmd diagram files using the Trellis VLSI-routing renderer.
             Opens a tool window that re-renders the diagram on every file save.

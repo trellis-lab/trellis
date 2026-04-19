@@ -12,6 +12,27 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
+  # ── Compute version (informational — no stamping in CI) ────────────────────
+  versioning:
+    name: Compute Version
+    runs-on: ubuntu-latest
+    outputs:
+      semver: ${{ steps.gv.outputs.semVer }}
+      pre-release-tag: ${{ steps.gv.outputs.preReleaseTag }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Setup GitVersion
+        uses: gittools/actions/gitversion/setup@v3
+        with:
+          versionSpec: '6.x'
+      - name: Compute version
+        id: gv
+        uses: gittools/actions/gitversion/execute@v3
+      - name: Show version
+        run: echo "Version ${{ steps.gv.outputs.semVer }}"
+
   # ── Test & Lint ─────────────────────────────────────────────────────────────
   test:
     name: Test (${{ matrix.os }})
