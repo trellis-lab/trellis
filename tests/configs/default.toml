@@ -152,6 +152,14 @@ edge_label_bg_opacity = 1.0
 # 0.0 disables the border entirely.
 edge_label_border_width = 0.5
 
+# Draw a thin dashed leader line from a displaced label back to its anchor point
+# on the edge. Only drawn when the label is not overlapping its anchor.
+# The line uses the same color as the label border.
+label_leader_line = true
+
+# Stroke width of the label leader line in pixels.
+label_leader_line_width = 0.5
+
 # ─────────────────────────────────────────────────────────────────────────────
 # DECOMPOSITION CONFIGURATION (for large graphs)
 # ─────────────────────────────────────────────────────────────────────────────

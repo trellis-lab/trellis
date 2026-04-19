@@ -348,6 +348,8 @@ pub fn build_svg(
                 theme,
                 config.edge_label_bg_opacity,
                 config.edge_label_border_width,
+                config.label_leader_line,
+                config.label_leader_line_width,
             ));
             svg.push('\n');
         }
@@ -429,6 +431,8 @@ fn render_label(
     theme: &Theme,
     bg_opacity: f64,
     border_width: f64,
+    leader_line: bool,
+    leader_line_width: f64,
 ) -> String {
     let padding = 3.0;
     let bg_x = label.x;
@@ -447,7 +451,7 @@ fn render_label(
 
     let mut text_svg = format!(
         "<text text-anchor=\"middle\" \
-         font-family=\"Arial, Helvetica, sans-serif\" font-size=\"12\" fill=\"{}\">",
+         font-family=\"Arial, Helvetica, sans-serif\" font-size=\"10\" fill=\"{}\">",
         theme.edge_label_text
     );
     for (i, line) in lines.iter().enumerate() {
@@ -478,10 +482,33 @@ fn render_label(
         "stroke=\"none\"".to_string()
     };
 
+    // Draw a dashed leader line when the anchor point (on the edge) lies outside
+    // the label bounding box — i.e. the label was displaced from its ideal position.
+    let leader_svg = if leader_line && leader_line_width > 0.0 {
+        let anchor_inside = label.anchor_x >= bg_x
+            && label.anchor_x <= bg_x + bg_w
+            && label.anchor_y >= bg_y
+            && label.anchor_y <= bg_y + bg_h;
+        if !anchor_inside {
+            let label_cx = bg_x + bg_w / 2.0;
+            let label_cy = bg_y + bg_h / 2.0;
+            format!(
+                "<line x1=\"{:.1}\" y1=\"{:.1}\" x2=\"{:.1}\" y2=\"{:.1}\" \
+                 stroke=\"{}\" stroke-width=\"{:.2}\" stroke-dasharray=\"3,3\"/>",
+                label_cx, label_cy, label.anchor_x, label.anchor_y,
+                theme.edge_label_border, leader_line_width
+            )
+        } else {
+            String::new()
+        }
+    } else {
+        String::new()
+    };
+
     format!(
-        "<rect x=\"{:.1}\" y=\"{:.1}\" width=\"{:.1}\" height=\"{:.1}\" \
+        "{}<rect x=\"{:.1}\" y=\"{:.1}\" width=\"{:.1}\" height=\"{:.1}\" \
          fill=\"{}\" fill-opacity=\"{:.2}\" {} rx=\"2\"/>{}",
-        bg_x, bg_y, bg_w, bg_h, theme.edge_label_bg, bg_opacity, stroke_attr, text_svg
+        leader_svg, bg_x, bg_y, bg_w, bg_h, theme.edge_label_bg, bg_opacity, stroke_attr, text_svg
     )
 }
 

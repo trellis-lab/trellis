@@ -34,6 +34,12 @@ fn default_edge_label_bg_opacity() -> f64 {
 fn default_edge_label_border_width() -> f64 {
     0.5
 }
+fn default_label_leader_line() -> bool {
+    true
+}
+fn default_label_leader_line_width() -> f64 {
+    0.5
+}
 fn default_decomposition() -> DecompositionMode {
     DecompositionMode::None
 }
@@ -133,6 +139,16 @@ pub struct TrellisConfig {
     /// Stroke width of edge label border (0.0 = no border).
     #[serde(default = "default_edge_label_border_width")]
     pub edge_label_border_width: f64,
+
+    /// Draw a thin dashed leader line from a displaced label to its edge anchor.
+    /// The line uses the label border color and is only drawn when the label
+    /// is not overlapping its anchor point on the edge.
+    #[serde(default = "default_label_leader_line")]
+    pub label_leader_line: bool,
+
+    /// Stroke width of the label leader line in pixels.
+    #[serde(default = "default_label_leader_line_width")]
+    pub label_leader_line_width: f64,
 
     /// Port assignment algorithm
     #[serde(default = "default_port_assignment")]
@@ -301,6 +317,8 @@ impl Default for TrellisConfig {
             show_edge_labels: default_show_edge_labels(),
             edge_label_bg_opacity: default_edge_label_bg_opacity(),
             edge_label_border_width: default_edge_label_border_width(),
+            label_leader_line: default_label_leader_line(),
+            label_leader_line_width: default_label_leader_line_width(),
             port_assignment: default_port_assignment(),
             port_refinement_rounds: default_port_refinement_rounds(),
             flow_bias: FlowBias::None,
@@ -349,6 +367,8 @@ pub fn configuration_factory(config_type: ConfigurationType) -> TrellisConfig {
             show_edge_labels: true,
             edge_label_bg_opacity: default_edge_label_bg_opacity(),
             edge_label_border_width: default_edge_label_border_width(),
+            label_leader_line: default_label_leader_line(),
+            label_leader_line_width: default_label_leader_line_width(),
             port_assignment: PortAssignmentStrategy::Default,
             port_refinement_rounds: 0,
             flow_bias: FlowBias::Auto,

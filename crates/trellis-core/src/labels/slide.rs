@@ -25,6 +25,8 @@ pub fn slide_label_along_segment(
     nodes: &[Node],
     all_segments: &[Vec<Segment>],
     placed_bboxes: &mut Vec<BoundingBox>,
+    anchor_x: f64,
+    anchor_y: f64,
 ) -> LabelPlacement {
     let seg_length = segment.length();
     let seg_dir = segment.direction();
@@ -65,6 +67,8 @@ pub fn slide_label_along_segment(
                     width: label_width,
                     height: label_height,
                     side,
+                    anchor_x,
+                    anchor_y,
                 };
             }
         }
@@ -118,6 +122,8 @@ pub fn slide_label_along_segment(
                 width: label_width,
                 height: label_height,
                 side: default_side,
+                anchor_x,
+                anchor_y,
             };
         }
     }
@@ -138,6 +144,8 @@ pub fn slide_label_along_segment(
         width: label_width,
         height: label_height,
         side: default_side,
+        anchor_x,
+        anchor_y,
     }
 }
 
@@ -181,7 +189,7 @@ mod tests {
         };
         let mut placed = Vec::new();
 
-        let result = slide_label_along_segment(&segment, "Test", 28.0, 14.0, &[], &[], &mut placed);
+        let result = slide_label_along_segment(&segment, "Test", 28.0, 14.0, &[], &[], &mut placed, 100.0, 50.0);
 
         // Should have placed a label and added to placed_bboxes
         assert_eq!(placed.len(), 1);
@@ -206,7 +214,7 @@ mod tests {
         };
         let mut placed = vec![blocking];
 
-        let result = slide_label_along_segment(&segment, "Test", 28.0, 14.0, &[], &[], &mut placed);
+        let result = slide_label_along_segment(&segment, "Test", 28.0, 14.0, &[], &[], &mut placed, 100.0, 50.0);
 
         // Should have found a different position
         assert_eq!(placed.len(), 2);

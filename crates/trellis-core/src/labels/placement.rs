@@ -8,8 +8,8 @@ use trellis_parser::{DiagramType, Graph};
 
 /// Padding around label text in pixels.
 const LABEL_PADDING: f64 = 4.0;
-/// Average character width at font size 12.
-const LABEL_CHAR_WIDTH: f64 = 7.0;
+/// Average character width at font size 10.
+const LABEL_CHAR_WIDTH: f64 = 6.0;
 /// Line height at font size 12.
 const LABEL_LINE_HEIGHT: f64 = 14.0;
 
@@ -22,6 +22,10 @@ pub struct LabelPlacement {
     pub width: f64,
     pub height: f64,
     pub side: LabelSide,
+    /// World-coordinate anchor: the point on the edge the label belongs to.
+    /// Used to draw a leader line when the label is displaced from the edge.
+    pub anchor_x: f64,
+    pub anchor_y: f64,
 }
 
 /// Which side of the segment the label is placed on.
@@ -229,6 +233,7 @@ pub fn place_all_labels(
 
         let best_seg_idx = select_best_segment(segments, label_width);
         let segment = &segments[best_seg_idx];
+        let (anchor_x, anchor_y) = segment.midpoint();
 
         let candidates = generate_candidates(segment, label_width, label_height);
 
@@ -255,6 +260,8 @@ pub fn place_all_labels(
                     width: label_width,
                     height: label_height,
                     side: *side,
+                    anchor_x,
+                    anchor_y,
                 });
                 placed = true;
                 break;
@@ -271,6 +278,8 @@ pub fn place_all_labels(
                 &graph.nodes,
                 &other_segments,
                 &mut placed_bboxes,
+                anchor_x,
+                anchor_y,
             );
             placements.push(placement);
         }
