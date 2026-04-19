@@ -350,6 +350,9 @@ pub fn build_svg(
                 config.edge_label_border_width,
                 config.label_leader_line,
                 config.label_leader_line_width,
+                &config.label_font_family,
+                config.label_font_size,
+                config.label_padding,
             ));
             svg.push('\n');
         }
@@ -433,8 +436,10 @@ fn render_label(
     border_width: f64,
     leader_line: bool,
     leader_line_width: f64,
+    font_family: &str,
+    font_size: f64,
+    padding: f64,
 ) -> String {
-    let padding = 3.0;
     let bg_x = label.x;
     let bg_y = label.y;
     let bg_w = label.width + 2.0 * padding;
@@ -451,8 +456,8 @@ fn render_label(
 
     let mut text_svg = format!(
         "<text text-anchor=\"middle\" \
-         font-family=\"Arial, Helvetica, sans-serif\" font-size=\"10\" fill=\"{}\">",
-        theme.edge_label_text
+         font-family=\"{}\" font-size=\"{:.0}\" fill=\"{}\">",
+        font_family, font_size, theme.edge_label_text
     );
     for (i, line) in lines.iter().enumerate() {
         if i == 0 {

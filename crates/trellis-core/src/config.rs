@@ -40,6 +40,15 @@ fn default_label_leader_line() -> bool {
 fn default_label_leader_line_width() -> f64 {
     0.5
 }
+fn default_label_font_family() -> String {
+    "Arial, Helvetica, sans-serif".to_string()
+}
+fn default_label_font_size() -> f64 {
+    10.0
+}
+fn default_label_padding() -> f64 {
+    4.0
+}
 fn default_decomposition() -> DecompositionMode {
     DecompositionMode::None
 }
@@ -149,6 +158,18 @@ pub struct TrellisConfig {
     /// Stroke width of the label leader line in pixels.
     #[serde(default = "default_label_leader_line_width")]
     pub label_leader_line_width: f64,
+
+    /// CSS font-family string for edge labels.
+    #[serde(default = "default_label_font_family")]
+    pub label_font_family: String,
+
+    /// Font size in pixels for edge labels.
+    #[serde(default = "default_label_font_size")]
+    pub label_font_size: f64,
+
+    /// Padding in pixels inside the edge label background rectangle.
+    #[serde(default = "default_label_padding")]
+    pub label_padding: f64,
 
     /// Port assignment algorithm
     #[serde(default = "default_port_assignment")]
@@ -319,6 +340,9 @@ impl Default for TrellisConfig {
             edge_label_border_width: default_edge_label_border_width(),
             label_leader_line: default_label_leader_line(),
             label_leader_line_width: default_label_leader_line_width(),
+            label_font_family: default_label_font_family(),
+            label_font_size: default_label_font_size(),
+            label_padding: default_label_padding(),
             port_assignment: default_port_assignment(),
             port_refinement_rounds: default_port_refinement_rounds(),
             flow_bias: FlowBias::None,
@@ -369,6 +393,9 @@ pub fn configuration_factory(config_type: ConfigurationType) -> TrellisConfig {
             edge_label_border_width: default_edge_label_border_width(),
             label_leader_line: default_label_leader_line(),
             label_leader_line_width: default_label_leader_line_width(),
+            label_font_family: default_label_font_family(),
+            label_font_size: default_label_font_size(),
+            label_padding: default_label_padding(),
             port_assignment: PortAssignmentStrategy::Default,
             port_refinement_rounds: 0,
             flow_bias: FlowBias::Auto,

@@ -152,6 +152,17 @@ edge_label_bg_opacity = 1.0
 # 0.0 disables the border entirely.
 edge_label_border_width = 0.5
 
+# CSS font-family for edge labels. Width estimation uses a built-in Arial lookup
+# table when the family contains "Arial" or "Helvetica"; falls back to a 0.60×
+# font-size-per-character estimate for other families.
+label_font_family = "Arial, Helvetica, sans-serif"
+
+# Font size in pixels for edge labels.
+label_font_size = 10.0
+
+# Padding in pixels inside the edge label background rectangle (applied on all sides).
+label_padding = 4.0
+
 # Draw a thin dashed leader line from a displaced label back to its anchor point
 # on the edge. Only drawn when the label is not overlapping its anchor.
 # The line uses the same color as the label border.

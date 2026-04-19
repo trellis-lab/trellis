@@ -450,7 +450,7 @@ fn run_pipeline(
     };
 
     // Phase 8: Edge label placement
-    let label_placements = labels::place_all_labels(&graph, &routing_result.paths, &grid);
+    let label_placements = labels::place_all_labels(&graph, &routing_result.paths, &grid, config);
 
     // P7 — capture labels phase
     #[cfg(feature = "debug-log")]

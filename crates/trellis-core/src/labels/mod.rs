@@ -1,4 +1,5 @@
 pub mod collision;
+pub mod measure;
 pub mod placement;
 pub mod slide;
 

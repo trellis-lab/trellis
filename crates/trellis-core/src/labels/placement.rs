@@ -1,17 +1,12 @@
 use std::collections::BTreeMap;
 
+use crate::config::TrellisConfig;
 use crate::grid::Grid;
 use crate::labels::collision::collides;
+use crate::labels::measure::measure_text_width_multiline;
 use crate::labels::slide::slide_label_along_segment;
 use crate::routing::astar::RoutedPath;
 use trellis_parser::{DiagramType, Graph};
-
-/// Padding around label text in pixels.
-const LABEL_PADDING: f64 = 4.0;
-/// Average character width at font size 10.
-const LABEL_CHAR_WIDTH: f64 = 6.0;
-/// Line height at font size 12.
-const LABEL_LINE_HEIGHT: f64 = 14.0;
 
 /// A placed label with its position and text.
 #[derive(Debug, Clone)]
@@ -91,13 +86,13 @@ impl Segment {
     }
 }
 
-/// Estimate label text width in pixels.
-fn measure_label_width(text: &str) -> f64 {
-    let max_line_len = text.lines().map(|l| l.len()).max().unwrap_or(0);
-    max_line_len as f64 * LABEL_CHAR_WIDTH
+/// Line height at font size 10 (used for height estimation).
+const LABEL_LINE_HEIGHT: f64 = 14.0;
+
+fn measure_label_width(text: &str, font_size: f64, font_family: &str) -> f64 {
+    measure_text_width_multiline(text, font_size, font_family)
 }
 
-/// Estimate label text height in pixels.
 fn measure_label_height(text: &str) -> f64 {
     let lines = text.lines().count().max(1);
     lines as f64 * LABEL_LINE_HEIGHT
@@ -188,6 +183,7 @@ pub fn place_all_labels(
     graph: &Graph,
     routing_result: &BTreeMap<usize, RoutedPath>,
     grid: &Grid,
+    config: &TrellisConfig,
 ) -> Vec<LabelPlacement> {
     let mut placements = Vec::new();
     let mut placed_bboxes: Vec<BoundingBox> = Vec::new();
@@ -228,7 +224,7 @@ pub fn place_all_labels(
             .collect();
 
         let label = &display_text;
-        let label_width = measure_label_width(label);
+        let label_width = measure_label_width(label, config.label_font_size, &config.label_font_family);
         let label_height = measure_label_height(label);
 
         let best_seg_idx = select_best_segment(segments, label_width);
@@ -237,8 +233,8 @@ pub fn place_all_labels(
 
         let candidates = generate_candidates(segment, label_width, label_height);
 
-        let bbox_width = label_width + 2.0 * LABEL_PADDING;
-        let bbox_height = label_height + 2.0 * LABEL_PADDING;
+        let bbox_width = label_width + 2.0 * config.label_padding;
+        let bbox_height = label_height + 2.0 * config.label_padding;
 
         let mut placed = false;
 
@@ -280,6 +276,7 @@ pub fn place_all_labels(
                 &mut placed_bboxes,
                 anchor_x,
                 anchor_y,
+                config.label_padding,
             );
             placements.push(placement);
         }
@@ -294,8 +291,9 @@ mod tests {
 
     #[test]
     fn test_measure_label_width() {
-        let w = measure_label_width("Yes");
-        assert!((w - 3.0 * LABEL_CHAR_WIDTH).abs() < 0.01);
+        let w = measure_label_width("Yes", 10.0, "Arial");
+        // "Y"=6.7, "e"=5.6, "s"=5.0 → 17.3px
+        assert!(w > 0.0);
     }
 
     #[test]

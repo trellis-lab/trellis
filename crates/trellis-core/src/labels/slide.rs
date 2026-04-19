@@ -5,8 +5,9 @@ use trellis_parser::Node;
 // Re-export for clarity — slide always places labels on-edge.
 const ON_EDGE_SIDES: &[LabelSide] = &[LabelSide::OnEdge];
 
-/// Padding around label text in pixels.
-const LABEL_PADDING: f64 = 4.0;
+/// Default padding — used only in tests; production callers pass it via argument.
+#[cfg(test)]
+const DEFAULT_LABEL_PADDING: f64 = 4.0;
 /// Step size in pixels when sliding along a segment.
 const STEP: f64 = 5.0;
 /// Gap between staggered fallback labels.
@@ -27,14 +28,15 @@ pub fn slide_label_along_segment(
     placed_bboxes: &mut Vec<BoundingBox>,
     anchor_x: f64,
     anchor_y: f64,
+    label_padding: f64,
 ) -> LabelPlacement {
     let seg_length = segment.length();
     let seg_dir = segment.direction();
 
     let sides: &[LabelSide] = ON_EDGE_SIDES;
 
-    let bbox_width = label_width + 2.0 * LABEL_PADDING;
-    let bbox_height = label_height + 2.0 * LABEL_PADDING;
+    let bbox_width = label_width + 2.0 * label_padding;
+    let bbox_height = label_height + 2.0 * label_padding;
 
     // Try positions from center outward
     let mut offset = 0.0_f64;
@@ -50,7 +52,7 @@ pub fn slide_label_along_segment(
         let pos_y = segment.y1 + (segment.y2 - segment.y1) * t;
 
         for &side in sides {
-            let (cx, cy) = candidate_position(pos_x, pos_y, label_width, label_height, side);
+            let (cx, cy) = candidate_position(pos_x, pos_y, label_width, label_height, side, label_padding);
             let bbox = BoundingBox {
                 x: cx,
                 y: cy,
@@ -90,7 +92,7 @@ pub fn slide_label_along_segment(
     // increments until we find a spot clear of placed labels.
     let (mx, my) = segment.midpoint();
     let default_side = sides[0];
-    let (fx, fy) = candidate_position(mx, my, label_width, label_height, default_side);
+    let (fx, fy) = candidate_position(mx, my, label_width, label_height, default_side, label_padding);
 
     // Step size matches the label dimension in the stagger direction.
     let stagger_step = match seg_dir {
@@ -156,18 +158,19 @@ fn candidate_position(
     label_width: f64,
     label_height: f64,
     side: LabelSide,
+    padding: f64,
 ) -> (f64, f64) {
     match side {
         LabelSide::Above => (
             anchor_x - label_width / 2.0,
-            anchor_y - label_height - LABEL_PADDING,
+            anchor_y - label_height - padding,
         ),
-        LabelSide::Below => (anchor_x - label_width / 2.0, anchor_y + LABEL_PADDING),
+        LabelSide::Below => (anchor_x - label_width / 2.0, anchor_y + padding),
         LabelSide::Left => (
-            anchor_x - label_width - LABEL_PADDING,
+            anchor_x - label_width - padding,
             anchor_y - label_height / 2.0,
         ),
-        LabelSide::Right => (anchor_x + LABEL_PADDING, anchor_y - label_height / 2.0),
+        LabelSide::Right => (anchor_x + padding, anchor_y - label_height / 2.0),
         LabelSide::OnEdge => (
             anchor_x - label_width / 2.0,
             anchor_y - label_height / 2.0,
@@ -189,7 +192,7 @@ mod tests {
         };
         let mut placed = Vec::new();
 
-        let result = slide_label_along_segment(&segment, "Test", 28.0, 14.0, &[], &[], &mut placed, 100.0, 50.0);
+        let result = slide_label_along_segment(&segment, "Test", 28.0, 14.0, &[], &[], &mut placed, 100.0, 50.0, DEFAULT_LABEL_PADDING);
 
         // Should have placed a label and added to placed_bboxes
         assert_eq!(placed.len(), 1);
@@ -214,7 +217,7 @@ mod tests {
         };
         let mut placed = vec![blocking];
 
-        let result = slide_label_along_segment(&segment, "Test", 28.0, 14.0, &[], &[], &mut placed, 100.0, 50.0);
+        let result = slide_label_along_segment(&segment, "Test", 28.0, 14.0, &[], &[], &mut placed, 100.0, 50.0, DEFAULT_LABEL_PADDING);
 
         // Should have found a different position
         assert_eq!(placed.len(), 2);
@@ -223,14 +226,14 @@ mod tests {
 
     #[test]
     fn test_candidate_position_above() {
-        let (x, y) = candidate_position(50.0, 50.0, 20.0, 14.0, LabelSide::Above);
+        let (x, y) = candidate_position(50.0, 50.0, 20.0, 14.0, LabelSide::Above, DEFAULT_LABEL_PADDING);
         assert!((x - 40.0).abs() < 0.01); // 50 - 20/2
         assert!((y - 32.0).abs() < 0.01); // 50 - 14 - 4
     }
 
     #[test]
     fn test_candidate_position_below() {
-        let (x, y) = candidate_position(50.0, 50.0, 20.0, 14.0, LabelSide::Below);
+        let (x, y) = candidate_position(50.0, 50.0, 20.0, 14.0, LabelSide::Below, DEFAULT_LABEL_PADDING);
         assert!((x - 40.0).abs() < 0.01); // 50 - 20/2
         assert!((y - 54.0).abs() < 0.01); // 50 + 4
     }

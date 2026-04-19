@@ -9,9 +9,9 @@ use trellis_parser::Graph;
 use super::algorithm::LayoutAlgorithm;
 
 /// Horizontal gap between elements (pixels).
-pub const ELEM_GAP_X: f64 = 40.0;
+pub const ELEM_GAP_X: f64 = 120.0;
 /// Vertical gap between rows (pixels).
-pub const ELEM_GAP_Y: f64 = 60.0;
+pub const ELEM_GAP_Y: f64 = 80.0;
 
 /// Compute the maximum height of each row for a slice of node indices.
 ///
