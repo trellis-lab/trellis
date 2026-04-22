@@ -1,0 +1,1077 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Trellis — Overlap-Free Mermaid Diagrams</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Courier+Prime:ital,wght@0,400;0,700;1,400&family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+:root {
+  --font-d: 'Courier Prime', monospace;
+  --font-b: 'Inter', sans-serif;
+  --font-m: 'JetBrains Mono', monospace;
+  --ok: #3fb950; --warn: #d29922; --err: #f85149;
+
+  /* ── DARK MODE (default) ── */
+  --pg:   #003153;
+  --sf:   #1B3F6E;
+  --sf2:  rgba(27,63,110,0.55);
+  --sf3:  rgba(27,63,110,0.30);
+  --sf4:  rgba(27,63,110,0.20);
+  --cb:   #071523;
+  --pb:   #0d1e30;
+  --ft:   #00203d;
+  --ac:   #4A8AB5;
+  --ac10: rgba(74,138,181,0.10);
+  --ac12: rgba(74,138,181,0.12);
+  --ac18: rgba(74,138,181,0.18);
+  --ac20: rgba(74,138,181,0.20);
+  --ac25: rgba(74,138,181,0.25);
+  --ac30: rgba(74,138,181,0.30);
+  --ac35: rgba(74,138,181,0.35);
+  --tp:   #E8F4FB;
+  --ts:   rgba(232,244,251,0.65);
+  --tm:   rgba(232,244,251,0.50);
+  --tf:   rgba(232,244,251,0.40);
+  --tff:  rgba(232,244,251,0.25);
+  --hs:   rgba(0,49,83,0.97);
+  --grid: linear-gradient(rgba(74,138,181,0.18) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(74,138,181,0.18) 1px, transparent 1px);
+  --logo-filter: invert(1) brightness(2);
+  --scrollbar-track: rgba(0,49,83,0.3);
+  --scrollbar-thumb: rgba(74,138,181,0.4);
+  --code-text: #7dd3fc;
+  --install-card-bg: rgba(27,63,110,0.55);
+  --install-card-hover: var(--ac18);
+}
+
+html[data-theme="light"] {
+  --pg:   #eef5fb;
+  --sf:   #d4e7f5;
+  --sf2:  rgba(31,95,150,0.12);
+  --sf3:  rgba(31,95,150,0.07);
+  --sf4:  rgba(31,95,150,0.10);
+  --cb:   #f4f8fc;
+  --pb:   #e8f2fa;
+  --ft:   #c5ddef;
+  --ac:   #1f5f96;
+  --ac10: rgba(31,95,150,0.10);
+  --ac12: rgba(31,95,150,0.12);
+  --ac18: rgba(31,95,150,0.18);
+  --ac20: rgba(31,95,150,0.20);
+  --ac25: rgba(31,95,150,0.25);
+  --ac30: rgba(31,95,150,0.30);
+  --ac35: rgba(31,95,150,0.35);
+  --tp:   #001d35;
+  --ts:   rgba(0,29,53,0.70);
+  --tm:   rgba(0,29,53,0.55);
+  --tf:   rgba(0,29,53,0.45);
+  --tff:  rgba(0,29,53,0.30);
+  --hs:   rgba(238,245,251,0.97);
+  --grid: linear-gradient(rgba(31,95,150,0.10) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(31,95,150,0.10) 1px, transparent 1px);
+  --logo-filter: none;
+  --scrollbar-track: rgba(74,138,181,0.1);
+  --scrollbar-thumb: rgba(31,95,150,0.3);
+  --code-text: #1a4f7a;
+  --install-card-bg: var(--sf2);
+  --install-card-hover: var(--ac18);
+}
+
+body {
+  background: var(--pg);
+  color: var(--tp);
+  font-family: var(--font-b);
+  min-height: 100vh;
+  overflow-x: hidden;
+  transition: background 200ms ease, color 200ms ease;
+}
+#root { display: flex; flex-direction: column; min-height: 100vh; }
+a { color: inherit; text-decoration: none; }
+button { font-family: inherit; }
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--scrollbar-track); }
+::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 3px; }
+
+#tweaks-panel {
+  position: fixed; bottom: 20px; right: 20px; z-index: 9999;
+  background: var(--sf); border: 1px solid rgba(74,138,181,0.4);
+  border-radius: 10px; padding: 16px; width: 230px; display: none;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+}
+#tweaks-panel.visible { display: block; }
+#tweaks-panel h4 { font-size: 11px; text-transform: uppercase; letter-spacing: 0.15em; color: var(--ac); margin-bottom: 12px; font-family: var(--font-m); }
+.tweak-row { margin-bottom: 10px; }
+.tweak-row label { display: block; font-size: 11px; color: var(--tm); margin-bottom: 4px; }
+.tweak-row select { width: 100%; background: rgba(0,49,83,0.6); border: 1px solid rgba(74,138,181,0.3); border-radius: 4px; color: var(--tp); font-size: 12px; padding: 5px 8px; outline: none; cursor: pointer; }
+.tweak-row input[type=checkbox] { margin-right: 6px; accent-color: var(--ac); }
+</style>
+</head>
+<body>
+<script>
+(function(){
+  var saved = localStorage.getItem('trellis-theme-mode');
+  var dark = saved !== null ? saved === 'dark' : true;
+  document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+})();
+</script>
+
+<!-- Load trellis-wasm as ES module; expose globally, fire event when ready -->
+<script type="module">
+  import init, { render, render_with_metrics } from './wasm/trellis_wasm.js';
+  try {
+    // init() resolves trellis_wasm_bg.wasm relative to trellis_wasm.js via import.meta.url
+    await init();
+    window.__trellis = { render, render_with_metrics };
+  } catch (e) {
+    window.__trellis_error = String(e);
+  }
+  window.dispatchEvent(new Event('trellis-ready'));
+</script>
+
+<div id="root"></div>
+
+<div id="tweaks-panel">
+  <h4>Tweaks</h4>
+  <div class="tweak-row">
+    <label>Editor split</label>
+    <select id="tweak-layout">
+      <option value="50-50">50 / 50 — balanced</option>
+      <option value="40-60">40 / 60 — more preview</option>
+      <option value="60-40">60 / 40 — more code</option>
+    </select>
+  </div>
+  <div class="tweak-row">
+    <label><input type="checkbox" id="tweak-grid" checked> Blueprint grid</label>
+  </div>
+  <div class="tweak-row">
+    <label><input type="checkbox" id="tweak-metrics" checked> Metrics bar</label>
+  </div>
+</div>
+
+<script type="text/babel">
+const { useState, useEffect, useRef, useCallback } = React;
+
+// ─── CONSTANTS ───────────────────────────────────────────────────────────────
+
+const TWEAK_DEFAULTS = { layout: '50-50', showGrid: true, showMetrics: true };
+
+// Trellis theme names — serde serializes with rename_all = "lowercase"
+// Dark default: ClassicBlueprint; Light default: Default
+const TRELLIS_THEMES = [
+  { value: 'default',          label: 'Default' },
+  { value: 'paper',            label: 'Paper' },
+  { value: 'blueprint',        label: 'Blueprint' },
+  { value: 'dark',             label: 'Dark' },
+  { value: 'midnight',         label: 'Midnight' },
+  { value: 'forest',           label: 'Forest' },
+  { value: 'classicblueprint', label: 'Classic Blueprint' },
+];
+
+const SAMPLE_DIAGRAMS = {
+  c4: `C4Context
+  title System Context — Payment Platform
+  Person(customer, "Customer", "Places orders")
+  Person(support, "Support Agent", "Handles issues")
+  System(platform, "Payment Platform", "Processes payments")
+  System_Ext(bank, "Banking API", "Clears transactions")
+  System_Ext(notify, "Notifications", "Email & SMS alerts")
+  Rel(customer, platform, "Submits payment")
+  Rel(support, platform, "Manages disputes")
+  Rel(platform, bank, "Clears funds")
+  Rel(platform, notify, "Sends confirmation")`,
+
+  flowchart: `flowchart LR
+  Client([Client App])
+  API[API Gateway]
+  Auth[Auth Service]
+  DB[(Database)]
+  Cache[(Redis Cache)]
+  Queue[[Job Queue]]
+  Worker[Worker Service]
+  Storage[/Object Storage/]
+
+  Client --> API
+  API --> Auth
+  Auth --> DB
+  API --> Cache
+  API --> Queue
+  Queue --> Worker
+  Worker --> DB
+  Worker --> Storage`,
+
+  classDiagram: `classDiagram
+  class DiagramRenderer {
+    +String input
+    +TrellisConfig config
+    +render() SVG
+    +renderWithMetrics() JSON
+  }
+  class TrellisConfig {
+    +String direction
+    +String theme
+    +Int cellSize
+  }
+  class Graph {
+    +Node[] nodes
+    +Edge[] edges
+  }
+  class Node {
+    +String id
+    +String label
+    +String shape
+  }
+  DiagramRenderer --> TrellisConfig
+  DiagramRenderer --> Graph
+  Graph --> Node`,
+
+  erDiagram: `erDiagram
+  USER {
+    int id PK
+    string email
+    string name
+    timestamp created_at
+  }
+  PROJECT {
+    int id PK
+    string title
+    string status
+    int owner_id FK
+  }
+  DIAGRAM {
+    int id PK
+    string source
+    string svg_output
+    int project_id FK
+    float quality_score
+  }
+  USER ||--o{ PROJECT : owns
+  PROJECT ||--o{ DIAGRAM : contains`,
+};
+
+// ─── HEADER ──────────────────────────────────────────────────────────────────
+
+function TrellisHeader({ isDark, toggleTheme }) {
+  const [scrolled, setScrolled] = useState(false);
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 8);
+    window.addEventListener('scroll', onScroll);
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
+  return (
+    <header style={{
+      position: 'sticky', top: 0, zIndex: 100,
+      background: scrolled ? 'var(--hs)' : 'transparent',
+      backdropFilter: scrolled ? 'blur(12px)' : 'none',
+      borderBottom: scrolled ? '1px solid rgba(74,138,181,0.2)' : '1px solid transparent',
+      transition: 'all 200ms ease',
+      padding: '0 32px',
+    }}>
+      <div style={{ maxWidth: 1280, margin: '0 auto', height: 58, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <a href="#" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <img src="assets/trellis-logo-narrow.svg" height={26} alt="Trellis" style={{ filter: 'var(--logo-filter)' }} />
+          <span style={{ fontFamily: 'var(--font-d)', fontWeight: 700, fontSize: 18, color: 'var(--tp)', letterSpacing: '-0.01em' }}>Trellis</span>
+        </a>
+        <nav style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          {[
+            { label: 'Editor', href: '#editor' },
+            { label: 'Features', href: '#features' },
+            { label: 'Docs', href: '#' },
+          ].map(item => (
+            <a key={item.label} href={item.href} style={{
+              padding: '6px 13px', borderRadius: 6, fontSize: 13, fontWeight: 500,
+              color: 'var(--ts)', transition: 'color 150ms, background 150ms',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.color='var(--tp)'; e.currentTarget.style.background='var(--ac10)'; }}
+            onMouseLeave={e => { e.currentTarget.style.color='var(--ts)'; e.currentTarget.style.background='transparent'; }}>
+              {item.label}
+            </a>
+          ))}
+          <a href="https://github.com/trellis-mermaid/trellis" target="_blank" rel="noopener"
+            style={{
+              display:'flex', alignItems:'center', gap: 6,
+              padding: '6px 13px', borderRadius: 6, fontSize: 13, fontWeight: 500,
+              color: 'var(--ts)', transition: 'color 150ms, background 150ms',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.color='var(--tp)'; e.currentTarget.style.background='var(--ac10)'; }}
+            onMouseLeave={e => { e.currentTarget.style.color='var(--ts)'; e.currentTarget.style.background='transparent'; }}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.3 3.44 9.8 8.21 11.39.6.11.82-.26.82-.58v-2.03c-3.34.73-4.04-1.61-4.04-1.61-.55-1.39-1.34-1.76-1.34-1.76-1.09-.75.08-.73.08-.73 1.2.08 1.84 1.24 1.84 1.24 1.07 1.83 2.81 1.3 3.5 1 .11-.78.42-1.3.76-1.6-2.67-.3-5.47-1.33-5.47-5.93 0-1.31.47-2.38 1.24-3.22-.12-.3-.54-1.52.12-3.18 0 0 1.01-.32 3.3 1.23a11.5 11.5 0 0 1 3-.4c1.02.005 2.04.14 3 .4 2.28-1.55 3.29-1.23 3.29-1.23.66 1.66.24 2.88.12 3.18.77.84 1.24 1.91 1.24 3.22 0 4.61-2.81 5.63-5.48 5.92.43.37.81 1.1.81 2.22v3.29c0 .32.22.7.83.58C20.57 21.8 24 17.3 24 12c0-6.63-5.37-12-12-12z"/></svg>
+            GitHub
+          </a>
+          <button onClick={toggleTheme} title={isDark ? 'Switch to light mode' : 'Switch to dark mode'} style={{
+            padding: '7px 10px', borderRadius: 6, background: 'transparent',
+            border: '1px solid var(--ac25)', color: 'var(--tf)', cursor: 'pointer',
+            transition: 'all 150ms', display: 'flex', alignItems: 'center', marginLeft: 4,
+          }}
+          onMouseEnter={e => { e.currentTarget.style.borderColor='var(--ac)'; e.currentTarget.style.color='var(--tp)'; }}
+          onMouseLeave={e => { e.currentTarget.style.borderColor='var(--ac25)'; e.currentTarget.style.color='var(--tf)'; }}>
+            {isDark
+              ? <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+              : <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+            }
+          </button>
+        </nav>
+      </div>
+    </header>
+  );
+}
+
+// ─── EDITOR SECTION ──────────────────────────────────────────────────────────
+
+function EditorSection({ tweaks, isDark }) {
+  const [diagramType, setDiagramType] = useState(() => localStorage.getItem('trellis-dtype') || 'flowchart');
+  const [code, setCode] = useState(() => localStorage.getItem('trellis-code') || SAMPLE_DIAGRAMS.flowchart);
+
+  // Default theme depends on color mode: ClassicBlueprint for dark, Default for light
+  const defaultTheme = isDark ? 'classicblueprint' : 'default';
+  const [theme, setTheme] = useState(() => localStorage.getItem('trellis-diagram-theme') || defaultTheme);
+
+  const [error, setError] = useState(null);
+  const [copied, setCopied] = useState(false);
+  const [downloading, setDownloading] = useState(null);
+  const [trellisReady, setTrellisReady] = useState(() => !!window.__trellis);
+  const [metrics, setMetrics] = useState(null);
+  const previewRef = useRef(null);
+  const debounceRef = useRef(null);
+
+  const layoutCols = tweaks?.layout === '40-60' ? '40% 1fr' : tweaks?.layout === '60-40' ? '60% 1fr' : '1fr 1fr';
+  const showGrid    = tweaks?.showGrid !== false;
+  const showMetrics = tweaks?.showMetrics !== false;
+
+  // Switch default theme when color mode changes (only if using the default)
+  useEffect(() => {
+    const saved = localStorage.getItem('trellis-diagram-theme');
+    if (!saved) {
+      setTheme(isDark ? 'classicblueprint' : 'default');
+    }
+  }, [isDark]);
+
+  // Wait for WASM to load
+  useEffect(() => {
+    if (window.__trellis) return;
+    const onReady = () => setTrellisReady(true);
+    window.addEventListener('trellis-ready', onReady);
+    return () => window.removeEventListener('trellis-ready', onReady);
+  }, []);
+
+  const renderDiagram = useCallback((src, thm) => {
+    if (!previewRef.current || !window.__trellis) return;
+    try {
+      const configJson = JSON.stringify({ theme: thm });
+      const resultJson = window.__trellis.render_with_metrics(src, configJson);
+      const result = JSON.parse(resultJson);
+      if (previewRef.current) {
+        previewRef.current.innerHTML = result.svg;
+        const svgEl = previewRef.current.querySelector('svg');
+        if (svgEl) {
+          svgEl.style.maxWidth = '100%';
+          svgEl.style.height = 'auto';
+          svgEl.style.display = 'block';
+          svgEl.style.margin = '0 auto';
+        }
+        setMetrics(result.metrics);
+        setError(null);
+      }
+    } catch (err) {
+      if (previewRef.current) previewRef.current.innerHTML = '';
+      setMetrics(null);
+      setError(String(err).replace(/^Error:\s*/, ''));
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!trellisReady) return;
+    clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => renderDiagram(code, theme), 300);
+    return () => clearTimeout(debounceRef.current);
+  }, [code, theme, trellisReady, renderDiagram]);
+
+  const switchType = (type) => {
+    setDiagramType(type);
+    const next = SAMPLE_DIAGRAMS[type];
+    setCode(next);
+    localStorage.setItem('trellis-dtype', type);
+    localStorage.setItem('trellis-code', next);
+  };
+
+  const handleCode = (e) => {
+    const val = e.target.value;
+    setCode(val);
+    localStorage.setItem('trellis-code', val);
+  };
+
+  const handleTheme = (e) => {
+    const val = e.target.value;
+    setTheme(val);
+    localStorage.setItem('trellis-diagram-theme', val);
+  };
+
+  const copyCode = () => {
+    navigator.clipboard.writeText(code).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    });
+  };
+
+  const downloadSVG = () => {
+    const svg = previewRef.current?.querySelector('svg');
+    if (!svg) return;
+    setDownloading('svg');
+    const blob = new Blob([svg.outerHTML], { type: 'image/svg+xml' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'trellis-diagram.svg';
+    a.click();
+    setTimeout(() => setDownloading(null), 1000);
+  };
+
+  const downloadPNG = () => {
+    const svg = previewRef.current?.querySelector('svg');
+    if (!svg) return;
+    setDownloading('png');
+    try {
+      const svgData = new XMLSerializer().serializeToString(svg);
+      const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
+      const url = URL.createObjectURL(svgBlob);
+      const img = new Image();
+      img.onload = () => {
+        const scale = 2;
+        const canvas = document.createElement('canvas');
+        canvas.width  = (svg.viewBox.baseVal.width  || svg.clientWidth  || 800) * scale;
+        canvas.height = (svg.viewBox.baseVal.height || svg.clientHeight || 600) * scale;
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.scale(scale, scale);
+        ctx.drawImage(img, 0, 0);
+        URL.revokeObjectURL(url);
+        const a = document.createElement('a');
+        a.download = 'trellis-diagram.png';
+        a.href = canvas.toDataURL('image/png');
+        a.click();
+        setDownloading(null);
+      };
+      img.onerror = () => setDownloading(null);
+      img.src = url;
+    } catch {
+      setDownloading(null);
+    }
+  };
+
+  const btnStyle = (active) => ({
+    fontFamily: 'var(--font-m)', fontSize: 11, padding: '4px 11px', borderRadius: 4,
+    background: active ? 'rgba(74,138,181,0.2)' : 'transparent',
+    border: '1px solid ' + (active ? 'var(--ac)' : 'var(--ac25)'),
+    color: active ? 'var(--ac)' : 'var(--tm)',
+    cursor: 'pointer', transition: 'all 150ms', whiteSpace: 'nowrap',
+  });
+
+  // Compute quality score from real metrics
+  const qualityScore = metrics
+    ? Math.max(0, 1 - (metrics.crossings || 0) * 0.05 - (metrics.deadlock_recoveries || 0) * 0.10).toFixed(2)
+    : null;
+
+  return (
+    <section id="editor" style={{
+      background: 'var(--pg)',
+      backgroundImage: showGrid ? 'var(--grid)' : 'none',
+      backgroundSize: '32px 32px',
+      padding: '48px 0 0',
+    }}>
+      {/* Hero blurb */}
+      <div style={{ textAlign: 'center', padding: '0 24px 28px' }}>
+        <div style={{ display: 'inline-block', padding: '4px 14px', borderRadius: 999, border: '1px solid var(--ac35)', background: 'var(--ac10)', marginBottom: 18 }}>
+          <span style={{ fontFamily: 'var(--font-m)', fontSize: 11, letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--ac)' }}>Now in beta · v0.4.2</span>
+        </div>
+        <h1 style={{ fontFamily: 'var(--font-d)', fontSize: 'clamp(2rem,5vw,3.25rem)', fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--tp)', lineHeight: 1.15 }}>
+          Diagrams that <span style={{ color: 'var(--ac)' }}>actually route</span>.
+        </h1>
+        <p style={{ marginTop: 14, color: 'var(--ts)', fontSize: 15, maxWidth: 520, margin: '14px auto 0', lineHeight: 1.65 }}>
+          Trellis renders clean, overlap-free Mermaid diagrams — automatically. Drop-in compatible with existing Mermaid syntax. Zero JavaScript required.
+        </p>
+      </div>
+
+      {/* Diagram type tabs */}
+      <div style={{ display: 'flex', justifyContent: 'center', gap: 6, padding: '0 24px 14px', maxWidth: 1280, margin: '0 auto', width: '100%' }}>
+        {[['c4','C4 Context',false], ['flowchart','Flowchart',false], ['classDiagram','Class Diagram',true], ['erDiagram','ER Diagram',true]].map(([type, label, soon]) => (
+          <div key={type} style={{ position: 'relative', display: 'inline-block' }}>
+            <button disabled={soon} onClick={() => !soon && switchType(type)} style={{
+              padding: '6px 18px', borderRadius: 6, fontSize: 12, fontWeight: 500, cursor: soon ? 'not-allowed' : 'pointer',
+              border: '1px solid ' + (soon ? 'var(--ac12)' : diagramType === type ? 'var(--ac)' : 'var(--ac20)'),
+              background: soon ? 'transparent' : diagramType === type ? 'var(--ac18)' : 'var(--sf3)',
+              color: soon ? 'var(--tf)' : diagramType === type ? 'var(--tp)' : 'var(--tm)',
+              transition: 'all 150ms', opacity: soon ? 0.6 : 1,
+            }}>{label}</button>
+            {soon && (
+              <span style={{
+                position: 'absolute', top: -8, right: -8,
+                background: 'var(--ac)', color: '#fff',
+                fontSize: 8, fontFamily: 'var(--font-m)', fontWeight: 700,
+                letterSpacing: '0.08em', textTransform: 'uppercase',
+                padding: '2px 6px', borderRadius: 999,
+                pointerEvents: 'none', whiteSpace: 'nowrap',
+              }}>Soon</span>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {/* Split pane */}
+      <div style={{
+        display: 'grid', gridTemplateColumns: layoutCols,
+        gap: 1, background: 'var(--ac12)',
+        margin: '0 auto', maxWidth: 1280, width: 'calc(100% - 48px)',
+        borderRadius: 10, overflow: 'hidden',
+        border: '1px solid rgba(74,138,181,0.2)',
+        minHeight: 500,
+      }}>
+        {/* Code pane */}
+        <div style={{ display: 'flex', flexDirection: 'column', background: 'var(--cb)', overflow: 'hidden' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 14px', borderBottom: '1px solid var(--ac12)', gap: 8, flexWrap: 'wrap' }}>
+            <span style={{ fontFamily: 'var(--font-m)', fontSize: 10, color: 'var(--tf)', textTransform: 'uppercase', letterSpacing: '0.12em' }}>Mermaid source</span>
+            <button onClick={copyCode} style={btnStyle(copied)}>
+              {copied ? '✓ Copied' : 'Copy'}
+            </button>
+          </div>
+          <textarea
+            value={code}
+            onChange={handleCode}
+            spellCheck={false}
+            style={{
+              flex: 1, background: 'transparent', border: 'none', outline: 'none', resize: 'none',
+              fontFamily: 'var(--font-m)', fontSize: 13, lineHeight: 1.8,
+              color: 'var(--tp)', padding: '16px 18px', tabSize: 2,
+            }}
+          />
+          {error && (
+            <div style={{ padding: '8px 14px', background: 'rgba(248,81,73,0.08)', borderTop: '1px solid rgba(248,81,73,0.2)', fontSize: 11, color: '#f85149', fontFamily: 'var(--font-m)', lineHeight: 1.5 }}>
+              ✗ {error.split('\n')[0].slice(0, 90)}
+            </div>
+          )}
+        </div>
+
+        {/* Preview pane */}
+        <div style={{ display: 'flex', flexDirection: 'column', background: 'var(--pb)', overflow: 'hidden' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 14px', borderBottom: '1px solid var(--ac12)', gap: 8, flexWrap: 'wrap' }}>
+            <span style={{ fontFamily: 'var(--font-m)', fontSize: 10, color: 'var(--tf)', textTransform: 'uppercase', letterSpacing: '0.12em' }}>Preview · Trellis</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                <span style={{ fontFamily: 'var(--font-m)', fontSize: 10, color: 'var(--tf)', letterSpacing: '0.08em' }}>Theme</span>
+                <select
+                  value={theme}
+                  onChange={handleTheme}
+                  style={{
+                    background: 'rgba(0,49,83,0.7)', border: '1px solid rgba(74,138,181,0.3)',
+                    borderRadius: 4, color: 'var(--ts)', fontFamily: 'var(--font-m)',
+                    fontSize: 11, padding: '3px 6px', cursor: 'pointer', outline: 'none',
+                  }}
+                >
+                  {TRELLIS_THEMES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+                </select>
+              </div>
+              <div style={{ position: 'relative', display: 'inline-block' }}>
+                <button disabled style={{ ...btnStyle(false), cursor: 'not-allowed', opacity: 0.5 }} title="SVG export coming soon">
+                  ↓ SVG
+                </button>
+                <span style={{
+                  position: 'absolute', top: -7, right: -7,
+                  background: 'var(--ac)', color: '#fff',
+                  fontSize: 7, fontFamily: 'var(--font-m)', fontWeight: 700,
+                  letterSpacing: '0.08em', textTransform: 'uppercase',
+                  padding: '2px 5px', borderRadius: 999,
+                  pointerEvents: 'none', whiteSpace: 'nowrap',
+                }}>Soon</span>
+              </div>
+              <button onClick={downloadPNG} style={btnStyle(downloading === 'png')} title="Download as PNG">
+                {downloading === 'png' ? '↓ PNG…' : '↓ PNG'}
+              </button>
+            </div>
+          </div>
+          <div ref={previewRef} style={{
+            flex: 1, padding: 24, overflow: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            {!trellisReady && (
+              <div style={{ fontFamily: 'var(--font-m)', fontSize: 12, color: 'var(--tf)', textAlign: 'center' }}>
+                <div style={{ marginBottom: 8, fontSize: 16 }}>⌛</div>
+                Loading Trellis renderer…
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Metrics bar */}
+      {showMetrics && (
+        <div style={{ display: 'flex', justifyContent: 'center', gap: 6, padding: '14px 24px 40px', flexWrap: 'wrap', maxWidth: 1280, margin: '0 auto', width: '100%' }}>
+          {[
+            ['NODES',     metrics ? metrics.nodes    : '—',  null,      null],
+            ['EDGES',     metrics ? metrics.edges    : '—',  null,      null],
+            ['QUALITY',   qualityScore || '—',               '#3fb950', 'rgba(63,185,80,0.12)'],
+            ['RENDER',    metrics ? metrics.render_ms + 'ms' : '—', null, null],
+            ['CROSSINGS', metrics ? metrics.crossings : '—', '#4A8AB5', 'rgba(74,138,181,0.12)'],
+          ].map(([k, v, col, bg]) => (
+            <div key={k} style={{
+              background: bg || 'var(--ac12)',
+              border: `1px solid ${col || 'var(--ac)'}`,
+              borderRadius: 6, padding: '7px 18px', textAlign: 'center', minWidth: 80,
+            }}>
+              <div style={{ fontFamily: 'var(--font-m)', fontSize: 9, color: 'var(--tf)', letterSpacing: '0.15em', textTransform: 'uppercase' }}>{k}</div>
+              <div style={{ fontFamily: 'var(--font-m)', fontSize: 17, fontWeight: 700, color: col || 'var(--ac)', marginTop: 2 }}>{v}</div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Install strip */}
+      <div style={{ display: 'flex', justifyContent: 'center', gap: 10, padding: '0 24px 48px', flexWrap: 'wrap' }}>
+        {[
+          {
+            label: 'VS Code Extension',
+            sub: 'Install from Marketplace',
+            href: 'https://marketplace.visualstudio.com/items?itemName=trellis-mermaid.trellis',
+            icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8m-4-4v4"/></svg>,
+          },
+          {
+            label: 'IntelliJ Plugin',
+            sub: 'Install from JetBrains',
+            href: 'https://plugins.jetbrains.com/plugin/trellis-mermaid',
+            icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M7 8h10M7 12h6M7 16h8"/></svg>,
+          },
+          {
+            label: 'Docker Image',
+            sub: 'ghcr.io/trellis-mermaid/trellis',
+            href: 'https://github.com/trellis-mermaid/trellis/pkgs/container/trellis',
+            icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/><line x1="12" y1="12" x2="12" y2="16"/><line x1="10" y1="14" x2="14" y2="14"/></svg>,
+          },
+        ].map((item, i) => (
+          <a key={i} href={item.href} target="_blank" rel="noopener"
+            style={{
+              display: 'flex', alignItems: 'center', gap: 12,
+              padding: '12px 20px', borderRadius: 8, minWidth: 220,
+              background: 'var(--install-card-bg)', border: '1px solid var(--ac25)',
+              color: 'var(--tp)', textDecoration: 'none',
+              transition: 'border-color 150ms, background 150ms',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor='var(--ac)'; e.currentTarget.style.background='var(--install-card-hover)'; e.currentTarget.style.boxShadow='inset 0 0 0 1px var(--ac)'; }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor='var(--ac25)'; e.currentTarget.style.background='var(--install-card-bg)'; e.currentTarget.style.boxShadow='none'; }}>
+            <span style={{ color: 'var(--ac)', flexShrink: 0 }}>{item.icon}</span>
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--tp)' }}>{item.label}</div>
+              <div style={{ fontSize: 11, color: 'var(--tm)', fontFamily: 'var(--font-m)', marginTop: 2 }}>{item.sub}</div>
+            </div>
+            <svg style={{ marginLeft: 'auto', color: 'var(--tf)', flexShrink: 0 }} width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9 18 15 12 9 6"/></svg>
+          </a>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+// ─── FEATURES SECTION ────────────────────────────────────────────────────────
+
+function FeaturesSection() {
+  const features = [
+    {
+      icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M9 3H5a2 2 0 0 0-2 2v4m6-6h10a2 2 0 0 1 2 2v4M9 3v18m0 0h10a2 2 0 0 0 2-2v-4M9 21H5a2 2 0 0 1-2-2v-4m0 0h18"/></svg>,
+      title: 'Share-Ready Output',
+      desc: 'Rendered diagrams are immediately presentable to stakeholders and third parties — no manual layout cleanup or post-processing required.',
+    },
+    {
+      icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><polyline points="9 18 15 12 9 6"/></svg>,
+      title: 'Easy to Overview',
+      desc: 'Clean edge layout makes even large, complex diagrams easy to read at a glance — for engineers and non-technical audiences alike.',
+    },
+    {
+      icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>,
+      title: 'Four Diagram Types',
+      desc: 'Flowchart, Class, ER, and C4 diagrams — all rendered with the same consistent, clean output. No per-type configuration needed.',
+    },
+    {
+      icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/><line x1="12" y1="12" x2="12" y2="16"/><line x1="10" y1="14" x2="14" y2="14"/></svg>,
+      title: 'Pandoc & Docker Support',
+      desc: 'Generate PDFs straight from Markdown containing Mermaid blocks — one command, no manual steps. Works in CI pipelines via the official Docker image.',
+    },
+    {
+      icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8m-4-4v4"/></svg>,
+      title: 'Editor Extensions',
+      desc: 'Live preview in VS Code and IntelliJ. Re-renders on every keystroke. Ships as standard .vsix or .zip plugin.',
+    },
+    {
+      icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>,
+      title: 'Quality Scoring',
+      desc: 'Every diagram ships with a per-edge quality report. Crossing count, bend count, render time — all machine-readable JSON.',
+    },
+  ];
+
+  const cardHover = (e, enter) => {
+    e.currentTarget.style.borderColor = enter ? 'var(--ac)' : 'rgba(74,138,181,0.2)';
+    e.currentTarget.style.background  = enter ? 'var(--sf2)' : 'var(--sf3)';
+  };
+
+  return (
+    <section id="features" style={{ background: 'var(--sf)', borderTop: '1px solid var(--ac18)', borderBottom: '1px solid var(--ac18)' }}>
+      <div style={{ maxWidth: 1200, margin: '0 auto', padding: '88px 32px' }}>
+        <div style={{ textAlign: 'center', marginBottom: 56 }}>
+          <span style={{ fontFamily: 'var(--font-m)', fontSize: 11, letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--ac)', display: 'block', marginBottom: 12 }}>Why Trellis</span>
+          <h2 style={{ fontFamily: 'var(--font-d)', fontSize: 'clamp(1.75rem,4vw,2.75rem)', fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--tp)', lineHeight: 1.15 }}>
+            Routing that <span style={{ color: 'var(--ac)' }}>actually works.</span>
+          </h2>
+          <p style={{ color: 'var(--tm)', fontSize: 15, lineHeight: 1.7, marginTop: 14, maxWidth: 520, margin: '14px auto 0' }}>
+            Existing renderers produce cluttered, hard-to-read output on complex graphs. Trellis produces clean diagrams that are ready to share the moment they render.
+          </p>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 14 }}>
+          {features.map((f, i) => (
+            <div key={i}
+              style={{ background: 'var(--sf3)', border: '1px solid rgba(74,138,181,0.2)', borderRadius: 8, padding: '22px 24px', transition: 'border-color 150ms, background 150ms', cursor: 'default' }}
+              onMouseEnter={e => cardHover(e, true)}
+              onMouseLeave={e => cardHover(e, false)}>
+              <div style={{ color: 'var(--ac)', marginBottom: 12 }}>{f.icon}</div>
+              <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--tp)', marginBottom: 7 }}>{f.title}</div>
+              <div style={{ fontSize: 13, color: 'var(--tm)', lineHeight: 1.7 }}>{f.desc}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// ─── HOW IT WORKS ────────────────────────────────────────────────────────────
+
+function HowItWorksSection() {
+  const steps = [
+    { step: '01', label: 'Write Mermaid in Markdown', code: '```mermaid\nflowchart LR\n  A --> B --> C\n```' },
+    { step: '02', label: 'Run one command', code: 'docker run --rm \\\n  -v $PWD:/docs \\\n  trellis/trellis \\\n  pandoc report.md -o report.pdf' },
+    { step: '03', label: 'Get a clean PDF', code: '→ Diagrams rendered inline\n→ Quality: 0.98 ✓\n→ No manual adjustments' },
+  ];
+
+  return (
+    <section style={{ backgroundImage: 'var(--grid)', backgroundSize: '32px 32px', borderBottom: '1px solid var(--ac12)' }}>
+      <div style={{ maxWidth: 1200, margin: '0 auto', padding: '88px 32px' }}>
+        <div style={{ textAlign: 'center', marginBottom: 52 }}>
+          <span style={{ fontFamily: 'var(--font-m)', fontSize: 11, letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--ac)', display: 'block', marginBottom: 12 }}>How it works</span>
+          <h2 style={{ fontFamily: 'var(--font-d)', fontSize: 'clamp(1.75rem,4vw,2.75rem)', fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--tp)', lineHeight: 1.15 }}>
+            One command. Clean diagrams.
+          </h2>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 24 }}>
+          {steps.map((s, i) => (
+            <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span style={{ fontFamily: 'var(--font-m)', fontSize: 11, color: 'var(--ac)', letterSpacing: '0.1em' }}>{s.step}</span>
+                <div style={{ flex: 1, height: 1, background: 'rgba(74,138,181,0.2)' }} />
+              </div>
+              <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--tp)' }}>{s.label}</div>
+              <pre style={{
+                background: 'var(--cb)', border: '1px solid rgba(74,138,181,0.2)', borderRadius: 6,
+                padding: '13px 16px', fontFamily: 'var(--font-m)', fontSize: 12,
+                color: 'var(--code-text)', lineHeight: 1.75, whiteSpace: 'pre-wrap', margin: 0,
+              }}>{s.code}</pre>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// ─── USE CASES ───────────────────────────────────────────────────────────────
+
+function UseCasesSection() {
+  const useCases = [
+    { label: 'AI-generated diagrams', desc: 'LLMs emit Mermaid natively. Trellis makes the output presentable — no manual cleanup needed.' },
+    { label: 'Architecture documentation', desc: 'System diagrams that stay in version control and look professional in pull requests.' },
+    { label: 'Client deliverables', desc: 'Export production-quality SVGs from your Markdown without reaching for draw.io.' },
+    { label: 'Pandoc pipelines', desc: 'Drop the Lua filter into your document build. Mermaid blocks render inline, automatically.' },
+  ];
+
+  return (
+    <section style={{ background: 'var(--sf)', borderBottom: '1px solid var(--ac18)' }}>
+      <div style={{ maxWidth: 1200, margin: '0 auto', padding: '88px 32px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 64, alignItems: 'center' }}>
+        <div>
+          <span style={{ fontFamily: 'var(--font-m)', fontSize: 11, letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--ac)', display: 'block', marginBottom: 12 }}>Use cases</span>
+          <h2 style={{ fontFamily: 'var(--font-d)', fontSize: 'clamp(1.75rem,4vw,2.75rem)', fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--tp)', lineHeight: 1.15 }}>
+            Built for the places diagrams get complex.
+          </h2>
+          <p style={{ color: 'var(--tm)', fontSize: 15, lineHeight: 1.7, marginTop: 16 }}>
+            Real software architectures are rarely simple. Trellis routes them cleanly so you can focus on content, not layout.
+          </p>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {useCases.map((u, i) => (
+            <div key={i} style={{ background: 'var(--sf2)', border: '1px solid var(--ac18)', borderRadius: 8, padding: '16px 20px' }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--tp)', marginBottom: 4 }}>{u.label}</div>
+              <div style={{ fontSize: 12, color: 'var(--tm)', lineHeight: 1.65 }}>{u.desc}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// ─── LATEST RELEASE ──────────────────────────────────────────────────────────
+
+function LatestReleaseSection() {
+  const releaseFeatures = [
+    { tag: 'NEW', label: 'C4 diagram support', desc: 'Context, Container, Component, and Code diagrams now render with Trellis orthogonal routing.' },
+    { tag: 'NEW', label: 'render_with_metrics() WASM API', desc: 'Returns per-edge JSON quality scores alongside the SVG output in a single call.' },
+    { tag: 'IMPROVED', label: 'Deadlock resolution', desc: 'Deadlock resolution is 3× faster on graphs with 50+ nodes, with fewer total bends.' },
+    { tag: 'IMPROVED', label: 'VS Code extension', desc: 'Live preview now debounces at 80ms. Dark mode for diagram backgrounds added.' },
+    { tag: 'FIX', label: 'ER diagram foreign key arrows', desc: 'Crow\'s-foot notation now respects directionality in all four compass orientations.' },
+    { tag: 'FIX', label: 'Subgraph boundary routing', desc: 'Edges crossing subgraph borders no longer clip at the bounding box edge.' },
+  ];
+
+  const tagColor = (tag) => ({
+    'NEW':      { bg: 'rgba(63,185,80,0.12)',  border: '#3fb950', color: '#3fb950' },
+    'IMPROVED': { bg: 'var(--ac12)',            border: 'var(--ac)', color: 'var(--ac)' },
+    'FIX':      { bg: 'rgba(210,153,34,0.12)', border: '#d29922',  color: '#d29922' },
+  }[tag] || {});
+
+  return (
+    <section id="release" style={{ backgroundImage: 'var(--grid)', backgroundSize: '32px 32px', borderBottom: '1px solid var(--ac12)' }}>
+      <div style={{ maxWidth: 1200, margin: '0 auto', padding: '88px 32px' }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 48, gap: 16 }}>
+          <div>
+            <span style={{ fontFamily: 'var(--font-m)', fontSize: 11, letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--ac)', display: 'block', marginBottom: 12 }}>Latest release</span>
+            <h2 style={{ fontFamily: 'var(--font-d)', fontSize: 'clamp(1.75rem,4vw,2.75rem)', fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--tp)', lineHeight: 1.15 }}>
+              What's new in v0.4.2
+            </h2>
+            <p style={{ color: 'var(--tm)', fontSize: 13, marginTop: 10, fontFamily: 'var(--font-m)' }}>
+              Released April 18, 2026 · <a href="https://github.com/trellis-mermaid/trellis/releases" target="_blank" rel="noopener" style={{ color: 'var(--ac)', textDecoration: 'underline', textDecorationColor: 'rgba(74,138,181,0.4)' }}>Full changelog on GitHub →</a>
+            </p>
+          </div>
+          <a href="https://github.com/trellis-mermaid/trellis/releases/tag/v0.4.2" target="_blank" rel="noopener"
+            style={{
+              display: 'flex', alignItems: 'center', gap: 8,
+              padding: '10px 20px', borderRadius: 6, fontSize: 13, fontWeight: 600,
+              background: 'var(--ac12)', border: '1px solid var(--ac35)',
+              color: 'var(--tp)', cursor: 'pointer', transition: 'background 150ms, border-color 150ms',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.background='var(--ac25)'; e.currentTarget.style.borderColor='var(--ac)'; }}
+            onMouseLeave={e => { e.currentTarget.style.background='var(--ac12)'; e.currentTarget.style.borderColor='var(--ac35)'; }}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.3 3.44 9.8 8.21 11.39.6.11.82-.26.82-.58v-2.03c-3.34.73-4.04-1.61-4.04-1.61-.55-1.39-1.34-1.76-1.34-1.76-1.09-.75.08-.73.08-.73 1.2.08 1.84 1.24 1.84 1.24 1.07 1.83 2.81 1.3 3.5 1 .11-.78.42-1.3.76-1.6-2.67-.3-5.47-1.33-5.47-5.93 0-1.31.47-2.38 1.24-3.22-.12-.3-.54-1.52.12-3.18 0 0 1.01-.32 3.3 1.23a11.5 11.5 0 0 1 3-.4c1.02.005 2.04.14 3 .4 2.28-1.55 3.29-1.23 3.29-1.23.66 1.66.24 2.88.12 3.18.77.84 1.24 1.91 1.24 3.22 0 4.61-2.81 5.63-5.48 5.92.43.37.81 1.1.81 2.22v3.29c0 .32.22.7.83.58C20.57 21.8 24 17.3 24 12c0-6.63-5.37-12-12-12z"/></svg>
+            View release
+          </a>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 12 }}>
+          {releaseFeatures.map((f, i) => {
+            const tc = tagColor(f.tag);
+            return (
+              <div key={i} style={{ background: tc.bg, border: `1px solid ${tc.border}`, borderRadius: 8, padding: '16px 20px', display: 'flex', gap: 14, alignItems: 'flex-start' }}>
+                <span style={{
+                  flexShrink: 0, padding: '2px 8px', borderRadius: 999, fontSize: 9,
+                  fontFamily: 'var(--font-m)', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase',
+                  background: tc.bg, border: `1px solid ${tc.border}`, color: tc.color, marginTop: 1,
+                }}>{f.tag}</span>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--tp)', marginBottom: 4 }}>{f.label}</div>
+                  <div style={{ fontSize: 12, color: 'var(--tm)', lineHeight: 1.65 }}>{f.desc}</div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// ─── GITHUB / CTA SECTION ────────────────────────────────────────────────────
+
+function GitHubSection() {
+  return (
+    <section style={{ background: 'var(--sf)', borderBottom: '1px solid var(--ac18)' }}>
+      <div style={{ maxWidth: 1200, margin: '0 auto', padding: '88px 32px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 64, alignItems: 'center' }}>
+        <div>
+          <span style={{ fontFamily: 'var(--font-m)', fontSize: 11, letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--ac)', display: 'block', marginBottom: 12 }}>Get started</span>
+          <h2 style={{ fontFamily: 'var(--font-d)', fontSize: 'clamp(1.75rem,4vw,2.5rem)', fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--tp)', lineHeight: 1.15 }}>
+            Zero dependencies.<br />Drop-in Mermaid syntax.
+          </h2>
+          <p style={{ color: 'var(--tm)', fontSize: 15, lineHeight: 1.7, marginTop: 16, marginBottom: 28 }}>
+            Pre-built binaries for Linux, macOS, and Windows. WASM package for the browser. Docker image for CI pipelines.
+          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {[
+              { label: 'Download CLI binary', href: 'https://github.com/trellis-mermaid/trellis/releases', primary: true },
+              { label: 'npm install trellis-wasm', href: 'https://github.com/trellis-mermaid/trellis', primary: false, mono: true },
+              { label: 'docker pull ghcr.io/trellis-mermaid/trellis', href: '#', primary: false, mono: true },
+              { label: 'VS Code — Install extension', href: 'https://marketplace.visualstudio.com/items?itemName=trellis-mermaid.trellis', primary: false, mono: false, icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8m-4-4v4"/></svg> },
+              { label: 'IntelliJ — Install plugin', href: 'https://plugins.jetbrains.com/plugin/trellis-mermaid', primary: false, mono: false, icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M7 8h10M7 12h6M7 16h8"/></svg> },
+            ].map((item, i) => (
+              <a key={i} href={item.href} target="_blank" rel="noopener"
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 8, padding: '10px 18px', borderRadius: 6,
+                  fontFamily: item.mono ? 'var(--font-m)' : 'var(--font-b)',
+                  fontSize: item.mono ? 12 : 14, fontWeight: item.primary ? 600 : 400,
+                  background: item.primary ? 'var(--ac)' : 'var(--sf2)',
+                  color: item.primary ? '#fff' : 'var(--ts)',
+                  border: item.primary ? 'none' : '1px solid var(--ac25)',
+                  cursor: 'pointer', transition: 'background 150ms, color 150ms',
+                }}
+                onMouseEnter={e => { e.currentTarget.style.background = item.primary ? 'var(--ac)' : 'var(--sf3)'; if (!item.primary) e.currentTarget.style.color='var(--tp)'; }}
+                onMouseLeave={e => { e.currentTarget.style.background = item.primary ? 'var(--ac)' : 'var(--sf2)'; if (!item.primary) e.currentTarget.style.color='var(--ts)'; }}>
+                {item.icon && <span style={{ flexShrink: 0, color: 'var(--ac)' }}>{item.icon}</span>}
+                {item.label}
+              </a>
+            ))}
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div style={{ background: 'var(--sf2)', border: '1px solid var(--ac20)', borderRadius: 10, overflow: 'hidden' }}>
+            <div style={{ padding: '18px 22px', borderBottom: '1px solid var(--ac18)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="rgba(74,138,181,0.8)"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.3 3.44 9.8 8.21 11.39.6.11.82-.26.82-.58v-2.03c-3.34.73-4.04-1.61-4.04-1.61-.55-1.39-1.34-1.76-1.34-1.76-1.09-.75.08-.73.08-.73 1.2.08 1.84 1.24 1.84 1.24 1.07 1.83 2.81 1.3 3.5 1 .11-.78.42-1.3.76-1.6-2.67-.3-5.47-1.33-5.47-5.93 0-1.31.47-2.38 1.24-3.22-.12-.3-.54-1.52.12-3.18 0 0 1.01-.32 3.3 1.23a11.5 11.5 0 0 1 3-.4c1.02.005 2.04.14 3 .4 2.28-1.55 3.29-1.23 3.29-1.23.66 1.66.24 2.88.12 3.18.77.84 1.24 1.91 1.24 3.22 0 4.61-2.81 5.63-5.48 5.92.43.37.81 1.1.81 2.22v3.29c0 .32.22.7.83.58C20.57 21.8 24 17.3 24 12c0-6.63-5.37-12-12-12z"/></svg>
+                <span style={{ fontFamily: 'var(--font-m)', fontSize: 12, color: 'var(--tp)', fontWeight: 600 }}>trellis-mermaid/trellis</span>
+              </div>
+              <p style={{ fontSize: 12, color: 'var(--tm)', lineHeight: 1.6 }}>Open source · MIT OR Apache-2.0 · Rust</p>
+            </div>
+            {[
+              { icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>, label: 'Report a bug', href: 'https://github.com/trellis-mermaid/trellis/issues/new?template=bug_report.md', desc: 'Found something broken? Open an issue.' },
+              { icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>, label: 'Request a feature', href: 'https://github.com/trellis-mermaid/trellis/issues/new?template=feature_request.md', desc: 'Have an idea? We\'d love to hear it.' },
+              { icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg>, label: 'View all issues & discussions', href: 'https://github.com/trellis-mermaid/trellis/issues', desc: 'Browse open issues, discussions, and PRs.' },
+            ].map((link, i, arr) => (
+              <a key={i} href={link.href} target="_blank" rel="noopener"
+                style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 22px', borderBottom: i < arr.length - 1 ? '1px solid var(--ac12)' : 'none', transition: 'background 150ms', color: 'inherit', textDecoration: 'none' }}
+                onMouseEnter={e => e.currentTarget.style.background='var(--ac10)'}
+                onMouseLeave={e => e.currentTarget.style.background='transparent'}>
+                <span style={{ color: 'var(--ac)', flexShrink: 0 }}>{link.icon}</span>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--tp)' }}>{link.label}</div>
+                  <div style={{ fontSize: 11, color: 'var(--tf)', marginTop: 1 }}>{link.desc}</div>
+                </div>
+                <svg style={{ marginLeft: 'auto', flexShrink: 0, color: 'rgba(74,138,181,0.5)' }} width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9 18 15 12 9 6"/></svg>
+              </a>
+            ))}
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// ─── FOOTER ──────────────────────────────────────────────────────────────────
+
+function TrellisFooter() {
+  return (
+    <footer style={{ background: 'var(--ft)', borderTop: '1px solid var(--ac12)', padding: '44px 32px' }}>
+      <div style={{ maxWidth: 1200, margin: '0 auto', display: 'grid', gridTemplateColumns: '1fr auto', alignItems: 'start', gap: 32, flexWrap: 'wrap' }}>
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+            <img src="assets/trellis-logo-narrow.svg" height={20} alt="Trellis" style={{ filter: 'var(--logo-filter)' }} />
+            <span style={{ fontFamily: 'var(--font-d)', fontWeight: 700, fontSize: 15, color: 'var(--tp)' }}>Trellis</span>
+          </div>
+          <p style={{ fontSize: 12, color: 'var(--tf)', lineHeight: 1.7, maxWidth: 380 }}>
+            A fast, overlap-free Mermaid-compatible diagram renderer built in Rust.
+            Orthogonal edge routing. Zero JavaScript required.
+          </p>
+          <p style={{ marginTop: 16, fontSize: 11, color: 'var(--tff)', fontFamily: 'var(--font-m)' }}>
+            © 2026 Trellis · MIT OR Apache-2.0 · <a href="https://trellislabs.net" style={{ color: 'var(--ac)' }}>trellislabs.net</a>
+          </p>
+        </div>
+        <div style={{ display: 'flex', gap: 40 }}>
+          {[
+            { heading: 'Product', links: [['Editor','#editor'],['CLI','#'],['WASM','#'],['VS Code','#'],['IntelliJ','#']] },
+            { heading: 'Resources', links: [['GitHub','https://github.com/trellis-mermaid/trellis'],['Docs','#'],['Releases','https://github.com/trellis-mermaid/trellis/releases'],['Issues','https://github.com/trellis-mermaid/trellis/issues']] },
+          ].map(col => (
+            <div key={col.heading}>
+              <div style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.12em', color: 'var(--tff)', marginBottom: 12, fontFamily: 'var(--font-m)' }}>{col.heading}</div>
+              {col.links.map(([l, href]) => (
+                <div key={l} style={{ marginBottom: 8 }}>
+                  <a href={href} target={href.startsWith('http') ? '_blank' : '_self'} rel="noopener"
+                    style={{ fontSize: 12, color: 'var(--tm)', transition: 'color 150ms' }}
+                    onMouseEnter={e => e.target.style.color='var(--tp)'}
+                    onMouseLeave={e => e.target.style.color='var(--tm)'}>{l}</a>
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
+      </div>
+    </footer>
+  );
+}
+
+// ─── TWEAKS ──────────────────────────────────────────────────────────────────
+
+function useTweaks() {
+  const [tweaks, setTweaks] = useState(() => {
+    try { return { ...TWEAK_DEFAULTS, ...JSON.parse(localStorage.getItem('trellis-tweaks') || '{}') }; }
+    catch { return TWEAK_DEFAULTS; }
+  });
+
+  useEffect(() => {
+    const layout  = document.getElementById('tweak-layout');
+    const grid    = document.getElementById('tweak-grid');
+    const metrics = document.getElementById('tweak-metrics');
+    if (layout)  layout.value    = tweaks.layout;
+    if (grid)    grid.checked    = tweaks.showGrid;
+    if (metrics) metrics.checked = tweaks.showMetrics;
+    const handler = () => {
+      const next = {
+        layout:      layout?.value    || tweaks.layout,
+        showGrid:    grid?.checked    ?? tweaks.showGrid,
+        showMetrics: metrics?.checked ?? tweaks.showMetrics,
+      };
+      setTweaks(next);
+      localStorage.setItem('trellis-tweaks', JSON.stringify(next));
+    };
+    [layout, grid, metrics].forEach(el => el?.addEventListener('change', handler));
+    return () => [layout, grid, metrics].forEach(el => el?.removeEventListener('change', handler));
+  }, []);
+
+  useEffect(() => {
+    const onMsg = (e) => {
+      if (e.data?.type === '__activate_edit_mode')   document.getElementById('tweaks-panel')?.classList.add('visible');
+      if (e.data?.type === '__deactivate_edit_mode') document.getElementById('tweaks-panel')?.classList.remove('visible');
+    };
+    window.addEventListener('message', onMsg);
+    return () => window.removeEventListener('message', onMsg);
+  }, []);
+
+  return tweaks;
+}
+
+// ─── APP ─────────────────────────────────────────────────────────────────────
+
+function App() {
+  const tweaks = useTweaks();
+  const [isDark, setIsDark] = React.useState(() => {
+    const saved = localStorage.getItem('trellis-theme-mode');
+    return saved !== null ? saved === 'dark' : true;
+  });
+
+  React.useEffect(() => {
+    document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
+    localStorage.setItem('trellis-theme-mode', isDark ? 'dark' : 'light');
+  }, [isDark]);
+
+  const toggleTheme = () => setIsDark(d => !d);
+
+  return (
+    <>
+      <TrellisHeader isDark={isDark} toggleTheme={toggleTheme} />
+      <EditorSection tweaks={tweaks} isDark={isDark} />
+      <FeaturesSection />
+      <HowItWorksSection />
+      <UseCasesSection />
+      <LatestReleaseSection />
+      <GitHubSection />
+      <TrellisFooter />
+    </>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>
