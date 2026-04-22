@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html><head><meta charset="UTF-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: var(--prussian-blue); font-family: var(--font-body); padding: 20px; display: flex; flex-direction: column; gap: 10px; }
+.label { font-family: var(--font-mono); font-size: 10px; color: var(--fg-tertiary); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 4px; }
+input, select, textarea {
+  width: 100%; background: var(--bg-input); border: 1px solid var(--border-input);
+  border-radius: 4px; color: var(--fg-primary); font-family: var(--font-body); font-size: 13px;
+  padding: 7px 10px; outline: none; transition: border-color 150ms ease;
+}
+input:focus, select:focus, textarea:focus { border-color: var(--cyanotype-azure); box-shadow: inset 0 0 0 1px rgba(74,138,181,0.3); }
+input::placeholder, textarea::placeholder { color: var(--fg-tertiary); }
+.mono-input { font-family: var(--font-mono); font-size: 12px; }
+select option { background: var(--blueprint-blue); }
+</style></head>
+<body>
+  <div><div class="label">Text input</div><input type="text" placeholder="Enter diagram title…"></div>
+  <div><div class="label">Monospace / code input</div><input class="mono-input" type="text" value="flowchart LR&#10;  A --&gt; B"></div>
+  <div><div class="label">Select</div>
+    <select>
+      <option>Flowchart</option><option>Class Diagram</option><option>ER Diagram</option><option>C4</option>
+    </select>
+  </div>
+  <div><div class="label">Direction select</div>
+    <select>
+      <option>TB — Top to Bottom</option><option>LR — Left to Right</option><option>BT</option><option>RL</option>
+    </select>
+  </div>
+</body></html>

@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html><head><meta charset="UTF-8">
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: var(--prussian-blue); font-family: var(--font-body); padding: 20px; }
+.grid { display: flex; flex-direction: column; gap: 6px; }
+.row { display: flex; align-items: center; gap: 12px; }
+.bar { background: var(--cyanotype-azure); border-radius: 2px; height: 16px; opacity: 0.85; }
+.meta { font-family: var(--font-mono); font-size: 10px; color: var(--fg-secondary); min-width: 110px; }
+.radii { display: flex; gap: 10px; margin-top: 12px; flex-wrap: wrap; }
+.rbox { background: var(--bg-surface); border: 1px solid var(--border-default); width: 48px; height: 36px; display: flex; align-items: flex-end; justify-content: center; padding-bottom: 4px; }
+.rlabel { font-family: var(--font-mono); font-size: 9px; color: var(--fg-tertiary); }
+</style></head>
+<body>
+<div class="grid">
+  <div class="row"><div class="meta">--space-1  4px</div><div class="bar" style="width:4px"></div></div>
+  <div class="row"><div class="meta">--space-2  8px</div><div class="bar" style="width:8px"></div></div>
+  <div class="row"><div class="meta">--space-3  12px</div><div class="bar" style="width:12px"></div></div>
+  <div class="row"><div class="meta">--space-4  16px</div><div class="bar" style="width:16px"></div></div>
+  <div class="row"><div class="meta">--space-6  24px</div><div class="bar" style="width:24px"></div></div>
+  <div class="row"><div class="meta">--space-8  32px</div><div class="bar" style="width:32px"></div></div>
+  <div class="row"><div class="meta">--space-12 48px</div><div class="bar" style="width:48px"></div></div>
+  <div class="row"><div class="meta">--space-16 64px</div><div class="bar" style="width:64px"></div></div>
+</div>
+<div class="radii">
+  <div style="text-align:center"><div class="rbox" style="border-radius:4px"></div><div class="rlabel">4px sm</div></div>
+  <div style="text-align:center"><div class="rbox" style="border-radius:6px"></div><div class="rlabel">6px md</div></div>
+  <div style="text-align:center"><div class="rbox" style="border-radius:8px"></div><div class="rlabel">8px lg</div></div>
+  <div style="text-align:center"><div class="rbox" style="border-radius:12px"></div><div class="rlabel">12px xl</div></div>
+  <div style="text-align:center"><div class="rbox" style="border-radius:999px"></div><div class="rlabel">pill</div></div>
+</div>
+</body></html>

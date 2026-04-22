@@ -39,6 +39,26 @@ docker pull ghcr.io/trellis-mermaid/trellis:latest
 docker run --rm -v "$(pwd):/data" ghcr.io/trellis-mermaid/trellis:latest input.mmd -o output.svg
 ```
 
+## Landing Page
+
+The `web/` directory contains the Trellis landing page — a live diagram editor powered by `trellis-wasm` running entirely in the browser.
+
+**Test locally with Docker:**
+
+```bash
+docker build -f docker/Dockerfile.web -t trellis-web .
+docker run --rm -p 8080:80 trellis-web
+# open http://localhost:8080
+```
+
+The page renders diagrams using the same WASM binary as the VS Code and IntelliJ extensions. To update `web/wasm/` after a WASM rebuild:
+
+```bash
+./scripts/build-wasm.sh --release
+cp editors/vscode/wasm/trellis_wasm.js web/wasm/
+cp editors/vscode/wasm/trellis_wasm_bg.wasm web/wasm/
+```
+
 ## Usage
 
 ### Render a diagram
@@ -206,7 +226,12 @@ trellis/
 │   ├── trellis-wasm/      # WASM bindings (wasm-bindgen)
 │   ├── trellis-cli/       # Command-line interface
 │   └── trellis-validate/  # Edge quality scoring, JSON reports, annotated SVG
+├── web/                   # Landing page (live trellis-wasm editor + marketing)
+│   ├── index.html
+│   ├── assets/            # Logo SVGs
+│   └── wasm/              # trellis_wasm.js + trellis_wasm_bg.wasm
 ├── docker/
+│   ├── Dockerfile.web               # nginx:alpine — serves web/ locally
 │   ├── Dockerfile.wasm-builder      # Builds WASM (Rust + wasm-pack)
 │   ├── Dockerfile.vscode-builder    # Builds the VS Code .vsix (Node.js + vsce)
 │   ├── Dockerfile.intellij-builder  # Builds the IntelliJ .zip (JDK 21 + Gradle)

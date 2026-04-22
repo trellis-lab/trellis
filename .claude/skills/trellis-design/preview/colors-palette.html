@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html><head><meta charset="UTF-8">
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: var(--prussian-blue); font-family: var(--font-body); padding: 20px; }
+.swatches { display: flex; gap: 8px; flex-wrap: wrap; }
+.swatch { flex: 1; min-width: 100px; border-radius: 6px; overflow: hidden; }
+.color-block { height: 80px; }
+.info { padding: 8px 10px; background: rgba(0,0,0,0.25); }
+.name { font-size: 11px; font-weight: 600; color: var(--blueprint-white); letter-spacing: 0.05em; }
+.hex { font-family: var(--font-mono); font-size: 10px; color: var(--cyanotype-azure); margin-top: 2px; }
+</style></head>
+<body>
+<div class="swatches">
+  <div class="swatch">
+    <div class="color-block" style="background:#003153"></div>
+    <div class="info"><div class="name">Prussian Blue</div><div class="hex">#003153</div></div>
+  </div>
+  <div class="swatch">
+    <div class="color-block" style="background:#1B3F6E"></div>
+    <div class="info"><div class="name">Blueprint Blue</div><div class="hex">#1B3F6E</div></div>
+  </div>
+  <div class="swatch">
+    <div class="color-block" style="background:#4A8AB5"></div>
+    <div class="info"><div class="name">Cyanotype Azure</div><div class="hex">#4A8AB5</div></div>
+  </div>
+  <div class="swatch">
+    <div class="color-block" style="background:#E8F4FB; border: 1px solid rgba(74,138,181,0.3)"></div>
+    <div class="info"><div class="name">Blueprint White</div><div class="hex">#E8F4FB</div></div>
+  </div>
+  <div class="swatch">
+    <div class="color-block" style="background:#3fb950"></div>
+    <div class="info"><div class="name">Status OK</div><div class="hex">#3fb950</div></div>
+  </div>
+  <div class="swatch">
+    <div class="color-block" style="background:#d29922"></div>
+    <div class="info"><div class="name">Status Warn</div><div class="hex">#d29922</div></div>
+  </div>
+  <div class="swatch">
+    <div class="color-block" style="background:#f85149"></div>
+    <div class="info"><div class="name">Status Error</div><div class="hex">#f85149</div></div>
+  </div>
+</div>
+</body></html>

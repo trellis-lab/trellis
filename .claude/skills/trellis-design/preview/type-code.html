@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html><head><meta charset="UTF-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: var(--prussian-blue); font-family: var(--font-mono); padding: 20px; }
+.block { background: var(--bg-code); border: 1px solid var(--border-default); border-radius: 6px; padding: 14px 16px; margin-bottom: 10px; }
+.comment { color: #4a6b8a; }
+.keyword { color: #7dd3fc; }
+.string { color: #86efac; }
+.fn { color: #c4b5fd; }
+.plain { color: var(--blueprint-white); }
+.label { font-size: 10px; color: var(--fg-tertiary); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 6px; }
+</style></head>
+<body>
+  <div class="label">JetBrains Mono — 13px / 1.75 leading</div>
+  <div class="block" style="font-size:13px;line-height:1.75">
+    <span class="comment">// Render Mermaid → SVG via WASM</span><br>
+    <span class="keyword">import</span> <span class="plain">init, { render } </span><span class="keyword">from</span> <span class="string">'trellis-wasm'</span><span class="plain">;</span><br>
+    <br>
+    <span class="keyword">await</span> <span class="fn">init</span><span class="plain">();</span><br>
+    <span class="keyword">const</span> <span class="plain">svg = </span><span class="fn">render</span><span class="plain">(</span><span class="string">`flowchart LR\n  A --> B --> C`</span><span class="plain">, </span><span class="keyword">null</span><span class="plain">);</span><br>
+    <span class="plain">document.getElementById(</span><span class="string">'preview'</span><span class="plain">).innerHTML = svg;</span>
+  </div>
+  <div class="block" style="font-size:13px;line-height:1.75">
+    <span class="comment">$ trellis render input.mmd -o output.svg</span><br>
+    <span class="plain">→ Rendered 12 nodes, 18 edges in 3.2ms</span><br>
+    <span class="plain">→ Quality score: </span><span class="keyword">0.92</span> <span class="string">[PASS]</span>
+  </div>
+</body></html>

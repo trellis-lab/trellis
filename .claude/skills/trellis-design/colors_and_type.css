@@ -1,0 +1,221 @@
+/* =========================================================
+   TRELLIS DESIGN SYSTEM — Colors & Typography
+   Blueprint drawing aesthetic. Technical. Precise.
+   ========================================================= */
+
+@import url('https://fonts.googleapis.com/css2?family=Courier+Prime:ital,wght@0,400;0,700;1,400&family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;500;600;700&display=swap');
+
+/* ---------------------------------------------------------
+   1. BASE COLOR TOKENS
+   --------------------------------------------------------- */
+:root {
+  /* Brand palette — Blueprint drawing aesthetic */
+  --prussian-blue:     #003153;
+  --blueprint-blue:    #1B3F6E;
+  --cyanotype-azure:   #4A8AB5;
+  --blueprint-white:   #E8F4FB;
+  --ink-white:         #FFFFFF;
+
+  /* Extended scale (derived via oklch) */
+  --prussian-blue-90:  #00253f;   /* pressed / deepened */
+  --prussian-blue-110: #00406a;   /* hover lift */
+  --blueprint-blue-90: #152f55;
+  --blueprint-blue-110:#22527f;
+  --azure-10:          rgba(74,138,181,0.10);
+  --azure-20:          rgba(74,138,181,0.20);
+  --azure-30:          rgba(74,138,181,0.30);
+
+  /* Grid / structural */
+  --grid-line-dark:    rgba(74,138,181,0.12);
+  --grid-line-light:   rgba(0,49,83,0.06);
+
+  /* Status */
+  --status-ok:         #3fb950;   /* green — quality score ≥ 0.80 */
+  --status-warn:       #d29922;   /* yellow — 0.50–0.79 */
+  --status-error:      #f85149;   /* red — < 0.50 */
+
+  /* ---------------------------------------------------------
+     2. SEMANTIC COLOR TOKENS
+     --------------------------------------------------------- */
+
+  /* Backgrounds */
+  --bg-base:           var(--prussian-blue);      /* page background */
+  --bg-surface:        var(--blueprint-blue);      /* cards, panels */
+  --bg-surface-hover:  var(--blueprint-blue-110);
+  --bg-elevated:       #234d85;                   /* modals, tooltips */
+  --bg-code:           #0a1929;                   /* code block bg */
+  --bg-input:          rgba(0,49,83,0.6);
+
+  /* Foreground / Text */
+  --fg-primary:        var(--blueprint-white);     /* body text on dark */
+  --fg-secondary:      rgba(232,244,251,0.65);     /* muted text */
+  --fg-tertiary:       rgba(232,244,251,0.40);     /* disabled / placeholder */
+  --fg-accent:         var(--cyanotype-azure);     /* links, highlights */
+  --fg-code:           #7dd3fc;                   /* inline code */
+
+  /* Borders */
+  --border-default:    rgba(74,138,181,0.25);
+  --border-active:     var(--cyanotype-azure);
+  --border-subtle:     rgba(232,244,251,0.10);
+  --border-input:      rgba(74,138,181,0.35);
+
+  /* ---------------------------------------------------------
+     3. TYPOGRAPHY TOKENS
+     --------------------------------------------------------- */
+
+  /* Font families */
+  --font-display:      'Courier Prime', 'Courier New', monospace;
+  --font-body:         'Inter', system-ui, sans-serif;
+  --font-mono:         'JetBrains Mono', 'SF Mono', 'Fira Code', monospace;
+
+  /* Font sizes — fluid scale */
+  --text-xs:           0.6875rem;  /* 11px */
+  --text-sm:           0.8125rem;  /* 13px */
+  --text-base:         0.9375rem;  /* 15px */
+  --text-md:           1.0625rem;  /* 17px */
+  --text-lg:           1.25rem;    /* 20px */
+  --text-xl:           1.5rem;     /* 24px */
+  --text-2xl:          2rem;       /* 32px */
+  --text-3xl:          2.75rem;    /* 44px */
+  --text-4xl:          3.5rem;     /* 56px */
+
+  /* Font weights */
+  --weight-regular:    400;
+  --weight-medium:     500;
+  --weight-bold:       700;
+
+  /* Line heights */
+  --leading-tight:     1.2;
+  --leading-snug:      1.4;
+  --leading-normal:    1.6;
+  --leading-relaxed:   1.75;
+
+  /* Letter spacing */
+  --tracking-tight:    -0.02em;
+  --tracking-normal:   0em;
+  --tracking-wide:     0.05em;
+  --tracking-wider:    0.10em;
+  --tracking-widest:   0.15em;
+
+  /* ---------------------------------------------------------
+     4. SEMANTIC TYPE ROLES
+     --------------------------------------------------------- */
+
+  /* Hero / page title */
+  --h1-font:           var(--font-display);
+  --h1-size:           var(--text-4xl);
+  --h1-weight:         var(--weight-bold);
+  --h1-leading:        var(--leading-tight);
+  --h1-tracking:       var(--tracking-tight);
+  --h1-color:          var(--fg-primary);
+
+  /* Section heading */
+  --h2-font:           var(--font-display);
+  --h2-size:           var(--text-3xl);
+  --h2-weight:         var(--weight-bold);
+  --h2-leading:        var(--leading-tight);
+  --h2-tracking:       var(--tracking-tight);
+  --h2-color:          var(--fg-primary);
+
+  /* Sub-section */
+  --h3-font:           var(--font-body);
+  --h3-size:           var(--text-xl);
+  --h3-weight:         var(--weight-bold);
+  --h3-leading:        var(--leading-snug);
+  --h3-tracking:       var(--tracking-normal);
+  --h3-color:          var(--fg-primary);
+
+  /* Card / component label */
+  --h4-font:           var(--font-body);
+  --h4-size:           var(--text-md);
+  --h4-weight:         var(--weight-medium);
+  --h4-leading:        var(--leading-snug);
+  --h4-color:          var(--fg-primary);
+
+  /* Body text */
+  --p-font:            var(--font-body);
+  --p-size:            var(--text-base);
+  --p-weight:          var(--weight-regular);
+  --p-leading:         var(--leading-normal);
+  --p-color:           var(--fg-secondary);
+
+  /* Uppercase label / badge text */
+  --label-font:        var(--font-body);
+  --label-size:        var(--text-xs);
+  --label-weight:      var(--weight-medium);
+  --label-tracking:    var(--tracking-widest);
+  --label-color:       var(--fg-accent);
+
+  /* Code / mono */
+  --code-font:         var(--font-mono);
+  --code-size:         var(--text-sm);
+  --code-weight:       var(--weight-regular);
+  --code-leading:      var(--leading-relaxed);
+  --code-color:        var(--fg-code);
+
+  /* ---------------------------------------------------------
+     5. SPACING TOKENS (8px base unit)
+     --------------------------------------------------------- */
+  --space-1:           4px;
+  --space-2:           8px;
+  --space-3:           12px;
+  --space-4:           16px;
+  --space-6:           24px;
+  --space-8:           32px;
+  --space-12:          48px;
+  --space-16:          64px;
+  --space-24:          96px;
+
+  /* ---------------------------------------------------------
+     6. BORDER RADIUS
+     --------------------------------------------------------- */
+  --radius-sm:         4px;
+  --radius-md:         6px;
+  --radius-lg:         8px;
+  --radius-xl:         12px;
+  --radius-pill:       999px;
+
+  /* ---------------------------------------------------------
+     7. TRANSITIONS
+     --------------------------------------------------------- */
+  --transition-fast:   150ms ease;
+  --transition-base:   200ms ease;
+
+  /* ---------------------------------------------------------
+     8. BLUEPRINT GRID BACKGROUND (mixin reference)
+     Use on any element:
+       background-image: var(--blueprint-grid);
+     --------------------------------------------------------- */
+  --blueprint-grid:
+    linear-gradient(var(--grid-line-dark) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-line-dark) 1px, transparent 1px);
+  --blueprint-grid-size: 32px 32px;
+}
+
+/* ---------------------------------------------------------
+   9. UTILITY CLASSES
+   --------------------------------------------------------- */
+
+/* Type roles */
+.t-h1  { font-family: var(--h1-font); font-size: var(--h1-size); font-weight: var(--h1-weight); line-height: var(--h1-leading); letter-spacing: var(--h1-tracking); color: var(--h1-color); }
+.t-h2  { font-family: var(--h2-font); font-size: var(--h2-size); font-weight: var(--h2-weight); line-height: var(--h2-leading); letter-spacing: var(--h2-tracking); color: var(--h2-color); }
+.t-h3  { font-family: var(--h3-font); font-size: var(--h3-size); font-weight: var(--h3-weight); line-height: var(--h3-leading); color: var(--h3-color); }
+.t-h4  { font-family: var(--h4-font); font-size: var(--h4-size); font-weight: var(--h4-weight); line-height: var(--h4-leading); color: var(--h4-color); }
+.t-p   { font-family: var(--p-font); font-size: var(--p-size); font-weight: var(--p-weight); line-height: var(--p-leading); color: var(--p-color); }
+.t-label { font-family: var(--label-font); font-size: var(--label-size); font-weight: var(--label-weight); letter-spacing: var(--label-tracking); text-transform: uppercase; color: var(--label-color); }
+.t-code { font-family: var(--code-font); font-size: var(--code-size); line-height: var(--code-leading); color: var(--code-color); }
+
+/* Color utilities */
+.bg-base     { background-color: var(--bg-base); }
+.bg-surface  { background-color: var(--bg-surface); }
+.bg-elevated { background-color: var(--bg-elevated); }
+.text-primary   { color: var(--fg-primary); }
+.text-secondary { color: var(--fg-secondary); }
+.text-accent    { color: var(--fg-accent); }
+
+/* Blueprint grid */
+.blueprint-bg {
+  background-color: var(--bg-base);
+  background-image: var(--blueprint-grid);
+  background-size: var(--blueprint-grid-size);
+}

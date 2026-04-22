@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html><head><meta charset="UTF-8">
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: var(--prussian-blue); font-family: var(--font-body); padding: 20px; }
+.grid { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+.variant { background: var(--bg-surface); border: 1px solid var(--border-default); border-radius: 8px; padding: 16px; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.variant img { display: block; }
+.label { font-family: var(--font-mono); font-size: 9px; color: var(--fg-tertiary); text-transform: uppercase; letter-spacing: 0.1em; text-align: center; }
+.on-light { background: #fff; border-radius: 6px; padding: 12px; }
+</style></head>
+<body>
+<div class="grid">
+  <div class="variant">
+    <img src="../assets/logo.png" width="48" height="48" alt="Mark only">
+    <div class="label">Mark / PNG</div>
+  </div>
+  <div class="variant">
+    <img src="../assets/logo-text.png" height="80" alt="Logo with text">
+    <div class="label">Mark + wordmark / PNG</div>
+  </div>
+  <div class="variant">
+    <img src="../assets/trellis-logo-narrow.svg" height="48" alt="SVG mark">
+    <div class="label">Mark / SVG</div>
+  </div>
+  <div class="variant">
+    <img src="../assets/trellis-logo-narrow-text.svg" height="64" alt="SVG narrow text">
+    <div class="label">Narrow + text / SVG</div>
+  </div>
+  <div class="variant on-light">
+    <img src="../assets/trellis-logo-wide.svg" height="48" alt="SVG wide">
+    <div class="label">Wide / SVG (on light)</div>
+  </div>
+</div>
+</body></html>

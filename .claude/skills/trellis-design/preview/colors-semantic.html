@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html><head><meta charset="UTF-8">
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: var(--prussian-blue); font-family: var(--font-body); padding: 20px; }
+.grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.token { background: var(--bg-surface); border: 1px solid var(--border-default); border-radius: 6px; padding: 10px; }
+.dot { width: 32px; height: 32px; border-radius: 50%; margin-bottom: 6px; border: 1px solid rgba(255,255,255,0.08); }
+.tname { font-size: 10px; font-weight: 600; color: var(--blueprint-white); letter-spacing: 0.04em; }
+.tval { font-family: var(--font-mono); font-size: 9px; color: var(--cyanotype-azure); margin-top: 2px; }
+</style></head>
+<body>
+<div class="grid">
+  <div class="token"><div class="dot" style="background:var(--bg-base)"></div><div class="tname">bg-base</div><div class="tval">--prussian-blue</div></div>
+  <div class="token"><div class="dot" style="background:var(--bg-surface)"></div><div class="tname">bg-surface</div><div class="tval">--blueprint-blue</div></div>
+  <div class="token"><div class="dot" style="background:var(--bg-elevated)"></div><div class="tname">bg-elevated</div><div class="tval">#234d85</div></div>
+  <div class="token"><div class="dot" style="background:var(--bg-code)"></div><div class="tname">bg-code</div><div class="tval">#0a1929</div></div>
+  <div class="token"><div class="dot" style="background:var(--fg-primary)"></div><div class="tname">fg-primary</div><div class="tval">--blueprint-white</div></div>
+  <div class="token"><div class="dot" style="background:var(--fg-secondary)"></div><div class="tname">fg-secondary</div><div class="tval">65% white</div></div>
+  <div class="token"><div class="dot" style="background:var(--fg-accent)"></div><div class="tname">fg-accent</div><div class="tval">--cyanotype-azure</div></div>
+  <div class="token"><div class="dot" style="background:var(--border-active)"></div><div class="tname">border-active</div><div class="tval">--cyanotype-azure</div></div>
+</div>
+</body></html>

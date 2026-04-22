@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html><head><meta charset="UTF-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: var(--prussian-blue); font-family: var(--font-body); padding: 20px;
+  background-image: var(--blueprint-grid); background-size: var(--blueprint-grid-size); }
+.row { display: flex; gap: 10px; flex-wrap: wrap; }
+.card { background: var(--bg-surface); border: 1px solid var(--border-default); border-radius: 8px; padding: 14px 16px; flex: 1; min-width: 150px; transition: border-color 150ms ease; }
+.card:hover { border-color: var(--cyanotype-azure); }
+.card-title { font-size: 13px; font-weight: 600; color: var(--fg-primary); margin-bottom: 4px; }
+.card-meta { font-family: var(--font-mono); font-size: 10px; color: var(--fg-tertiary); }
+.card-value { font-family: var(--font-mono); font-size: 22px; font-weight: 700; color: var(--cyanotype-azure); margin: 8px 0 2px; }
+.card-active { border-color: var(--cyanotype-azure); box-shadow: inset 0 0 0 1px rgba(74,138,181,0.3); }
+</style></head>
+<body>
+<div class="row">
+  <div class="card">
+    <div class="card-meta">NODES</div>
+    <div class="card-value">12</div>
+    <div class="card-title">Diagram nodes</div>
+  </div>
+  <div class="card card-active">
+    <div class="card-meta">EDGES</div>
+    <div class="card-value">18</div>
+    <div class="card-title">Routed edges</div>
+  </div>
+  <div class="card">
+    <div class="card-meta">QUALITY</div>
+    <div class="card-value" style="color:#3fb950">0.92</div>
+    <div class="card-title">Avg quality score</div>
+  </div>
+  <div class="card">
+    <div class="card-meta">RENDER TIME</div>
+    <div class="card-value">3.2ms</div>
+    <div class="card-title">Last render</div>
+  </div>
+</div>
+</body></html>

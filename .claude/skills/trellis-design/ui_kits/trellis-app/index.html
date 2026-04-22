@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Trellis — Mermaid Diagram Renderer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Courier+Prime:wght@400;700&family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+:root {
+  --prussian:   #003153;
+  --blueprint:  #1B3F6E;
+  --azure:      #4A8AB5;
+  --white:      #E8F4FB;
+  --ink:        #FFFFFF;
+  --code-bg:    #071523;
+  --ok:         #3fb950;
+  --warn:       #d29922;
+  --err:        #f85149;
+  --font-d:     'Courier Prime', monospace;
+  --font-b:     'Inter', sans-serif;
+  --font-m:     'JetBrains Mono', monospace;
+  --grid: linear-gradient(rgba(74,138,181,0.10) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(74,138,181,0.10) 1px, transparent 1px);
+}
+body { background: var(--prussian); color: var(--white); font-family: var(--font-b); min-height: 100vh; overflow-x: hidden; }
+#root { display: flex; flex-direction: column; min-height: 100vh; }
+a { color: inherit; text-decoration: none; }
+
+/* Mermaid diagram theming */
+.mermaid svg { max-width: 100%; height: auto; }
+
+/* Tweaks panel */
+#tweaks-panel {
+  position: fixed; bottom: 20px; right: 20px; z-index: 9999;
+  background: var(--blueprint); border: 1px solid rgba(74,138,181,0.4);
+  border-radius: 10px; padding: 16px; width: 220px; display: none;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+}
+#tweaks-panel.visible { display: block; }
+#tweaks-panel h4 { font-size: 11px; text-transform: uppercase; letter-spacing: 0.15em; color: var(--azure); margin-bottom: 12px; }
+.tweak-row { margin-bottom: 10px; }
+.tweak-row label { display: block; font-size: 11px; color: rgba(232,244,251,0.6); margin-bottom: 4px; }
+.tweak-row select, .tweak-row input[type=range] { width: 100%; background: rgba(0,49,83,0.6); border: 1px solid rgba(74,138,181,0.3); border-radius: 4px; color: var(--white); font-size: 12px; padding: 4px 6px; outline: none; }
+.tweak-row input[type=checkbox] { margin-right: 6px; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<div id="tweaks-panel">
+  <h4>Tweaks</h4>
+  <div class="tweak-row">
+    <label>Editor layout</label>
+    <select id="tweak-layout">
+      <option value="50-50">50 / 50 split</option>
+      <option value="40-60">40 / 60 — more preview</option>
+      <option value="60-40">60 / 40 — more code</option>
+    </select>
+  </div>
+  <div class="tweak-row">
+    <label>Diagram theme</label>
+    <select id="tweak-theme">
+      <option value="default">Default</option>
+      <option value="dark">Dark</option>
+      <option value="neutral">Neutral</option>
+      <option value="forest">Forest</option>
+    </select>
+  </div>
+  <div class="tweak-row">
+    <label><input type="checkbox" id="tweak-grid" checked> Blueprint grid</label>
+  </div>
+  <div class="tweak-row">
+    <label><input type="checkbox" id="tweak-metrics" checked> Show metrics bar</label>
+  </div>
+</div>
+
+<script type="text/babel" src="Header.jsx"></script>
+<script type="text/babel" src="Editor.jsx"></script>
+<script type="text/babel" src="Landing.jsx"></script>
+<script type="text/babel" src="Footer.jsx"></script>
+<script type="text/babel">
+const { useState, useEffect, useCallback, useRef } = React;
+
+const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+  "layout": "50-50",
+  "theme": "default",
+  "showGrid": true,
+  "showMetrics": true
+}/*EDITMODE-END*/;
+
+function App() {
+  const [tweaks, setTweaks] = useState(() => {
+    try { return { ...TWEAK_DEFAULTS, ...JSON.parse(localStorage.getItem('trellis-tweaks') || '{}') }; }
+    catch { return TWEAK_DEFAULTS; }
+  });
+
+  // Sync tweaks from panel controls
+  useEffect(() => {
+    const layout = document.getElementById('tweak-layout');
+    const theme = document.getElementById('tweak-theme');
+    const grid = document.getElementById('tweak-grid');
+    const metrics = document.getElementById('tweak-metrics');
+    if (layout) layout.value = tweaks.layout;
+    if (theme) theme.value = tweaks.theme;
+    if (grid) grid.checked = tweaks.showGrid;
+    if (metrics) metrics.checked = tweaks.showMetrics;
+
+    const handler = () => {
+      const next = {
+        layout: layout?.value || tweaks.layout,
+        theme: theme?.value || tweaks.theme,
+        showGrid: grid?.checked ?? tweaks.showGrid,
+        showMetrics: metrics?.checked ?? tweaks.showMetrics,
+      };
+      setTweaks(next);
+      localStorage.setItem('trellis-tweaks', JSON.stringify(next));
+      window.parent.postMessage({ type: '__edit_mode_set_keys', edits: next }, '*');
+    };
+    [layout, theme, grid, metrics].forEach(el => el?.addEventListener('change', handler));
+    return () => [layout, theme, grid, metrics].forEach(el => el?.removeEventListener('change', handler));
+  }, []);
+
+  useEffect(() => {
+    const onMsg = (e) => {
+      if (e.data?.type === '__activate_edit_mode') document.getElementById('tweaks-panel')?.classList.add('visible');
+      if (e.data?.type === '__deactivate_edit_mode') document.getElementById('tweaks-panel')?.classList.remove('visible');
+    };
+    window.addEventListener('message', onMsg);
+    window.parent.postMessage({ type: '__edit_mode_available' }, '*');
+    return () => window.removeEventListener('message', onMsg);
+  }, []);
+
+  return (
+    <>
+      <TrellisHeader />
+      <EditorSection tweaks={tweaks} />
+      <LandingSection />
+      <TrellisFooter />
+    </>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>

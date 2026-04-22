@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html><head><meta charset="UTF-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: var(--prussian-blue); font-family: var(--font-body); padding: 20px; }
+.row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
+.label { font-size: 10px; color: var(--fg-tertiary); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 8px; font-family: var(--font-mono); }
+button { font-family: var(--font-body); cursor: pointer; font-size: 13px; font-weight: 500; border: none; border-radius: 6px; padding: 7px 16px; transition: background 150ms ease; }
+.btn-primary { background: var(--cyanotype-azure); color: var(--prussian-blue); }
+.btn-primary:hover { background: #5a9bc5; }
+.btn-secondary { background: transparent; color: var(--blueprint-white); border: 1px solid var(--border-default); }
+.btn-secondary:hover { background: var(--azure-10); border-color: var(--cyanotype-azure); }
+.btn-ghost { background: transparent; color: var(--cyanotype-azure); }
+.btn-ghost:hover { background: var(--azure-10); }
+.btn-danger { background: rgba(248,81,73,0.15); color: #f85149; border: 1px solid rgba(248,81,73,0.3); }
+.btn-sm { padding: 4px 10px; font-size: 11px; border-radius: 4px; }
+.btn-lg { padding: 10px 24px; font-size: 15px; border-radius: 8px; }
+.btn-disabled { opacity: 0.4; cursor: not-allowed; }
+</style></head>
+<body>
+<div class="label">Variants</div>
+<div class="row">
+  <button class="btn-primary">Render Diagram</button>
+  <button class="btn-secondary">Export SVG</button>
+  <button class="btn-ghost">Copy Code</button>
+  <button class="btn-danger">Clear All</button>
+</div>
+<div class="label">Sizes</div>
+<div class="row">
+  <button class="btn-primary btn-sm">Small</button>
+  <button class="btn-primary">Default</button>
+  <button class="btn-primary btn-lg">Large</button>
+</div>
+<div class="label">States</div>
+<div class="row">
+  <button class="btn-primary">Default</button>
+  <button class="btn-primary btn-disabled" disabled>Disabled</button>
+  <button class="btn-secondary">Secondary</button>
+  <button class="btn-secondary btn-disabled" disabled>Disabled</button>
+</div>
+</body></html>
