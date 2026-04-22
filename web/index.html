@@ -99,18 +99,6 @@ button { font-family: inherit; }
 ::-webkit-scrollbar-track { background: var(--scrollbar-track); }
 ::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 3px; }
 
-#tweaks-panel {
-  position: fixed; bottom: 20px; right: 20px; z-index: 9999;
-  background: var(--sf); border: 1px solid rgba(74,138,181,0.4);
-  border-radius: 10px; padding: 16px; width: 230px; display: none;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.5);
-}
-#tweaks-panel.visible { display: block; }
-#tweaks-panel h4 { font-size: 11px; text-transform: uppercase; letter-spacing: 0.15em; color: var(--ac); margin-bottom: 12px; font-family: var(--font-m); }
-.tweak-row { margin-bottom: 10px; }
-.tweak-row label { display: block; font-size: 11px; color: var(--tm); margin-bottom: 4px; }
-.tweak-row select { width: 100%; background: rgba(0,49,83,0.6); border: 1px solid rgba(74,138,181,0.3); border-radius: 4px; color: var(--tp); font-size: 12px; padding: 5px 8px; outline: none; cursor: pointer; }
-.tweak-row input[type=checkbox] { margin-right: 6px; accent-color: var(--ac); }
 </style>
 </head>
 <body>
@@ -122,45 +110,22 @@ button { font-family: inherit; }
 })();
 </script>
 
-<!-- Load trellis-wasm as ES module; expose globally, fire event when ready -->
+<!-- Load trellis-wasm; store a Promise so React can .then() it even after it resolves -->
 <script type="module">
   import init, { render, render_with_metrics } from './wasm/trellis_wasm.js';
-  try {
-    // init() resolves trellis_wasm_bg.wasm relative to trellis_wasm.js via import.meta.url
-    await init();
-    window.__trellis = { render, render_with_metrics };
-  } catch (e) {
-    window.__trellis_error = String(e);
-  }
-  window.dispatchEvent(new Event('trellis-ready'));
+  window.__trellisReady = init()
+    .then(() => { window.__trellis = { render, render_with_metrics }; })
+    .catch(e => { window.__trellis_error = String(e); });
 </script>
 
 <div id="root"></div>
 
-<div id="tweaks-panel">
-  <h4>Tweaks</h4>
-  <div class="tweak-row">
-    <label>Editor split</label>
-    <select id="tweak-layout">
-      <option value="50-50">50 / 50 — balanced</option>
-      <option value="40-60">40 / 60 — more preview</option>
-      <option value="60-40">60 / 40 — more code</option>
-    </select>
-  </div>
-  <div class="tweak-row">
-    <label><input type="checkbox" id="tweak-grid" checked> Blueprint grid</label>
-  </div>
-  <div class="tweak-row">
-    <label><input type="checkbox" id="tweak-metrics" checked> Metrics bar</label>
-  </div>
-</div>
+
 
 <script type="text/babel">
 const { useState, useEffect, useRef, useCallback } = React;
 
 // ─── CONSTANTS ───────────────────────────────────────────────────────────────
-
-const TWEAK_DEFAULTS = { layout: '50-50', showGrid: true, showMetrics: true };
 
 // Trellis theme names — serde serializes with rename_all = "lowercase"
 // Dark default: ClassicBlueprint; Light default: Default
@@ -325,7 +290,7 @@ function TrellisHeader({ isDark, toggleTheme }) {
 
 // ─── EDITOR SECTION ──────────────────────────────────────────────────────────
 
-function EditorSection({ tweaks, isDark }) {
+function EditorSection({ isDark }) {
   const [diagramType, setDiagramType] = useState(() => localStorage.getItem('trellis-dtype') || 'flowchart');
   const [code, setCode] = useState(() => localStorage.getItem('trellis-code') || SAMPLE_DIAGRAMS.flowchart);
 
@@ -337,13 +302,14 @@ function EditorSection({ tweaks, isDark }) {
   const [copied, setCopied] = useState(false);
   const [downloading, setDownloading] = useState(null);
   const [trellisReady, setTrellisReady] = useState(() => !!window.__trellis);
+  const [trellisError, setTrellisError] = useState(null);
   const [metrics, setMetrics] = useState(null);
   const previewRef = useRef(null);
   const debounceRef = useRef(null);
 
-  const layoutCols = tweaks?.layout === '40-60' ? '40% 1fr' : tweaks?.layout === '60-40' ? '60% 1fr' : '1fr 1fr';
-  const showGrid    = tweaks?.showGrid !== false;
-  const showMetrics = tweaks?.showMetrics !== false;
+  const layoutCols  = '1fr 1fr';
+  const showGrid    = true;
+  const showMetrics = true;
 
   // Switch default theme when color mode changes (only if using the default)
   useEffect(() => {
@@ -353,12 +319,15 @@ function EditorSection({ tweaks, isDark }) {
     }
   }, [isDark]);
 
-  // Wait for WASM to load
+  // Await the WASM Promise — safe to call even after it has already resolved
   useEffect(() => {
-    if (window.__trellis) return;
-    const onReady = () => setTrellisReady(true);
-    window.addEventListener('trellis-ready', onReady);
-    return () => window.removeEventListener('trellis-ready', onReady);
+    if (window.__trellis) { setTrellisReady(true); return; }
+    const p = window.__trellisReady;
+    if (!p) { setTrellisError('WASM module failed to start'); return; }
+    p.then(() => {
+      if (window.__trellis) setTrellisReady(true);
+      else setTrellisError(window.__trellis_error || 'WASM init failed');
+    });
   }, []);
 
   const renderDiagram = useCallback((src, thm) => {
@@ -597,10 +566,16 @@ function EditorSection({ tweaks, isDark }) {
           <div ref={previewRef} style={{
             flex: 1, padding: 24, overflow: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}>
-            {!trellisReady && (
+            {!trellisReady && !trellisError && (
               <div style={{ fontFamily: 'var(--font-m)', fontSize: 12, color: 'var(--tf)', textAlign: 'center' }}>
                 <div style={{ marginBottom: 8, fontSize: 16 }}>⌛</div>
                 Loading Trellis renderer…
+              </div>
+            )}
+            {trellisError && (
+              <div style={{ fontFamily: 'var(--font-m)', fontSize: 12, color: '#f85149', textAlign: 'center', maxWidth: 340, lineHeight: 1.6 }}>
+                <div style={{ marginBottom: 8, fontSize: 16 }}>✗</div>
+                {trellisError}
               </div>
             )}
           </div>
@@ -1001,50 +976,9 @@ function TrellisFooter() {
   );
 }
 
-// ─── TWEAKS ──────────────────────────────────────────────────────────────────
-
-function useTweaks() {
-  const [tweaks, setTweaks] = useState(() => {
-    try { return { ...TWEAK_DEFAULTS, ...JSON.parse(localStorage.getItem('trellis-tweaks') || '{}') }; }
-    catch { return TWEAK_DEFAULTS; }
-  });
-
-  useEffect(() => {
-    const layout  = document.getElementById('tweak-layout');
-    const grid    = document.getElementById('tweak-grid');
-    const metrics = document.getElementById('tweak-metrics');
-    if (layout)  layout.value    = tweaks.layout;
-    if (grid)    grid.checked    = tweaks.showGrid;
-    if (metrics) metrics.checked = tweaks.showMetrics;
-    const handler = () => {
-      const next = {
-        layout:      layout?.value    || tweaks.layout,
-        showGrid:    grid?.checked    ?? tweaks.showGrid,
-        showMetrics: metrics?.checked ?? tweaks.showMetrics,
-      };
-      setTweaks(next);
-      localStorage.setItem('trellis-tweaks', JSON.stringify(next));
-    };
-    [layout, grid, metrics].forEach(el => el?.addEventListener('change', handler));
-    return () => [layout, grid, metrics].forEach(el => el?.removeEventListener('change', handler));
-  }, []);
-
-  useEffect(() => {
-    const onMsg = (e) => {
-      if (e.data?.type === '__activate_edit_mode')   document.getElementById('tweaks-panel')?.classList.add('visible');
-      if (e.data?.type === '__deactivate_edit_mode') document.getElementById('tweaks-panel')?.classList.remove('visible');
-    };
-    window.addEventListener('message', onMsg);
-    return () => window.removeEventListener('message', onMsg);
-  }, []);
-
-  return tweaks;
-}
-
 // ─── APP ─────────────────────────────────────────────────────────────────────
 
 function App() {
-  const tweaks = useTweaks();
   const [isDark, setIsDark] = React.useState(() => {
     const saved = localStorage.getItem('trellis-theme-mode');
     return saved !== null ? saved === 'dark' : true;
@@ -1060,7 +994,7 @@ function App() {
   return (
     <>
       <TrellisHeader isDark={isDark} toggleTheme={toggleTheme} />
-      <EditorSection tweaks={tweaks} isDark={isDark} />
+      <EditorSection isDark={isDark} />
       <FeaturesSection />
       <HowItWorksSection />
       <UseCasesSection />

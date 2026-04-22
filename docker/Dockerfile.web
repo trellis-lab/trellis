@@ -1,0 +1,6 @@
+FROM nginx:alpine
+
+# nginx:alpine already includes application/wasm in its default mime.types
+COPY web/ /usr/share/nginx/html/
+
+EXPOSE 80
