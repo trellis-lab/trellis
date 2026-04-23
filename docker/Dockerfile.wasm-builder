@@ -25,7 +25,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN rustup target add wasm32-unknown-unknown
 
 # ── wasm-pack ─────────────────────────────────────────────────────────────────
-RUN curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+RUN cargo install wasm-pack --version 0.14.0 --locked
 
 # ── Entrypoint script ──────────────────────────────────────────────────────────
 COPY docker/wasm-entrypoint.sh /usr/local/bin/build-wasm

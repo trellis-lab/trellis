@@ -22,10 +22,11 @@ WASM_CRATE="/workspace/crates/trellis-wasm"
 # Editor output directories (host paths via the volume mount)
 VSCODE_OUT="/workspace/editors/vscode/wasm"
 IJ_OUT="/workspace/editors/intellij/src/main/resources/wasm"
+WEB_OUT="/workspace/web/wasm"
 
 echo "==> Building trellis-wasm ($WASM_PACK_PROFILE) …"
 
-mkdir -p "$VSCODE_OUT" "$IJ_OUT"
+mkdir -p "$VSCODE_OUT" "$IJ_OUT" "$WEB_OUT"
 
 # ── VS Code extension (web / ES module) ───────────────────────────────────────
 echo "--> Target: web  →  $VSCODE_OUT"
@@ -43,11 +44,20 @@ wasm-pack build $RELEASE_FLAG \
     --out-name trellis_wasm \
     "$WASM_CRATE"
 
+# ── Web landing page (web / ES module) ───────────────────────────────────────
+echo "--> Target: web  →  $WEB_OUT"
+wasm-pack build $RELEASE_FLAG \
+    --target web \
+    --out-dir "$WEB_OUT" \
+    --out-name trellis_wasm \
+    "$WASM_CRATE"
+
 # ── Optional: wasm-opt size optimisation (release builds only) ────────────────
 if [[ "$WASM_PACK_PROFILE" == "release" ]] && command -v wasm-opt &>/dev/null; then
     for WASM_FILE in \
         "$VSCODE_OUT/trellis_wasm_bg.wasm" \
-        "$IJ_OUT/trellis_wasm_bg.wasm"; do
+        "$IJ_OUT/trellis_wasm_bg.wasm" \
+        "$WEB_OUT/trellis_wasm_bg.wasm"; do
         echo "--> wasm-opt -O3  $WASM_FILE"
         wasm-opt -O3 "$WASM_FILE" -o "$WASM_FILE"
     done
@@ -57,3 +67,4 @@ echo ""
 echo "==> WASM build complete."
 echo "    VS Code :  $VSCODE_OUT"
 echo "    IntelliJ:  $IJ_OUT"
+echo "    Web     :  $WEB_OUT"
