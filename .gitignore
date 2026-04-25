@@ -34,6 +34,9 @@ build/
 editors/intellij/.gradle/
 editors/intellij/.intellijPlatform/
 
+# Infrastructure working files (may contain exported DNS records, etc.)
+docs/setup-infra/*.txt
+
 # PDF outputs
 *.pdf
 images/bugs/
@@ -41,3 +44,10 @@ images/bugs/
 # Benchmarking & validation
 temp/
 *.local.*
+
+.env
+
+# Terraform
+.terraform.lock.hcl
+terraform.tfstate
+**/.terraform

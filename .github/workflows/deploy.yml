@@ -1,0 +1,82 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  id-token: write   # required for OIDC token
+  contents: read
+
+jobs:
+  deploy:
+    name: Build and Deploy
+    runs-on: ubuntu-latest
+    environment: prod
+
+    env:
+      AWS_REGION: eu-central-1
+      S3_BUCKET: trellislab-net-prod
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Cache Rust build artifacts
+        uses: Swatinem/rust-cache@v2
+
+      - name: Install wasm-pack 0.14.0
+        run: cargo install wasm-pack --version 0.14.0 --locked
+
+      - name: Assemble dist
+        run: |
+          # 1. Copy web content (includes stale local web/wasm/ — overwritten next)
+          mkdir -p dist
+          cp -r web/. dist/
+          # 2. Build fresh WASM directly into dist/wasm/, overwriting local test files
+          wasm-pack build crates/trellis-wasm \
+            --target web \
+            --release \
+            --out-dir dist/wasm \
+            --out-name trellis_wasm
+
+      - name: Configure AWS credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.IAM_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Sync all files to S3 (24h default cache)
+        run: |
+          aws s3 sync dist/ s3://${{ env.S3_BUCKET }}/ \
+            --delete \
+            --cache-control "public, max-age=86400"
+
+      - name: Override HTML cache headers (5 min)
+        run: |
+          aws s3 cp dist/ s3://${{ env.S3_BUCKET }}/ \
+            --recursive \
+            --exclude "*" --include "*.html" \
+            --cache-control "public, max-age=300" \
+            --metadata-directive REPLACE
+
+      - name: Override WASM cache headers (immutable + correct MIME)
+        run: |
+          aws s3 cp dist/ s3://${{ env.S3_BUCKET }}/ \
+            --recursive \
+            --exclude "*" --include "*.wasm" \
+            --content-type "application/wasm" \
+            --cache-control "public, max-age=31536000, immutable" \
+            --metadata-directive REPLACE
+
+      - name: Invalidate CloudFront cache
+        run: |
+          aws cloudfront create-invalidation \
+            --distribution-id ${{ vars.CLOUDFRONT_DISTRIBUTION_ID }} \
+            --paths "/*"

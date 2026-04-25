@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>404 — Page not found · Trellis</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Courier+Prime:wght@400;700&family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --prussian-blue:   #003153;
+      --blueprint-blue:  #1B3F6E;
+      --cyanotype-azure: #4A8AB5;
+      --blueprint-white: #E8F4FB;
+      --fg-secondary:    rgba(232,244,251,0.65);
+      --fg-tertiary:     rgba(232,244,251,0.35);
+      --border-default:  rgba(74,138,181,0.25);
+      --grid-line-dark:  rgba(74,138,181,0.12);
+      --font-display:    'Courier Prime', monospace;
+      --font-body:       'Inter', system-ui, sans-serif;
+      --font-mono:       'JetBrains Mono', monospace;
+    }
+
+    html, body { height: 100%; }
+
+    body {
+      background-color: var(--prussian-blue);
+      background-image:
+        linear-gradient(var(--grid-line-dark) 1px, transparent 1px),
+        linear-gradient(90deg, var(--grid-line-dark) 1px, transparent 1px);
+      background-size: 32px 32px;
+      color: var(--blueprint-white);
+      font-family: var(--font-body);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── Header ───────────────────────────────────────────── */
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      padding: 0 32px;
+      border-bottom: 1px solid var(--border-default);
+      background: rgba(0,49,83,0.85);
+      backdrop-filter: blur(12px);
+    }
+    .header-inner {
+      max-width: 1200px;
+      margin: 0 auto;
+      height: 56px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .logo-link {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+    }
+    .logo-link img {
+      height: 26px;
+      filter: invert(1) brightness(2);
+    }
+    .logo-wordmark {
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 17px;
+      color: var(--blueprint-white);
+      letter-spacing: -0.01em;
+    }
+    nav { display: flex; align-items: center; gap: 4px; }
+    nav a {
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--fg-secondary);
+      text-decoration: none;
+      transition: color 150ms, background 150ms;
+    }
+    nav a:hover { color: var(--blueprint-white); background: rgba(74,138,181,0.10); }
+
+    /* ── Main ─────────────────────────────────────────────── */
+    main {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 64px 32px;
+    }
+
+    .container {
+      max-width: 680px;
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 0;
+    }
+
+    /* ── Diagram ──────────────────────────────────────────── */
+    .diagram-area {
+      width: 100%;
+      margin-bottom: 48px;
+    }
+    .diagram-svg {
+      width: 100%;
+      height: auto;
+      display: block;
+    }
+
+    /* ── Copy block ───────────────────────────────────────── */
+    .label {
+      font-family: var(--font-body);
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--cyanotype-azure);
+      margin-bottom: 16px;
+    }
+
+    h1 {
+      font-family: var(--font-display);
+      font-size: clamp(2rem, 5vw, 2.75rem);
+      font-weight: 700;
+      line-height: 1.2;
+      letter-spacing: -0.02em;
+      color: var(--blueprint-white);
+      margin-bottom: 16px;
+    }
+
+    .body-text {
+      font-size: 15px;
+      line-height: 1.6;
+      color: var(--fg-secondary);
+      margin-bottom: 40px;
+      max-width: 480px;
+    }
+
+    /* ── Actions ──────────────────────────────────────────── */
+    .actions {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      width: 100%;
+      justify-content: center;
+    }
+    .action-primary {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 20px;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 600;
+      background: var(--cyanotype-azure);
+      color: var(--prussian-blue);
+      text-decoration: none;
+      transition: background 150ms;
+    }
+    .action-primary:hover { background: #5a9bc5; }
+
+    /* ── Footer ───────────────────────────────────────────── */
+    footer {
+      padding: 24px 32px;
+      border-top: 1px solid var(--border-default);
+    }
+    .footer-inner {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+    .footer-text {
+      font-size: 12px;
+      color: var(--fg-tertiary);
+      font-family: var(--font-body);
+    }
+    .footer-links {
+      display: flex;
+      gap: 16px;
+    }
+    .footer-links a {
+      font-size: 12px;
+      color: var(--fg-tertiary);
+      text-decoration: none;
+      transition: color 150ms;
+    }
+    .footer-links a:hover { color: var(--cyanotype-azure); }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="header-inner">
+      <a class="logo-link" href="/">
+        <img src="assets/trellis-logo-narrow.svg" alt="Trellis mark" />
+        <span class="logo-wordmark">Trellis</span>
+      </a>
+      <nav>
+        <a href="/#editor">Editor</a>
+        <a href="https://github.com/trellis-mermaid/trellis">GitHub</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <div class="container">
+
+      <div class="diagram-area">
+        <svg class="diagram-svg" viewBox="0 0 680 220" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <defs>
+            <pattern id="smallgrid" width="32" height="32" patternUnits="userSpaceOnUse">
+              <path d="M 32 0 L 0 0 0 32" fill="none" stroke="rgba(74,138,181,0.12)" stroke-width="0.5"/>
+            </pattern>
+            <marker id="arr" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+              <path d="M0,0 L0,6 L8,3 z" fill="#4A8AB5"/>
+            </marker>
+            <marker id="arr-dim" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+              <path d="M0,0 L0,6 L8,3 z" fill="rgba(74,138,181,0.4)"/>
+            </marker>
+            <marker id="arr-red" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+              <path d="M0,0 L0,6 L8,3 z" fill="rgba(248,81,73,0.5)"/>
+            </marker>
+          </defs>
+
+          <!-- Background -->
+          <rect width="680" height="220" fill="#003153" rx="8"/>
+          <rect width="680" height="220" fill="url(#smallgrid)" rx="8"/>
+          <rect width="680" height="220" fill="none" stroke="rgba(74,138,181,0.25)" stroke-width="1" rx="8"/>
+
+          <!-- Diagram content shifted up 20px -->
+          <g transform="translate(0,-20)">
+            <!-- Node: START -->
+            <rect x="24" y="92" width="88" height="36" rx="4" fill="#1B3F6E" stroke="#4A8AB5" stroke-width="1"/>
+            <text x="68" y="115" font-family="'JetBrains Mono',monospace" font-size="12" fill="#E8F4FB" text-anchor="middle">START</text>
+
+            <!-- Edge START → router -->
+            <path d="M 112 110 L 160 110" stroke="#4A8AB5" stroke-width="1.5" marker-end="url(#arr)"/>
+
+            <!-- Node: router -->
+            <rect x="160" y="88" width="104" height="44" rx="4" fill="#1B3F6E" stroke="#4A8AB5" stroke-width="1"/>
+            <text x="212" y="108" font-family="'JetBrains Mono',monospace" font-size="11" fill="rgba(232,244,251,0.6)" text-anchor="middle">route()</text>
+            <text x="212" y="124" font-family="'JetBrains Mono',monospace" font-size="11" fill="#E8F4FB" text-anchor="middle">/unknown/*</text>
+
+            <!-- Edge router → 404 box -->
+            <path d="M 264 110 L 296 110" stroke="#4A8AB5" stroke-width="1.5" marker-end="url(#arr)"/>
+
+            <!-- Node: 404 — large, accent border -->
+            <rect x="296" y="60" width="148" height="100" rx="4" fill="#0a1929" stroke="#4A8AB5" stroke-width="2"/>
+            <text x="370" y="120" font-family="'Courier Prime',monospace" font-size="52" font-weight="700" fill="#4A8AB5" text-anchor="middle" letter-spacing="-2">404</text>
+            <text x="370" y="148" font-family="'JetBrains Mono',monospace" font-size="10" fill="rgba(232,244,251,0.5)" text-anchor="middle">NOT FOUND</text>
+
+            <!-- Edge 404 → log -->
+            <path d="M 444 110 L 476 110" stroke="#4A8AB5" stroke-width="1.5" stroke-dasharray="4 3" marker-end="url(#arr-dim)"/>
+
+            <!-- Node: log_error -->
+            <rect x="476" y="92" width="100" height="36" rx="4" fill="#1B3F6E" stroke="rgba(74,138,181,0.4)" stroke-width="1"/>
+            <text x="526" y="108" font-family="'JetBrains Mono',monospace" font-size="10" fill="rgba(232,244,251,0.5)" text-anchor="middle">log_error()</text>
+            <text x="526" y="122" font-family="'JetBrains Mono',monospace" font-size="10" fill="rgba(74,138,181,0.8)" text-anchor="middle">status: 404</text>
+
+            <!-- Edge log → END -->
+            <path d="M 576 110 L 624 110" stroke="rgba(74,138,181,0.4)" stroke-width="1.5" stroke-dasharray="4 3" marker-end="url(#arr-dim)"/>
+
+            <!-- Node: END -->
+            <rect x="624" y="92" width="32" height="36" rx="4" fill="#1B3F6E" stroke="rgba(74,138,181,0.3)" stroke-width="1"/>
+            <text x="640" y="115" font-family="'JetBrains Mono',monospace" font-size="9" fill="rgba(232,244,251,0.4)" text-anchor="middle">END</text>
+
+            <!-- Error path: router → 404 (below, red dashed) -->
+            <path d="M 212 132 L 212 202 L 370 202 L 370 160" stroke="#f85149" stroke-width="2.5" stroke-dasharray="5 3" opacity="0.7" marker-end="url(#arr-red)"/>
+            <text x="275" y="218" font-family="'JetBrains Mono',monospace" font-size="10" fill="rgba(248,81,73,0.6)" text-anchor="middle">path unresolved → 404</text>
+          </g>
+        </svg>
+      </div>
+
+      <p class="label">Error 404</p>
+      <h1>Page not found.</h1>
+      <p class="body-text">The path you requested could not be resolved. It may have been moved, renamed, or never existed — like a node with no edges.</p>
+
+      <div class="actions">
+        <a class="action-primary" href="/">← Back to home</a>
+      </div>
+
+    </div>
+  </main>
+
+  <footer>
+    <div class="footer-inner">
+      <span class="footer-text">© 2026 Trellis.</span>
+      <div class="footer-links">
+        <a href="#">Changelog</a>
+      </div>
+    </div>
+  </footer>
+
+</body>
+</html>

@@ -43,6 +43,10 @@ docker run --rm -v "$(pwd):/data" ghcr.io/trellis-mermaid/trellis:latest input.m
 
 The `web/` directory contains the Trellis landing page — a live diagram editor powered by `trellis-wasm` running entirely in the browser.
 
+**Live site:** [trellislab.net](https://trellislab.net)
+
+The WASM binary is built from source and deployed automatically on every push to `main`. The `web/wasm/` directory contains a local test build only — it is overwritten during CI deployment.
+
 **Test locally with Docker:**
 
 ```bash
@@ -51,7 +55,7 @@ docker run --rm -p 8080:80 trellis-web
 # open http://localhost:8080
 ```
 
-The page renders diagrams using the same WASM binary as the VS Code and IntelliJ extensions. To update `web/wasm/` after a WASM rebuild:
+**Update local `web/wasm/` after a WASM rebuild:**
 
 ```bash
 ./scripts/build-wasm.sh --release
@@ -246,6 +250,11 @@ trellis/
 │   ├── build-intellij-docker.sh
 │   ├── build-cli.sh
 │   └── build-pandoc-docker.sh
+├── terraform/
+│   ├── bootstrap/         # One-time: S3 state bucket + DynamoDB lock
+│   ├── shared/            # Route 53, ACM cert, ProtonMail DNS records
+│   └── environments/
+│       └── prod/          # S3, CloudFront, IAM OIDC role, DNS aliases
 ├── tests/
 │   └── benchmarks/
 │       └── fixtures/      # Benchmark test files (b01-b12.mmd)
@@ -340,6 +349,7 @@ The project uses GitHub Actions for continuous integration and release automatio
 
 - **CI** (`ci.yml`): Runs on every push to `main`/`develop` and on PRs. Tests on Linux, macOS, and Windows. Builds WASM, CLI binaries (4 platforms), VS Code extension, and IntelliJ plugin.
 - **Release** (`release.yml`): Triggered by pushing a version tag (`v*`). Creates a draft GitHub Release with pre-built CLI binaries, editor extensions, and pushes the Docker image to GHCR.
+- **Deploy** (`deploy.yml`): Triggered on every push to `main`. Builds WASM from source, syncs `web/` to S3, and invalidates CloudFront. Uses GitHub OIDC — no stored AWS credentials. Infrastructure defined in `terraform/`.
 
 ### Creating a release
 
@@ -377,4 +387,4 @@ See [docs/trellis-implementation-plan.md](docs/trellis-implementation-plan.md) f
 
 ## License
 
-MIT OR Apache-2.0
+Closed source
