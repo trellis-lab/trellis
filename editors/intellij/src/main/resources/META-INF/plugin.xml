@@ -5,8 +5,41 @@
     <vendor url="https://github.com/trellis-mermaid/trellis">Trellis</vendor>
 
     <description><![CDATA[
-        Live preview for Mermaid <code>.mmd</code> diagram files using the Trellis VLSI-routing renderer.
-        Opens a tool window that re-renders the diagram on every file save or editor switch.
+        <p>Instant, beautiful diagram previews for your Mermaid files — right inside your JetBrains IDE.</p>
+
+        <h2>What is Trellis?</h2>
+        <p>Trellis is a next-generation Mermaid diagram renderer that produces clean, overlap-free diagrams
+        with crisp orthogonal edge routing. Where stock renderers let edges tangle and overlap, Trellis routes
+        every connection precisely — the result is diagrams that are easier to read and share.</p>
+
+        <h2>Features</h2>
+
+        <h3>Live Preview</h3>
+        <p>Open any <code>.mmd</code> or <code>.mermaid</code> file and see your diagram rendered instantly
+        in the Trellis Preview tool window. The preview updates on every save — no manual refresh needed.</p>
+
+        <h3>Crisp, Overlap-Free Diagrams</h3>
+        <p>Trellis uses precision edge routing to ensure connections never cross nodes or pile on top of each
+        other. The result is diagrams that communicate clearly at every scale.</p>
+
+        <h3>Supports Multiple Diagram Types</h3>
+        <ul>
+            <li><b>Flowcharts</b> — decision trees, process flows</li>
+            <li><b>Class Diagrams</b> — UML class hierarchies</li>
+            <li><b>Entity-Relationship Diagrams</b> — database schemas with crow's foot notation</li>
+            <li><b>C4 Diagrams</b> — software architecture and system context maps</li>
+        </ul>
+
+        <h3>Mermaid Compatible</h3>
+        <p>Trellis reads standard Mermaid syntax — no migration, no new language to learn.
+        Your existing <code>.mmd</code> files work as-is.</p>
+
+        <h2>Getting Started</h2>
+        <ol>
+            <li>Open any <code>.mmd</code> or <code>.mermaid</code> file.</li>
+            <li>The <b>Trellis Preview</b> tool window opens on the right and renders your diagram.</li>
+            <li>Save the file — the preview updates automatically.</li>
+        </ol>
     ]]></description>
 
     <!-- Requires only the platform module; works in all JetBrains IDEs -->

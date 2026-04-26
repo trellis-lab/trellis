@@ -21,6 +21,16 @@ class TrellisSettings : PersistentStateComponent<TrellisSettings.State> {
         var defaultDirection: String = "TB",
         /** Colour theme ("default", "dark", "neutral"). */
         var defaultTheme: String = "default",
+        /** Display labels on diagram edges. */
+        var showEdgeLabels: Boolean = true,
+        /** Display the diagram title above the diagram. */
+        var showTitle: Boolean = true,
+        /** How edges are drawn when they cross: None, Arc, Rectangular, Skip. */
+        var crossingStyle: String = "Skip",
+        /** Corner roundness of node shapes in pixels (0 = sharp corners). */
+        var cornerRadius: Double = 8.0,
+        /** Font size in pixels for edge labels. */
+        var labelFontSize: Double = 10.0,
     )
 
     private var myState = State()

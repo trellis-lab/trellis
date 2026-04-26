@@ -46,9 +46,13 @@ You can also right-click in the editor and choose **Trellis: Open Preview**, or 
 |---|---|---|
 | `trellis.autoPreview` | `true` | Update preview automatically as you edit |
 | `trellis.showEdgeLabels` | `true` | Show labels on diagram edges |
+| `trellis.showTitle` | `true` | Show the diagram title above the diagram |
+| `trellis.crossingStyle` | `Skip` | How edges look when they cross: `None`, `Arc`, `Rectangular`, or `Skip` |
+| `trellis.cornerRadius` | `8` | Node corner roundness in pixels (0 = sharp corners) |
+| `trellis.labelFontSize` | `10` | Edge label font size in pixels |
 
 ---
 
 ## Feedback & Issues
 
-Found a bug or have a feature request? Please open an issue on [GitHub](https://github.com/trellis/trellis).
+Found a bug or have a feature request? Please open an issue on [GitHub](https://github.com/trellis-mermaid/trellis).

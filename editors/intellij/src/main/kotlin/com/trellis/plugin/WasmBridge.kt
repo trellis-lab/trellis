@@ -90,6 +90,21 @@ object WasmBridge {
         if (settings.defaultDirection != "TB") {
             parts += "\"direction\":\"${settings.defaultDirection}\""
         }
+        if (!settings.showEdgeLabels) {
+            parts += "\"show_edge_labels\":false"
+        }
+        if (!settings.showTitle) {
+            parts += "\"show_title\":false"
+        }
+        if (settings.crossingStyle != "Skip") {
+            parts += "\"crossing_style\":\"${settings.crossingStyle}\""
+        }
+        if (settings.cornerRadius != 8.0) {
+            parts += "\"corner_radius\":${settings.cornerRadius}"
+        }
+        if (settings.labelFontSize != 10.0) {
+            parts += "\"label_font_size\":${settings.labelFontSize}"
+        }
         return if (parts.isEmpty()) "" else "{${parts.joinToString(",")}}"
     }
 

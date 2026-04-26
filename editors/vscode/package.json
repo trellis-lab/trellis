@@ -86,15 +86,41 @@
                     "default": true,
                     "description": "Automatically update the preview when the diagram source changes."
                 },
-                "trellis.cellSize": {
-                    "type": "number",
-                    "default": 10,
-                    "description": "Grid cell size in pixels used by the routing algorithm."
-                },
                 "trellis.showEdgeLabels": {
                     "type": "boolean",
                     "default": true,
-                    "description": "Display edge labels in the preview."
+                    "description": "Display labels on diagram edges."
+                },
+                "trellis.showTitle": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Display the diagram title above the diagram."
+                },
+                "trellis.crossingStyle": {
+                    "type": "string",
+                    "default": "Skip",
+                    "enum": ["None", "Arc", "Rectangular", "Skip"],
+                    "enumDescriptions": [
+                        "Edges pass through each other with no decoration.",
+                        "The crossing edge hops over with a smooth arc.",
+                        "The crossing edge hops over with a square bump.",
+                        "The crossing edge stroke breaks at the crossing point."
+                    ],
+                    "description": "How edges are drawn when they cross each other."
+                },
+                "trellis.cornerRadius": {
+                    "type": "number",
+                    "default": 8,
+                    "minimum": 0,
+                    "maximum": 32,
+                    "description": "Corner roundness of node shapes in pixels. Set to 0 for sharp corners."
+                },
+                "trellis.labelFontSize": {
+                    "type": "number",
+                    "default": 10,
+                    "minimum": 6,
+                    "maximum": 24,
+                    "description": "Font size in pixels for edge labels."
                 }
             }
         }
