@@ -1,0 +1,17 @@
+apiVersion: 1
+
+datasources:
+  - name: Athena
+    type: grafana-athena-datasource
+    uid: athena-trellislab
+    isDefault: true
+    jsonData:
+      authType: keys
+      defaultRegion: eu-central-1
+      catalog: AwsDataCatalog
+      database: cf_logs
+      workgroup: trellislab-analytics
+      outputLocation: s3://trellislab-athena-results/results/
+    secureJsonData:
+      accessKey: ${GRAFANA_AWS_ACCESS_KEY_ID}
+      secretKey: ${GRAFANA_AWS_SECRET_ACCESS_KEY}

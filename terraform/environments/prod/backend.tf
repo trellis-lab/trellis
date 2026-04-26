@@ -19,3 +19,9 @@ terraform {
 provider "aws" {
   region = "eu-central-1"
 }
+
+# WAF for CloudFront must be managed in us-east-1 (CLOUDFRONT scope requirement)
+provider "aws" {
+  alias  = "us_east_1"
+  region = "us-east-1"
+}

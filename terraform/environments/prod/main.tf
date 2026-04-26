@@ -125,6 +125,7 @@ resource "aws_cloudfront_distribution" "website" {
   default_root_object = "index.html"
   price_class         = "PriceClass_200"
   aliases             = [var.domain, "www.${var.domain}"]
+  web_acl_id          = var.enable_waf ? aws_wafv2_web_acl.website[0].arn : null
 
   origin {
     domain_name              = aws_s3_bucket.website.bucket_regional_domain_name

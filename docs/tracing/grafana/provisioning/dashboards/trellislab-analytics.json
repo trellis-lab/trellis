@@ -1,0 +1,282 @@
+{
+  "description": "Trellis website analytics from CloudFront access logs via Athena",
+  "editable": true,
+  "graphTooltip": 1,
+  "refresh": "1h",
+  "schemaVersion": 39,
+  "tags": ["analytics", "cloudfront", "trellis"],
+  "time": { "from": "now-7d", "to": "now" },
+  "timezone": "browser",
+  "title": "Trellis Analytics",
+  "uid": "trellislab-analytics",
+  "panels": [
+
+    {
+      "id": 1,
+      "title": "Unique Visitors",
+      "type": "stat",
+      "datasource": { "type": "grafana-athena-datasource", "uid": "athena-trellislab" },
+      "gridPos": { "x": 0, "y": 0, "w": 6, "h": 4 },
+      "options": { "reduceOptions": { "calcs": ["sum"] }, "textMode": "auto", "colorMode": "background" },
+      "fieldConfig": { "defaults": { "color": { "mode": "thresholds" }, "thresholds": { "mode": "absolute", "steps": [{ "color": "blue", "value": null }] } } },
+      "targets": [{
+        "refId": "A",
+        "datasource": { "type": "grafana-athena-datasource", "uid": "athena-trellislab" },
+        "connectionArgs": { "catalog": "__default", "database": "__default", "region": "__default", "resultReuseEnabled": false, "resultReuseMaxAgeInMinutes": 60 },
+        "rawSQL": "SELECT SUM(unique_visitors) AS value FROM cf_logs.daily_summary WHERE $__dateFilter(request_date)",
+        "format": 1
+      }]
+    },
+
+    {
+      "id": 2,
+      "title": "Human Requests",
+      "type": "stat",
+      "datasource": { "type": "grafana-athena-datasource", "uid": "athena-trellislab" },
+      "gridPos": { "x": 6, "y": 0, "w": 6, "h": 4 },
+      "options": { "reduceOptions": { "calcs": ["sum"] }, "textMode": "auto", "colorMode": "background" },
+      "fieldConfig": { "defaults": { "color": { "mode": "thresholds" }, "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] } } },
+      "targets": [{
+        "refId": "A",
+        "datasource": { "type": "grafana-athena-datasource", "uid": "athena-trellislab" },
+        "connectionArgs": { "catalog": "__default", "database": "__default", "region": "__default", "resultReuseEnabled": false, "resultReuseMaxAgeInMinutes": 60 },
+        "rawSQL": "SELECT SUM(human_requests) AS value FROM cf_logs.daily_summary WHERE $__dateFilter(request_date)",
+        "format": 1
+      }]
+    },
+
+    {
+      "id": 3,
+      "title": "CF Cache Hit Rate",
+      "type": "stat",
+      "datasource": { "type": "grafana-athena-datasource", "uid": "athena-trellislab" },
+      "gridPos": { "x": 12, "y": 0, "w": 6, "h": 4 },
+      "options": { "reduceOptions": { "calcs": ["mean"] }, "textMode": "auto", "colorMode": "background" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "color": { "mode": "thresholds" },
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "red", "value": null },
+            { "color": "yellow", "value": 50 },
+            { "color": "green", "value": 80 }
+          ]}
+        }
+      },
+      "targets": [{
+        "refId": "A",
+        "datasource": { "type": "grafana-athena-datasource", "uid": "athena-trellislab" },
+        "connectionArgs": { "catalog": "__default", "database": "__default", "region": "__default", "resultReuseEnabled": false, "resultReuseMaxAgeInMinutes": 60 },
+        "rawSQL": "SELECT ROUND(AVG(cf_hit_rate_pct), 1) AS value FROM cf_logs.daily_summary WHERE $__dateFilter(request_date)",
+        "format": 1
+      }]
+    },
+
+    {
+      "id": 4,
+      "title": "Error Rate",
+      "type": "stat",
+      "datasource": { "type": "grafana-athena-datasource", "uid": "athena-trellislab" },
+      "gridPos": { "x": 18, "y": 0, "w": 6, "h": 4 },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "textMode": "auto", "colorMode": "background" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "color": { "mode": "thresholds" },
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "green", "value": null },
+            { "color": "yellow", "value": 1 },
+            { "color": "red", "value": 5 }
+          ]}
+        }
+      },
+      "targets": [{
+        "refId": "A",
+        "datasource": { "type": "grafana-athena-datasource", "uid": "athena-trellislab" },
+        "connectionArgs": { "catalog": "__default", "database": "__default", "region": "__default", "resultReuseEnabled": false, "resultReuseMaxAgeInMinutes": 60 },
+        "rawSQL": "SELECT ROUND(100.0 * SUM(http_4xx + http_5xx) / NULLIF(SUM(total_requests), 0), 2) AS value FROM cf_logs.daily_summary WHERE $__dateFilter(request_date)",
+        "format": 1
+      }]
+    },
+
+    {
+      "id": 5,
+      "title": "Daily Requests",
+      "description": "Human vs bot traffic per day",
+      "type": "timeseries",
+      "datasource": { "type": "grafana-athena-datasource", "uid": "athena-trellislab" },
+      "gridPos": { "x": 0, "y": 4, "w": 16, "h": 8 },
+      "options": { "tooltip": { "mode": "multi" } },
+      "fieldConfig": {
+        "defaults": { "custom": { "lineWidth": 2, "fillOpacity": 10 } },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "bot_requests" }, "properties": [{ "id": "color", "value": { "fixedColor": "orange", "mode": "fixed" } }] },
+          { "matcher": { "id": "byName", "options": "human_requests" }, "properties": [{ "id": "color", "value": { "fixedColor": "blue", "mode": "fixed" } }] }
+        ]
+      },
+      "targets": [{
+        "refId": "A",
+        "datasource": { "type": "grafana-athena-datasource", "uid": "athena-trellislab" },
+        "connectionArgs": { "catalog": "__default", "database": "__default", "region": "__default", "resultReuseEnabled": false, "resultReuseMaxAgeInMinutes": 60 },
+        "rawSQL": "SELECT request_date AS time, human_requests, bot_requests FROM cf_logs.daily_summary WHERE $__dateFilter(request_date) ORDER BY 1",
+        "format": 0
+      }]
+    },
+
+    {
+      "id": 6,
+      "title": "p95 Response Time",
+      "type": "timeseries",
+      "datasource": { "type": "grafana-athena-datasource", "uid": "athena-trellislab" },
+      "gridPos": { "x": 16, "y": 4, "w": 8, "h": 8 },
+      "options": { "tooltip": { "mode": "single" } },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "custom": { "lineWidth": 2, "fillOpacity": 5 },
+          "color": { "fixedColor": "purple", "mode": "fixed" }
+        }
+      },
+      "targets": [{
+        "refId": "A",
+        "datasource": { "type": "grafana-athena-datasource", "uid": "athena-trellislab" },
+        "connectionArgs": { "catalog": "__default", "database": "__default", "region": "__default", "resultReuseEnabled": false, "resultReuseMaxAgeInMinutes": 60 },
+        "rawSQL": "SELECT request_date AS time, p95_response_sec FROM cf_logs.daily_summary WHERE $__dateFilter(request_date) ORDER BY 1",
+        "format": 0
+      }]
+    },
+
+    {
+      "id": 7,
+      "title": "Top Pages",
+      "description": "Human traffic only",
+      "type": "table",
+      "datasource": { "type": "grafana-athena-datasource", "uid": "athena-trellislab" },
+      "gridPos": { "x": 0, "y": 12, "w": 12, "h": 8 },
+      "options": { "sortBy": [{ "displayName": "hits", "desc": true }] },
+      "fieldConfig": {
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "hits" }, "properties": [{ "id": "custom.width", "value": 80 }] }
+        ]
+      },
+      "targets": [{
+        "refId": "A",
+        "datasource": { "type": "grafana-athena-datasource", "uid": "athena-trellislab" },
+        "connectionArgs": { "catalog": "__default", "database": "__default", "region": "__default", "resultReuseEnabled": false, "resultReuseMaxAgeInMinutes": 60 },
+        "rawSQL": "SELECT uri_stem, COUNT(*) AS hits, ROUND(AVG(time_taken), 3) AS avg_sec FROM cf_logs.requests_enriched WHERE browser_family <> 'bot' AND $__dateFilter(request_date) GROUP BY uri_stem ORDER BY hits DESC LIMIT 15",
+        "format": 1
+      }]
+    },
+
+    {
+      "id": 8,
+      "title": "Browser Family",
+      "type": "piechart",
+      "datasource": { "type": "grafana-athena-datasource", "uid": "athena-trellislab" },
+      "gridPos": { "x": 12, "y": 12, "w": 6, "h": 8 },
+      "options": { "pieType": "pie", "displayLabels": ["name", "value"], "legend": { "displayMode": "table", "placement": "right" }, "reduceOptions": { "values": true, "calcs": [], "fields": "" } },
+      "targets": [{
+        "refId": "A",
+        "datasource": { "type": "grafana-athena-datasource", "uid": "athena-trellislab" },
+        "connectionArgs": { "catalog": "__default", "database": "__default", "region": "__default", "resultReuseEnabled": false, "resultReuseMaxAgeInMinutes": 60 },
+        "rawSQL": "SELECT browser_family, COUNT(*) AS hits FROM cf_logs.requests_enriched WHERE browser_family <> 'bot' AND $__dateFilter(request_date) GROUP BY browser_family ORDER BY hits DESC",
+        "format": 1
+      }]
+    },
+
+    {
+      "id": 9,
+      "title": "Device Class",
+      "type": "piechart",
+      "datasource": { "type": "grafana-athena-datasource", "uid": "athena-trellislab" },
+      "gridPos": { "x": 18, "y": 12, "w": 6, "h": 8 },
+      "options": { "pieType": "donut", "displayLabels": ["name", "value"], "legend": { "displayMode": "table", "placement": "right" }, "reduceOptions": { "values": true, "calcs": [], "fields": "" } },
+      "targets": [{
+        "refId": "A",
+        "datasource": { "type": "grafana-athena-datasource", "uid": "athena-trellislab" },
+        "connectionArgs": { "catalog": "__default", "database": "__default", "region": "__default", "resultReuseEnabled": false, "resultReuseMaxAgeInMinutes": 60 },
+        "rawSQL": "SELECT device_class, COUNT(*) AS hits FROM cf_logs.requests_enriched WHERE browser_family <> 'bot' AND $__dateFilter(request_date) GROUP BY device_class ORDER BY hits DESC",
+        "format": 1
+      }]
+    },
+
+    {
+      "id": 10,
+      "title": "Top Countries",
+      "description": "Based on CloudFront edge PoP location",
+      "type": "table",
+      "datasource": { "type": "grafana-athena-datasource", "uid": "athena-trellislab" },
+      "gridPos": { "x": 0, "y": 20, "w": 12, "h": 8 },
+      "options": { "sortBy": [{ "displayName": "hits", "desc": true }] },
+      "targets": [{
+        "refId": "A",
+        "datasource": { "type": "grafana-athena-datasource", "uid": "athena-trellislab" },
+        "connectionArgs": { "catalog": "__default", "database": "__default", "region": "__default", "resultReuseEnabled": false, "resultReuseMaxAgeInMinutes": 60 },
+        "rawSQL": "SELECT country_name, country_code, region, COUNT(*) AS hits FROM cf_logs.requests_enriched WHERE browser_family <> 'bot' AND $__dateFilter(request_date) GROUP BY country_name, country_code, region ORDER BY hits DESC LIMIT 15",
+        "format": 1
+      }]
+    },
+
+    {
+      "id": 11,
+      "title": "Top Referrers",
+      "description": "External sources only",
+      "type": "table",
+      "datasource": { "type": "grafana-athena-datasource", "uid": "athena-trellislab" },
+      "gridPos": { "x": 12, "y": 20, "w": 12, "h": 8 },
+      "options": { "sortBy": [{ "displayName": "hits", "desc": true }] },
+      "targets": [{
+        "refId": "A",
+        "datasource": { "type": "grafana-athena-datasource", "uid": "athena-trellislab" },
+        "connectionArgs": { "catalog": "__default", "database": "__default", "region": "__default", "resultReuseEnabled": false, "resultReuseMaxAgeInMinutes": 60 },
+        "rawSQL": "SELECT referer, COUNT(*) AS hits FROM cf_logs.requests_enriched WHERE browser_family <> 'bot' AND referer <> '-' AND referer NOT LIKE '%trellislab.net%' AND $__dateFilter(request_date) GROUP BY referer ORDER BY hits DESC LIMIT 15",
+        "format": 1
+      }]
+    },
+
+    {
+      "id": 12,
+      "title": "HTTP Status Distribution",
+      "type": "barchart",
+      "datasource": { "type": "grafana-athena-datasource", "uid": "athena-trellislab" },
+      "gridPos": { "x": 0, "y": 28, "w": 12, "h": 7 },
+      "options": { "xField": "request_date", "stacking": "normal", "tooltip": { "mode": "multi" } },
+      "fieldConfig": {
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "http_2xx" }, "properties": [{ "id": "color", "value": { "fixedColor": "green", "mode": "fixed" } }] },
+          { "matcher": { "id": "byName", "options": "http_3xx" }, "properties": [{ "id": "color", "value": { "fixedColor": "blue", "mode": "fixed" } }] },
+          { "matcher": { "id": "byName", "options": "http_4xx" }, "properties": [{ "id": "color", "value": { "fixedColor": "orange", "mode": "fixed" } }] },
+          { "matcher": { "id": "byName", "options": "http_5xx" }, "properties": [{ "id": "color", "value": { "fixedColor": "red", "mode": "fixed" } }] }
+        ]
+      },
+      "targets": [{
+        "refId": "A",
+        "datasource": { "type": "grafana-athena-datasource", "uid": "athena-trellislab" },
+        "connectionArgs": { "catalog": "__default", "database": "__default", "region": "__default", "resultReuseEnabled": false, "resultReuseMaxAgeInMinutes": 60 },
+        "rawSQL": "SELECT request_date, http_2xx, http_3xx, http_4xx, http_5xx FROM cf_logs.daily_summary WHERE $__dateFilter(request_date) ORDER BY request_date",
+        "format": 1
+      }]
+    },
+
+    {
+      "id": 13,
+      "title": "WASM Cache Hit Rate",
+      "description": "CloudFront hit/miss for /wasm/* assets",
+      "type": "timeseries",
+      "datasource": { "type": "grafana-athena-datasource", "uid": "athena-trellislab" },
+      "gridPos": { "x": 12, "y": 28, "w": 12, "h": 7 },
+      "options": { "tooltip": { "mode": "multi" } },
+      "fieldConfig": {
+        "defaults": { "unit": "percent", "min": 0, "max": 100, "custom": { "lineWidth": 2 } }
+      },
+      "targets": [{
+        "refId": "A",
+        "datasource": { "type": "grafana-athena-datasource", "uid": "athena-trellislab" },
+        "connectionArgs": { "catalog": "__default", "database": "__default", "region": "__default", "resultReuseEnabled": false, "resultReuseMaxAgeInMinutes": 60 },
+        "rawSQL": "SELECT request_date AS time, ROUND(100.0 * COUNT(*) FILTER (WHERE edge_result_type = 'Hit') / NULLIF(COUNT(*), 0), 1) AS hit_pct FROM cf_logs.requests_enriched WHERE uri_stem LIKE '/wasm/%' AND $__dateFilter(request_date) GROUP BY request_date ORDER BY 1",
+        "format": 0
+      }]
+    }
+
+  ]
+}

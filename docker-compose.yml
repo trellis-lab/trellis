@@ -1,0 +1,22 @@
+services:
+  grafana:
+    image: grafana/grafana-oss:11.5.0
+    container_name: trellislab-grafana
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+    environment:
+      GF_INSTALL_PLUGINS: grafana-athena-datasource
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+      GF_SERVER_ROOT_URL: "http://localhost:3000"
+      # Disable telemetry
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./provisioning:/etc/grafana/provisioning
+    restart: unless-stopped
+
+volumes:
+  grafana-data:

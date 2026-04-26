@@ -35,3 +35,8 @@ output "athena_results_bucket" {
   value       = aws_s3_bucket.athena_results.bucket
   description = "S3 bucket storing Athena query results (30-day TTL)"
 }
+
+output "waf_web_acl_arn" {
+  value       = var.enable_waf ? aws_wafv2_web_acl.website[0].arn : null
+  description = "WAF WebACL ARN attached to CloudFront, null when enable_waf=false"
+}
