@@ -40,10 +40,11 @@ jobs:
           mkdir -p dist
           cp -r web/. dist/
           # 2. Build fresh WASM directly into dist/wasm/, overwriting local test files
+          # --out-dir is relative to the crate dir, so use an absolute path
           wasm-pack build crates/trellis-wasm \
             --target web \
             --release \
-            --out-dir dist/wasm \
+            --out-dir "$GITHUB_WORKSPACE/dist/wasm" \
             --out-name trellis_wasm
 
       - name: Configure AWS credentials via OIDC
