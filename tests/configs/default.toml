@@ -70,12 +70,12 @@ blocked_cost = 1000.0
 #   - TwoPhase         Fast crossing estimate + targeted re-route (multi-round)
 #   - Auto             Analyzes graph stats and selects best strategy automatically
 #
-port_assignment = "Default"
+port_assignment = "TrellisBasic"
 
 # Maximum port refinement rounds for multi-round algorithms (IterativeSwap, TwoPhase).
 # After each round of routing, edges at crossing ports are swapped and re-routed.
 # 0 = disabled (use single-round strategy only).
-port_refinement_rounds = 0
+port_refinement_rounds = 3
 
 # Flow-direction bias for port side selection. Influences connector placement
 # to align with graph flow direction.
@@ -101,7 +101,7 @@ flow_bias = "Auto"
 #   - Auto          Computes max(2, median_bends + 2) at runtime (default)
 #                   Targets only the long tail of outliers
 #
-bend_threshold = "Auto"
+bend_threshold = { Fixed = 2 }
 
 # Enable crossing-reduction rerouting (Phase 5c). When true, edges with at least
 # one geometric crossing are ripped up and re-routed through all 16 source/target
@@ -134,7 +134,7 @@ crossing_reroute = true
 #   - Rectangular  Square bridge: _|‾|_  (orthogonal bump, same side as arc bulge)
 #   - Skip         Gap/skip: -| |-  (second occupant's stroke breaks at crossing)
 #
-crossing_style = "None"
+crossing_style = "Skip"
 
 # Show the underlying grid overlay in SVG output. Useful for debugging routing
 # and grid configuration. Never rendered in PNG export.

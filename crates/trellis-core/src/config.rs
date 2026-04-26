@@ -65,7 +65,7 @@ fn default_flow_bias() -> FlowBias {
     FlowBias::Auto
 }
 fn default_bend_threshold() -> BendThreshold {
-    BendThreshold::Auto
+    BendThreshold::Fixed(2)
 }
 fn default_crossing_reroute() -> bool {
     true
@@ -303,14 +303,14 @@ pub enum BendThreshold {
 /// How edge crossings are rendered.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub enum CrossingStyle {
-    /// Straight lines pass through each other — no special decoration (default).
-    #[default]
+    /// Straight lines pass through each other — no special decoration.
     None,
     /// Semicircular hop arc: `_͡_` — the second occupant hops over the first.
     Arc,
     /// Rectangular bump: `_|‾|_` — square bridge orthogonal to travel direction.
     Rectangular,
     /// Gap/skip: `-| |-` — the second occupant's stroke is broken at the crossing.
+    #[default]
     Skip,
 }
 
@@ -345,9 +345,9 @@ impl Default for TrellisConfig {
             label_padding: default_label_padding(),
             port_assignment: default_port_assignment(),
             port_refinement_rounds: default_port_refinement_rounds(),
-            flow_bias: FlowBias::None,
+            flow_bias: default_flow_bias(),
             print_metrics: false,
-            bend_threshold: BendThreshold::Auto,
+            bend_threshold: default_bend_threshold(),
             crossing_reroute: true,
             theme: ThemeName::Default,
             show_title: true,
