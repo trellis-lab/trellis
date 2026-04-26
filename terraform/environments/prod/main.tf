@@ -163,6 +163,12 @@ resource "aws_cloudfront_distribution" "website" {
     error_caching_min_ttl = 10
   }
 
+  logging_config {
+    bucket          = aws_s3_bucket.cf_logs.bucket_domain_name
+    prefix          = "cf-logs/"
+    include_cookies = false
+  }
+
   restrictions {
     geo_restriction {
       restriction_type = "none"

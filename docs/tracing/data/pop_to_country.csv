@@ -1,0 +1,87 @@
+pop_code,country_code,country_name,region
+AMS,NL,Netherlands,Europe
+ARN,SE,Sweden,Europe
+ATH,GR,Greece,Europe
+ATL,US,United States,North America
+AUH,AE,United Arab Emirates,Middle East
+BAH,BH,Bahrain,Middle East
+BER,DE,Germany,Europe
+BKK,TH,Thailand,Asia Pacific
+BLR,IN,India,Asia Pacific
+BOG,CO,Colombia,South America
+BOM,IN,India,Asia Pacific
+BOS,US,United States,North America
+BUD,HU,Hungary,Europe
+CAI,EG,Egypt,Africa
+CDG,FR,France,Europe
+CGK,ID,Indonesia,Asia Pacific
+CMN,MA,Morocco,Africa
+CPH,DK,Denmark,Europe
+CPT,ZA,South Africa,Africa
+DEL,IN,India,Asia Pacific
+DEN,US,United States,North America
+DFW,US,United States,North America
+DME,RU,Russia,Europe
+DOH,QA,Qatar,Middle East
+DUB,IE,Ireland,Europe
+DXB,AE,United Arab Emirates,Middle East
+EZE,AR,Argentina,South America
+FCO,IT,Italy,Europe
+FRA,DE,Germany,Europe
+GIG,BR,Brazil,South America
+GRU,BR,Brazil,South America
+HAM,DE,Germany,Europe
+HEL,FI,Finland,Europe
+HIO,US,United States,North America
+HKG,HK,Hong Kong,Asia Pacific
+HND,JP,Japan,Asia Pacific
+HYD,IN,India,Asia Pacific
+IAD,US,United States,North America
+ICN,KR,South Korea,Asia Pacific
+IST,TR,Turkey,Europe
+JFK,US,United States,North America
+JNB,ZA,South Africa,Africa
+KBP,UA,Ukraine,Europe
+KUL,MY,Malaysia,Asia Pacific
+LAX,US,United States,North America
+LED,RU,Russia,Europe
+LHR,GB,United Kingdom,Europe
+LIM,PE,Peru,South America
+LIN,IT,Italy,Europe
+LOS,NG,Nigeria,Africa
+MAA,IN,India,Asia Pacific
+MAD,ES,Spain,Europe
+MEL,AU,Australia,Asia Pacific
+MEX,MX,Mexico,North America
+MIA,US,United States,North America
+MNL,PH,Philippines,Asia Pacific
+MSP,US,United States,North America
+MUC,DE,Germany,Europe
+MXP,IT,Italy,Europe
+NBO,KE,Kenya,Africa
+NRT,JP,Japan,Asia Pacific
+ORD,US,United States,North America
+OTP,RO,Romania,Europe
+PDX,US,United States,North America
+PEK,CN,China,Asia Pacific
+PHX,US,United States,North America
+PRG,CZ,Czech Republic,Europe
+PVG,CN,China,Asia Pacific
+RUH,SA,Saudi Arabia,Middle East
+SCL,CL,Chile,South America
+SEA,US,United States,North America
+SFO,US,United States,North America
+SIN,SG,Singapore,Asia Pacific
+SJC,US,United States,North America
+SOF,BG,Bulgaria,Europe
+SVO,RU,Russia,Europe
+SYD,AU,Australia,Asia Pacific
+TLV,IL,Israel,Middle East
+TPE,TW,Taiwan,Asia Pacific
+TXL,DE,Germany,Europe
+VIE,AT,Austria,Europe
+WAW,PL,Poland,Europe
+YUL,CA,Canada,North America
+YVR,CA,Canada,North America
+YYZ,CA,Canada,North America
+ZRH,CH,Switzerland,Europe
