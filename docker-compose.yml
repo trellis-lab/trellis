@@ -1,4 +1,9 @@
 services:
+  web:
+    build: ./docker/Dockerfile.web
+    container_name: trellislab-web
+    ports:
+        - "8080:80"
   grafana:
     image: grafana/grafana-oss:11.5.0
     container_name: trellislab-grafana
@@ -17,6 +22,7 @@ services:
       - grafana-data:/var/lib/grafana
       - ./provisioning:/etc/grafana/provisioning
     restart: unless-stopped
+
 
 volumes:
   grafana-data:
