@@ -2,7 +2,7 @@
 
 **Mermaid diagrams that actually look good.**
 
-> Early access — [join the discussion](https://github.com/trellis-lab/trellis-public/discussions)
+> Early access — [join the discussion](https://github.com/trellis-lab/trellis/discussions)
 
 Trellis is a drop-in replacement for the default Mermaid renderer. It produces clean, overlap-free diagrams — no tangled edges, no manual layout tweaking, no post-processing in a drawing tool.
 
@@ -45,17 +45,9 @@ Or search **"Trellis"** in the VS Code Extensions panel. Live preview updates as
 
 ---
 
-### IntelliJ / JetBrains plugin
-
-Search **"Trellis"** in Settings → Plugins → Marketplace.
-
-→ [Plugin page](https://plugins.jetbrains.com/plugin/trellis-mermaid)
-
----
-
 ### CLI binary
 
-Download the pre-built binary for your platform from the [releases page](https://github.com/trellis-lab/trellis-public/releases):
+Download the pre-built binary for your platform from the [releases page](https://github.com/trellis-lab/trellis/releases):
 
 | Platform | File |
 |---|---|
@@ -71,15 +63,9 @@ Extract and add the binary to your `PATH`.
 ### Docker
 
 ```bash
-docker pull ghcr.io/trellis-lab/trellis:latest
-docker run --rm -v "$(pwd):/data" ghcr.io/trellis-lab/trellis:latest input.mmd -o output.svg
+docker pull trellis-lab/trellis:latest
+docker run --rm -v "$(pwd):/data" trellis-lab/trellis:latest input.mmd -o output.svg
 ```
-
----
-
-### npm (browser / Node.js)
-
-Coming soon. The `trellis-wasm` package will be available on npm for browser and Node.js rendering without a server.
 
 ---
 
@@ -128,10 +114,10 @@ Try Trellis in the browser without installing anything:
 
 ## Releases and changelog
 
-→ [github.com/trellis-lab/trellis-public/releases](https://github.com/trellis-lab/trellis-public/releases)
+→ [github.com/trellis-lab/trellis/releases](https://github.com/trellis-lab/trellis/releases)
 
 ---
 
 ## Issues and feedback
 
-→ [github.com/trellis-lab/trellis-public/issues](https://github.com/trellis-lab/trellis-public/issues)
+→ [github.com/trellis-lab/trellis/issues](https://github.com/trellis-lab/trellis/issues)
