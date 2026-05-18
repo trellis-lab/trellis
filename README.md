@@ -1,3 +1,8 @@
+---
+layout: home
+title: Trellis
+---
+
 # Trellis
 
 **Mermaid diagrams that actually look good.**
@@ -63,8 +68,8 @@ Extract and add the binary to your `PATH`.
 ### Docker
 
 ```bash
-docker pull trellis-lab/trellis:latest
-docker run --rm -v "$(pwd):/data" trellis-lab/trellis:latest input.mmd -o output.svg
+docker pull ghcr.io/trellis-lab/trellis:latest
+docker run --rm -v "$(pwd):/data" ghcr.io/trellis-lab/trellis:latest input.mmd -o output.svg
 ```
 
 ---
@@ -72,11 +77,14 @@ docker run --rm -v "$(pwd):/data" trellis-lab/trellis:latest input.mmd -o output
 ## CLI usage
 
 ```bash
-# Render to SVG
+# Render to SVG (default)
 trellis render diagram.mmd -o diagram.svg
 
 # Render to PNG
 trellis render diagram.mmd -o diagram.png
+
+# Render to interactive HTML
+trellis render diagram.mmd -o diagram.html -f html
 
 # Render from stdin
 echo "flowchart LR
@@ -85,22 +93,58 @@ echo "flowchart LR
 # Render all diagrams in a directory
 trellis render-batch ./diagrams -o ./output
 
-# Validate syntax only
+# Validate syntax only (no render)
 trellis validate diagram.mmd
+
+# Render with custom config
+trellis render diagram.mmd -o diagram.svg --config trellis.toml
 ```
+
+Full CLI reference: [docs/cli.md](docs/cli.md)
 
 ---
 
 ## Output formats
 
-- **SVG** — scalable, embeddable, publication-ready
-- **PNG** — rasterized for presentations and documentation
+| Format | Description |
+|--------|-------------|
+| `svg` | Scalable, embeddable, publication-ready |
+| `png` | Rasterized for presentations and documentation |
+| `html` | Self-contained interactive file — click nodes and edges to explore |
+| `ascii` | UTF-8 box-drawing for terminal preview and AI-agent workflows |
+
+---
+
+## Themes
+
+`default`, `paper`, `blueprint`, `dark`, `midnight`, `forest`
+
+Set via `--config trellis.toml`:
+
+```toml
+theme = "paper"
+```
 
 ---
 
 ## Pandoc integration
 
-Trellis includes a Pandoc filter for rendering Mermaid code blocks inside Markdown documents directly to PDF or HTML — no pre-processing step needed.
+Trellis includes a Pandoc Docker image for rendering Markdown documents with embedded Mermaid diagrams directly to PDF or HTML — no pre-processing step, no local Trellis install required.
+
+```bash
+docker pull ghcr.io/trellis-lab/trellis-pandoc:latest
+docker run --rm -v "$(pwd):/data" ghcr.io/trellis-lab/trellis-pandoc:latest document.md -o document.pdf
+```
+
+Full Pandoc guide: [docs/pandoc.md](docs/pandoc.md)
+
+---
+
+## MCP server
+
+Trellis ships an MCP server for use with Claude Desktop and other MCP-compatible clients. The server exposes `render` and `run-interactive` tools backed by the CLI binary.
+
+Setup guide: [docs/mcp.md](docs/mcp.md)
 
 ---
 

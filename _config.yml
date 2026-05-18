@@ -1,0 +1,11 @@
+title: Trellis
+description: Mermaid diagrams that actually look good.
+theme: minima
+baseurl: ""
+url: "https://trellis-lab.github.io"
+
+header_pages:
+  - docs/index.md
+  - docs/cli.md
+  - docs/mcp.md
+  - docs/pandoc.md
