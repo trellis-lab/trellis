@@ -158,7 +158,7 @@ def run_interactive(
 
     try:
         binary = os.environ.get(ENV_TRELLIS_BIN, "./trellis")
-        cmd = [binary, "render", "-", "-f", OUTPUT_HTML]
+        cmd = [binary, "render", "-", "-f", OUTPUT_HTML, "--config", "./config/html-config.toml"]
 
         result = subprocess.run(
             cmd,
@@ -171,7 +171,7 @@ def run_interactive(
             stderr = result.stderr if isinstance(result.stderr, str) else result.stderr.decode()
             ctx.error(f"Trellis render failed (exit {result.returncode}): {stderr.strip()}")
 
-        return Embed(html=result.stdout, width="1200px", height="800px")
+        return Embed(html=result.stdout, width="100%", height="800px")
     except Exception as e:
         ctx.error(f"Render error: {e}")
 
