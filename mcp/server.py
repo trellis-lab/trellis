@@ -1,13 +1,13 @@
-import base64
 import json
 import os
 import subprocess
 
 from fastmcp import Context, FastMCP
 from fastmcp.dependencies import CurrentContext
+from fastmcp.exceptions import ToolError
 from fastmcp.utilities.types import Image
 from mcp.types import Icon, ToolAnnotations
-from prefab_ui.components import Embed
+
 
 TRANSPORT_HTTP = "http"
 TRANSPORT_STDIO = "stdio"
@@ -18,11 +18,15 @@ DEFAULT_HTTP_PORT = 9000
 ENV_TRELLIS_BIN = "TRELLIS_BIN"
 
 OUTPUT_PNG: str = "png"
-OUTPUT_SVG: str = "svg"
-OUTPUT_HTML: str = "html"
-OUTPUT_ASCII: str = "ascii"
 
-VALID_FORMATS = [OUTPUT_SVG, OUTPUT_PNG, OUTPUT_HTML, OUTPUT_ASCII]
+FORMATS = [
+    {"name": "png", "description": "(Default) Raster image result"},
+    {"name": "svg", "description": "Vector image result"},
+    {"name": "html", "description": "Interactive HTML output"},
+    {"name": "drawio", "description": "Drawio output format for further editing"},
+]
+
+VALID_FORMATS = [t["name"] for t in FORMATS]
 
 THEMES = [
     {"name": "default", "description": "Default Trellis theme"},
@@ -39,6 +43,7 @@ VALID_THEMES = [t["name"] for t in THEMES]
 # Initialize
 mcp = FastMCP(
     "Trellis",
+    mask_error_details=True,
     instructions="""Trellis renders Mermaid diagrams with advanced styling and export options.
 
 TOOLS:
@@ -46,12 +51,9 @@ TOOLS:
   Parameters: mermaid (diagram source), format (svg|png|html|ascii, default: svg), theme (default|paper|blueprint|dark|midnight|forest)
   Use for: Static exports, documentation, high-quality images
 
-- run-interactive: Embed interactive Mermaid viewer with zoom, pan, and interactivity.
-  Parameters: mermaid (diagram source)
-  Use for: Exploration, presentations, user interaction
-
 RESOURCE:
 - themes://list: List available themes with descriptions
+- formats://list: List of available output formats
 
 BEST PRACTICES:
 1. Use render with format=svg for web, format=png for images
@@ -64,11 +66,12 @@ FORMAT GUIDE:
 - SVG: Scalable, embeddable, good for web
 - PNG: Raster, fixed size, good for images/docs
 - HTML: Interactive in browser, includes styling
-- ASCII: Text-based, terminal friendly, no styling
+- DRAWIO: DRAWIO XML output enables further adjustments
 
 ENVIRONMENT:
 - TRELLIS_BIN: Path to trellis binary (default: ./trellis)
 - TRELLIS_MCP_TRANSPORT: http or stdio (default: stdio)
+- TRELLIS_KEY: license key. Mandatory for SVG/HTML/DRAWIO format
 """,
     icons=[Icon(src="https://trellislab.net/assets/trellis-logo-narrow.svg", mimeType="image/svg")],
     version="0.10.0",
@@ -80,10 +83,15 @@ def list_themes() -> str:
     return json.dumps(THEMES)
 
 
+@mcp.resource("formats://list")
+def list_themes() -> str:
+    return json.dumps(FORMATS)
+
+
 ## Tools
 @mcp.tool(
     "render",
-    description="Render a Mermaid diagram to SVG, PNG, HTML, or ASCII using Trellis. Accepts Mermaid syntax, applies visual theme, returns formatted output.",
+    description="Render a Mermaid diagram to SVG, PNG, HTML, or Drawio using Trellis. Accepts Mermaid syntax, applies visual theme, returns formatted output.",
     tags=["mermaid", "render", "diagram", "visualization"],
     annotations=ToolAnnotations(
         title="Render Mermaid Diagram", readOnlyHint=True, destructiveHint=False, idempotentHint=True, openWorldHint=False
@@ -91,7 +99,7 @@ def list_themes() -> str:
 )
 def render_mermaid(
     mermaid: str,
-    format: str = OUTPUT_SVG,
+    format: str = OUTPUT_PNG,
     theme: str = "default",
     ctx: Context | None = None,
 ) -> Image | str:
@@ -99,18 +107,23 @@ def render_mermaid(
     Render a Mermaid diagram via the Trellis binary (TRELLIS_BIN env var).
     Reads diagram from stdin, returns rendered output from stdout.
     PNG output is base64-encoded; all other formats are plain strings.
-    """
+    """ 
 
     if ctx is None:
         ctx = CurrentContext()
 
     try:
         if format not in VALID_FORMATS:
-            ctx.error(f"Invalid format '{format}'. Must be one of: {', '.join(VALID_FORMATS)}")
-            return
+            err = f"Invalid format '{format}'. Must be one of: {', '.join(VALID_FORMATS)}"
+
+            ctx.error(err)
+            raise ToolError(err)
+        
         if theme not in VALID_THEMES:
-            ctx.error(f"Invalid theme '{theme}'. Must be one of: {', '.join(VALID_THEMES)}")
-            return
+            err = f"Invalid theme '{theme}'. Must be one of: {', '.join(VALID_THEMES)}"
+
+            ctx.error(err)
+            raise ToolError(err)
 
         binary = os.environ.get(ENV_TRELLIS_BIN, "./trellis")
         cmd = [binary, "render", "-", "-f", format]
@@ -120,61 +133,24 @@ def render_mermaid(
         is_binary = format == OUTPUT_PNG
         result = subprocess.run(
             cmd,
-            input=mermaid,
+            input=mermaid.encode() if is_binary else mermaid,
             capture_output=True,
             text=not is_binary,
         )
 
-        if result.returncode != 0:
-            stderr = result.stderr if isinstance(result.stderr, str) else result.stderr.decode()
-            ctx.error(f"Trellis render failed (exit {result.returncode}): {stderr.strip()}")
-
-        print("result")
-
-        if format == OUTPUT_PNG:
-            return Image(data=base64.b64encode(result.stdout).decode("utf-8"), type="png")
+        if result.returncode == 0:
+          if format == OUTPUT_PNG:
+              return Image(data=result.stdout, format="png")
+          else:
+              return result.stdout
         else:
-            return result.stdout
+          stderr = result.stderr if isinstance(result.stderr, str) else result.stderr.decode()
+          ctx.error(f"Trellis render failed (exit {result.returncode}): {stderr.strip()}")
+          raise ToolError(stderr)
+
     except Exception as e:
         ctx.error(f"Render error: {e}")
-
-
-# Apps
-@mcp.tool(
-    "run-interactive",
-    description="Render interactive Mermaid diagram in embedded viewer. Full DOM interactivity, zoom, pan, export. Ideal for exploration and presentation.",
-    app=True,
-    tags=["mermaid", "interactive", "diagram", "app"],
-    annotations=ToolAnnotations(
-        title="Interactive Mermaid Viewer", readOnlyHint=True, destructiveHint=False, idempotentHint=True, openWorldHint=False
-    ),
-)
-def run_interactive(
-    mermaid: str,
-    ctx: Context | None = None,
-) -> Embed:
-    if ctx is None:
-        ctx = CurrentContext()
-
-    try:
-        binary = os.environ.get(ENV_TRELLIS_BIN, "./trellis")
-        cmd = [binary, "render", "-", "-f", OUTPUT_HTML, "--config", "./config/html-config.toml"]
-
-        result = subprocess.run(
-            cmd,
-            input=mermaid,
-            capture_output=True,
-            text=True,
-        )
-
-        if result.returncode != 0:
-            stderr = result.stderr if isinstance(result.stderr, str) else result.stderr.decode()
-            ctx.error(f"Trellis render failed (exit {result.returncode}): {stderr.strip()}")
-
-        return Embed(html=result.stdout, width="100%", height="800px")
-    except Exception as e:
-        ctx.error(f"Render error: {e}")
-
+        raise ToolError(str(e))
 
 # Run server
 if __name__ == "__main__":
