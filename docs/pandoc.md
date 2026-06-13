@@ -1,6 +1,7 @@
 ---
-layout: page
+layout: default
 title: Pandoc Integration
+nav_order: 6
 ---
 
 # Pandoc Integration

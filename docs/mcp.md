@@ -1,11 +1,14 @@
 ---
-layout: page
+layout: default
 title: MCP Server
+nav_order: 5
 ---
 
 # Trellis MCP Server
 
-The Trellis MCP server exposes diagram rendering as tools for Claude Desktop and other MCP-compatible clients. It wraps the `trellis` CLI binary and supports both stdio and HTTP transports.
+The Trellis MCP server exposes diagram rendering as a tool for Claude Desktop and other MCP-compatible clients. It wraps the `trellis` CLI binary and supports both stdio and HTTP transports.
+
+Built with [FastMCP](https://github.com/jlowin/fastmcp).
 
 ---
 
@@ -42,12 +45,15 @@ prefab-ui
 |----------|---------|-------------|
 | `TRELLIS_BIN` | `./trellis` | Path to the `trellis` binary |
 | `TRELLIS_MCP_TRANSPORT` | `stdio` | Transport mode: `stdio` or `http` |
+| `TRELLIS_KEY` | — | License key. Required for `svg`, `html`, and `drawio` output |
 
 Use an absolute path for `TRELLIS_BIN` in production:
 
 ```bash
 export TRELLIS_BIN=/usr/local/bin/trellis
 ```
+
+> A `TRELLIS_KEY` is required for SVG, HTML, and Draw.io output. See [Licensing](licensing) for the subscribe link and key setup.
 
 ---
 
@@ -81,14 +87,15 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS)
       "command": "python",
       "args": ["/path/to/trellis/mcp/server.py"],
       "env": {
-        "TRELLIS_BIN": "/usr/local/bin/trellis"
+        "TRELLIS_BIN": "/usr/local/bin/trellis",
+        "TRELLIS_KEY": "YOUR_KEY"
       }
     }
   }
 }
 ```
 
-Replace `/path/to/trellis/mcp/server.py` and `/usr/local/bin/trellis` with the actual paths on your system.
+Replace `/path/to/trellis/mcp/server.py`, `/usr/local/bin/trellis`, and `YOUR_KEY` with the actual values on your system.
 
 ---
 
@@ -96,39 +103,27 @@ Replace `/path/to/trellis/mcp/server.py` and `/usr/local/bin/trellis` with the a
 
 ### `render`
 
-Renders a Mermaid diagram string. Returns the result as SVG or HTML text, or base64-encoded PNG, or ASCII text.
+Renders a Mermaid diagram string and returns the result. PNG is returned as a base64-encoded image; all other formats are returned as text.
 
 **Parameters:**
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `mermaid` | string | required | Mermaid diagram source |
-| `format` | string | `svg` | Output format: `svg`, `png`, `html`, `ascii` |
-| `theme` | string | `default` | Theme name |
+| `format` | string | `png` | Output format: `svg`, `png`, `html`, `drawio` |
+| `theme` | string | `default` | Theme name: `default`, `paper`, `blueprint`, `dark`, `midnight`, `forest` |
 
-**Returns:** Image content for SVG/PNG, or text content for HTML/ASCII.
+**Returns:** Image content for PNG; text content for SVG, HTML, and Draw.io.
+
+> SVG, HTML, and Draw.io output require a `TRELLIS_KEY`. See [Licensing](licensing).
 
 **Example — ask Claude:**
 
-> "Render this as a Trellis diagram in SVG:
+> "Render this as a Trellis diagram:
 > ```
 > flowchart LR
 >   User --> API --> DB
 > ```"
-
----
-
-### `run-interactive`
-
-Renders a Mermaid diagram as an interactive embedded HTML viewer inside Claude Desktop. Click nodes and edges to explore the diagram.
-
-**Parameters:**
-
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `mermaid` | string | required | Mermaid diagram source |
-
-**Returns:** Embedded HTML panel (1200×800px) rendered inside Claude Desktop.
 
 ---
 
@@ -148,6 +143,21 @@ Returns a JSON array of available themes with names and descriptions.
   {"name": "forest",    "description": "Forest theme"}
 ]
 ```
+
+### `formats://list`
+
+Returns a JSON array of available output formats with descriptions.
+
+```json
+[
+  {"name": "png",    "description": "(Default) Raster image result"},
+  {"name": "svg",    "description": "Vector image result"},
+  {"name": "html",   "description": "Interactive HTML output"},
+  {"name": "drawio", "description": "Drawio output format for further editing"}
+]
+```
+
+Format purposes and details: [CLI Reference → Output formats](cli#output-formats).
 
 ---
 

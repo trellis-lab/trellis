@@ -86,11 +86,14 @@ trellis render diagram.mmd -o diagram.png
 # Render to interactive HTML
 trellis render diagram.mmd -o diagram.html -f html
 
+# Render to editable Draw.io
+trellis render diagram.mmd -o diagram.drawio -f drawio
+
 # Render from stdin
 echo "flowchart LR
   A --> B --> C" | trellis render - -o diagram.svg
 
-# Render all diagrams in a directory
+# Render all diagrams in a directory (commercial feature — requires a license)
 trellis render-batch ./diagrams -o ./output
 
 # Validate syntax only (no render)
@@ -112,6 +115,9 @@ Full CLI reference: [docs/cli.md](docs/cli.md)
 | `png` | Rasterized for presentations and documentation |
 | `html` | Self-contained interactive file — click nodes and edges to explore |
 | `ascii` | UTF-8 box-drawing for terminal preview and AI-agent workflows |
+| `drawio` | Editable `.mxfile` for draw.io, Confluence, and the VS Code draw.io extension |
+
+Full format details and purpose: [docs/cli.md](docs/cli.md#output-formats)
 
 ---
 
@@ -142,9 +148,20 @@ Full Pandoc guide: [docs/pandoc.md](docs/pandoc.md)
 
 ## MCP server
 
-Trellis ships an MCP server for use with Claude Desktop and other MCP-compatible clients. The server exposes `render` and `run-interactive` tools backed by the CLI binary.
+Trellis ships an MCP server for use with Claude Desktop and other MCP-compatible clients. The server exposes a `render` tool backed by the CLI binary.
 
 Setup guide: [docs/mcp.md](docs/mcp.md)
+
+---
+
+## Licensing
+
+Trellis is free for everyday rendering. `render-batch` and MCP SVG/HTML/Draw.io output are commercial features that require a license key.
+
+<!-- TODO: replace with the real subscribe / pricing URL -->
+👉 **[Subscribe to Trellis](PLACEHOLDER_SUBSCRIBE_URL)**
+
+Full details: [docs/licensing.md](docs/licensing.md)
 
 ---
 

@@ -1,0 +1,38 @@
+title: Trellis
+description: Mermaid diagrams that actually look good.
+url: "https://trellis-lab.github.io"
+baseurl: ""
+
+# Just the Docs via remote theme (works on classic GitHub Pages —
+# jekyll-remote-theme is bundled in the github-pages gem).
+remote_theme: just-the-docs/just-the-docs@v0.7.0
+color_scheme: trellis
+
+logo: "/assets/trellis-logo.svg"
+
+# Search
+search_enabled: true
+search:
+  heading_level: 2
+  previews: 3
+  rel_url: true
+
+# Top-right auxiliary links
+aux_links:
+  "Trellis on GitHub":
+    - "https://github.com/trellis-lab/trellis"
+aux_links_new_tab: true
+
+# External links in the nav sidebar
+nav_external_links:
+  - title: "Live editor"
+    url: "https://trellislab.net/editor.html"
+  - title: "Releases"
+    url: "https://github.com/trellis-lab/trellis/releases"
+
+# Footer
+footer_content: "© Trellis Lab. Mermaid diagrams that actually look good."
+
+plugins:
+  - jekyll-remote-theme
+  - jekyll-seo-tag
