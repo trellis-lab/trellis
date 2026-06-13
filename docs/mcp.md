@@ -87,6 +87,7 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS)
       "command": "python",
       "args": ["/path/to/trellis/mcp/server.py"],
       "env": {
+        "TRELLIS_MCP_TRANSPORT": "stdio",
         "TRELLIS_BIN": "/usr/local/bin/trellis",
         "TRELLIS_KEY": "YOUR_KEY"
       }
@@ -122,7 +123,7 @@ Renders a Mermaid diagram string and returns the result. PNG is returned as a ba
 > "Render this as a Trellis diagram:
 > ```
 > flowchart LR
->   User --> API --> DB
+>   User --> API --> DBs
 > ```"
 
 ---

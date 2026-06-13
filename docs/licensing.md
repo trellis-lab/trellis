@@ -34,7 +34,6 @@ Each activated device consumes one seat from your license.
 
 ## Subscribe
 
-<!-- TODO: replace with the real subscribe / pricing URL -->
 👉 **[Subscribe to Trellis](https://trellislab.net/#pricing)**
 
 After subscribing you'll receive a license key. Activate it on each device you use.
