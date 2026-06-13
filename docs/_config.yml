@@ -1,7 +1,7 @@
 title: Trellis
 description: Mermaid diagrams that actually look good.
 url: "https://trellis-lab.github.io"
-baseurl: ""
+baseurl: "/trellis"
 
 # Just the Docs via remote theme (works on classic GitHub Pages —
 # jekyll-remote-theme is bundled in the github-pages gem).
