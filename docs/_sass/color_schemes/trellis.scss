@@ -1,0 +1,35 @@
+// =========================================================
+// TRELLIS color scheme for Just the Docs — LIGHT
+// Blueprint drawing aesthetic on a light ground.
+// Palette mirrors the Trellis design system (colors_and_type.css).
+// =========================================================
+
+// --- Brand palette ---------------------------------------
+$prussian-blue:    #003153;
+$blueprint-blue:   #1b3f6e;
+$cyanotype-azure:  #4a8ab5;
+$blueprint-white:  #e8f4fb;
+$ink-white:        #ffffff;
+
+// --- Just the Docs semantic tokens -----------------------
+$body-background-color:       $ink-white;
+$sidebar-color:               $blueprint-white;   // light blueprint tint
+$search-background-color:     $ink-white;
+
+$body-heading-color:          $prussian-blue;
+$body-text-color:             #1f3a52;             // dark slate-blue, readable on white
+$link-color:                  $blueprint-blue;     // azure too light on white → blueprint-blue
+$nav-child-link-color:        $blueprint-blue;
+$search-result-preview-color: #4a6075;
+
+$border-color:                rgba(0, 49, 83, 0.12);
+$table-background-color:      $ink-white;
+$code-background-color:       $blueprint-white;    // light tint behind code
+$feedback-color:              darken($sidebar-color, 3%);
+
+$btn-primary-color:           $blueprint-blue;
+$base-button-color:           $blueprint-white;
+
+// --- Typography (Trellis type system) --------------------
+$body-font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+$mono-font-family: "JetBrains Mono", "SF Mono", "Fira Code", Menlo, monospace;

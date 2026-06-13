@@ -1,0 +1,38 @@
+// =========================================================
+// TRELLIS — custom overrides (imported last by Just the Docs)
+// Light blueprint polish. Code uses JtD's default light syntax
+// theme, so no token overrides are needed here.
+// =========================================================
+
+// Display font for headings + site title (Trellis blueprint)
+.site-title,
+.main-content h1,
+.main-content h2,
+.main-content h3,
+.main-content h4 {
+  font-family: "Courier Prime", "Courier New", monospace;
+  letter-spacing: -0.01em;
+}
+
+// Accent rule under page titles
+.main-content h1 {
+  border-bottom: 1px solid rgba(74, 138, 181, 0.35);
+  padding-bottom: 0.3em;
+}
+
+// Inline code: blueprint tint + prussian-blue text
+.main-content code {
+  background-color: #e8f4fb;
+  color: #003153;
+}
+
+// Code blocks: subtle blueprint border
+.main-content pre.highlight,
+.main-content figure.highlight {
+  border: 1px solid rgba(0, 49, 83, 0.1);
+}
+
+// Tables: tint header row with light blueprint
+.main-content table thead {
+  background-color: #e8f4fb;
+}
