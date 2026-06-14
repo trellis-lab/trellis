@@ -116,6 +116,17 @@ Renders a Mermaid diagram string and returns the result. PNG is returned as a ba
 
 **Returns:** Image content for PNG; text content for SVG, HTML, and Draw.io.
 
+**Choosing a format (by goal):**
+
+| Format | Best for | License |
+|--------|----------|---------|
+| `html` | Interactive review — exploring/navigating a diagram in a browser | Required |
+| `drawio` | Editing the diagram further in Draw.io | Required |
+| `svg` | Quick, high-quality preview or web embedding | Required |
+| `png` | Unlicensed users, or a plain fixed-size raster image | Not required |
+
+If no `TRELLIS_KEY` is set, use `png` (the default).
+
 > SVG, HTML, and Draw.io output require a `TRELLIS_KEY`. See [Licensing](licensing).
 
 **Example — ask Claude:**
@@ -162,6 +173,51 @@ Format purposes and details: [CLI Reference → Output formats](cli#output-forma
 
 ---
 
+## Prompts
+
+The server registers MCP prompts that surface in clients (e.g. Claude Desktop) as
+slash-command-style helpers. They guide diagram authoring toward Trellis-specific
+features.
+
+| Prompt | Arguments | Purpose |
+|--------|-----------|---------|
+| `c4_cheatsheet` | — | Reference for all C4 node types, including Trellis-specific shapes and argument order |
+| `c4_pick_shape` | `element` | Map a plain-English element description to the right C4 node type |
+| `output_format_guide` | — | Pick the right render output format for the user's goal |
+
+The same guidance is also baked into the server's connection `instructions`, so
+clients that honor instructions receive it automatically without invoking a prompt.
+
+---
+
+## C4 node types
+
+Trellis supports standard Mermaid C4 plus **Trellis-specific container shapes**
+(use in `C4Container` / `C4Component` diagrams). Prefer the specific shape over a
+generic `Container` when it matches an element's role.
+
+| Type | Use for |
+|------|---------|
+| `ContainerFrontend` | Web UI / browser app (chrome bar) |
+| `ContainerApp` | Desktop / mobile app |
+| `ContainerFolder` | File / config store (folder tab) |
+| `ContainerGateway` | API gateway / router |
+| `ContainerBucket` | Object storage (S3-like) |
+
+Each also has a `_Ext` variant for external / third-party systems.
+
+**Standard types:** `Person`, `System`(`Db`|`Queue`), `Container`(`Db`|`Queue`),
+`Component`(`Db`|`Queue`) — all with `_Ext` variants.
+**Boundaries:** `Enterprise_Boundary`, `System_Boundary`, `Container_Boundary`, `Deployment_Node`.
+**Relations:** `Rel`, `BiRel`, `Rel_U`/`Rel_D`/`Rel_L`/`Rel_R`, `Rel_Back` — `Rel(from, to, label[, tech])`.
+
+**Argument order:**
+
+- System / Person: `(alias, label, description)`
+- Container / Component: `(alias, label, technology, description)`
+
+---
+
 ## Usage examples
 
 ### Flowchart
@@ -204,4 +260,22 @@ C4Context
   System_Ext(auth, "Auth Service", "OAuth provider")
   Rel(user, web, "Uses")
   Rel(web, auth, "Authenticates via")
+```
+
+### C4 container diagram (Trellis-specific shapes)
+
+```
+C4Container
+  title Web Platform — Containers
+  Person(user, "User", "A customer")
+  ContainerFrontend(spa, "Web UI", "React", "Single-page app")
+  ContainerGateway(gw, "API Gateway", "Kong", "Routes traffic")
+  Container(api, "API", "Rust/Actix", "Business logic")
+  ContainerDb(db, "Database", "PostgreSQL", "Stores data")
+  ContainerBucket(assets, "Assets", "S3", "Static files")
+  Rel(user, spa, "Uses")
+  Rel(spa, gw, "Calls", "HTTPS")
+  Rel(gw, api, "Routes to")
+  Rel(api, db, "Reads/writes")
+  Rel(api, assets, "Stores objects")
 ```

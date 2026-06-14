@@ -62,11 +62,29 @@ BEST PRACTICES:
 4. Validate Mermaid syntax before rendering complex diagrams
 5. For PNG output, ensure TRELLIS_BIN env var points to trellis binary
 
-FORMAT GUIDE:
-- SVG: Scalable, embeddable, good for web
-- PNG: Raster, fixed size, good for images/docs
-- HTML: Interactive in browser, includes styling
-- DRAWIO: DRAWIO XML output enables further adjustments
+FORMAT GUIDE (pick by goal):
+- HTML: interactive review tool — exploring/navigating a diagram in a browser
+- DRAWIO: Drawio XML — when the user wants to edit the diagram further
+- SVG: scalable vector — quick high-quality preview or web embedding
+- PNG: raster, fixed size — unlicensed users (no TRELLIS_KEY) or a plain image file
+Note: SVG/HTML/DRAWIO require TRELLIS_KEY; PNG works without a license. If no key
+is set, default to PNG.
+
+C4 NODE TYPES:
+Trellis supports standard Mermaid C4 plus Trellis-specific container shapes
+(use in C4Container / C4Component diagrams). Prefer the specific shape when it
+matches an element's role rather than a generic Container.
+- ContainerFrontend — web UI / browser app (chrome bar)
+- ContainerApp      — desktop/mobile app
+- ContainerFolder   — file/config store (folder tab)
+- ContainerGateway  — API gateway / router
+- ContainerBucket   — object storage (S3-like)
+Each also has a _Ext variant for external/third-party systems.
+Standard: Person, System(Db|Queue), Container(Db|Queue), Component(Db|Queue) (+_Ext).
+Boundaries: Enterprise_Boundary, System_Boundary, Container_Boundary, Deployment_Node.
+Relations: Rel, BiRel, Rel_U/D/L/R, Rel_Back — Rel(from, to, label[, tech]).
+Arg order: System/Person = (alias, label, description);
+Container/Component = (alias, label, technology, description).
 
 ENVIRONMENT:
 - TRELLIS_BIN: Path to trellis binary (default: ./trellis)
@@ -74,7 +92,7 @@ ENVIRONMENT:
 - TRELLIS_KEY: license key. Mandatory for SVG/HTML/DRAWIO format
 """,
     icons=[Icon(src="https://trellislab.net/assets/trellis-logo-narrow.svg", mimeType="image/svg")],
-    version="0.10.0",
+    version="1.0.2",
 )
 
 # Resources
@@ -86,6 +104,76 @@ def list_themes() -> str:
 @mcp.resource("formats://list")
 def list_themes() -> str:
     return json.dumps(FORMATS)
+
+
+## Prompts
+@mcp.prompt(
+    name="c4_cheatsheet",
+    description="Reference for all Trellis C4 node types, including Trellis-specific shapes not in standard Mermaid.",
+)
+def c4_cheatsheet() -> str:
+    return """You are helping author a Trellis C4 diagram. Trellis supports standard
+Mermaid C4 plus these TRELLIS-SPECIFIC container shapes (container-level diagrams only,
+i.e. C4Container / C4Component):
+
+- ContainerFrontend(alias, label, tech, desc) — web UI / browser app (chrome bar)
+- ContainerApp(alias, label, tech, desc)      — desktop/mobile app (play-button deco)
+- ContainerFolder(alias, label, tech, desc)   — file/config store (folder tab)
+- ContainerGateway(alias, label, tech, desc)  — API gateway / router
+- ContainerBucket(alias, label, tech, desc)   — object storage (S3-like)
+Each also has a _Ext variant for external/third-party systems.
+
+Standard types: Person, Person_Ext, System, SystemDb, SystemQueue (+_Ext),
+Container, ContainerDb, ContainerQueue, Component, ComponentDb, ComponentQueue.
+Boundaries: Enterprise_Boundary, System_Boundary, Container_Boundary, Deployment_Node.
+Relations: Rel, BiRel, Rel_U/D/L/R, Rel_Back — Rel(from, to, label[, tech]).
+
+Arg order:
+- System/Person      = (alias, label, description)
+- Container/Component = (alias, label, technology, description)
+
+Prefer the specific Trellis shape over a generic Container when it matches the
+element's role (UI -> ContainerFrontend, storage bucket -> ContainerBucket, etc.).
+Then call the `render` tool with format=svg."""
+
+
+@mcp.prompt(
+    name="c4_pick_shape",
+    description="Map a plain-English element description to the right Trellis C4 node type.",
+)
+def c4_pick_shape(element: str) -> str:
+    return f"""Pick the best Trellis C4 node type for: "{element}".
+
+Mapping rules:
+- web/browser UI, SPA, React/Vue frontend -> ContainerFrontend
+- desktop or mobile app                   -> ContainerApp
+- database                                -> ContainerDb / SystemDb
+- message queue / topic / broker          -> ContainerQueue / SystemQueue
+- object storage (S3, GCS, blob)          -> ContainerBucket
+- API gateway / reverse proxy / router    -> ContainerGateway
+- config / file store / folder            -> ContainerFolder
+- generic service / API                   -> Container
+- third-party/external                    -> add _Ext suffix
+
+Output the single C4 line with placeholder args, then offer to render it."""
+
+
+@mcp.prompt(
+    name="output_format_guide",
+    description="Pick the right Trellis render output format for the user's goal.",
+)
+def output_format_guide() -> str:
+    return """Choose the `render` format that fits the user's intent:
+
+- html   — interactive review tool; best for exploring/navigating a diagram in a browser
+- drawio — Drawio XML; best when the user wants to edit the diagram further
+- svg    — scalable vector; best for a quick, high-quality preview or web embedding
+- png    — raster image; use for unlicensed users (no TRELLIS_KEY) or when a fixed-size
+           image file is needed
+
+Note: svg / html / drawio require a license key (TRELLIS_KEY). png works without a license.
+If no key is set, default to png. Ask the user which they want when the goal is ambiguous,
+then call the `render` tool with the chosen format."""
 
 
 ## Tools
