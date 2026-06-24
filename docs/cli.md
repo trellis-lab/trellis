@@ -227,7 +227,12 @@ theme = "paper"
 
 # Inspector panel layout for HTML output: Landscape (default) or Portrait
 html_orientation = "Landscape"
+
+# Anonymous usage ping — set to false to opt out (default: true)
+telemetry = true
 ```
+
+See [Telemetry](telemetry) for what is collected and how to opt out.
 
 ---
 
