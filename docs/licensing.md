@@ -81,6 +81,12 @@ Or set it in the MCP client configuration `env` block — see the [MCP guide](mc
 
 ---
 
+## Usage telemetry
+
+Licensed users receive anonymous usage pings when running commands. No personal data, no file content, no machine identifiers — only the command name, CLI version, and a one-way fingerprint of the license key. See [Telemetry](telemetry) for the exact data structure and opt-out instructions.
+
+---
+
 ## Questions
 
 For licensing questions, seat counts, or team plans, contact us via the [issues page](https://github.com/trellis-lab/trellis/issues) or the subscribe link above.

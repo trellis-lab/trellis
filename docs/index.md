@@ -12,4 +12,5 @@ Trellis is a drop-in Mermaid renderer that produces clean, overlap-free diagrams
 - [MCP Server](mcp)
 - [Pandoc Integration](pandoc)
 - [Licensing](licensing)
+- [Telemetry](telemetry)
 - [Troubleshooting](troubleshooting)
