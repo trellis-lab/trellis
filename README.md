@@ -156,12 +156,16 @@ Setup guide: [docs/mcp.md](docs/mcp.md)
 
 ## Licensing
 
-Trellis is free for everyday rendering. `render-batch` and MCP SVG/HTML/Draw.io output are commercial features that require a license key.
+Two separate licenses apply, covering different things:
 
-<!-- TODO: replace with the real subscribe / pricing URL -->
-👉 **[Subscribe to Trellis](PLACEHOLDER_SUBSCRIBE_URL)**
+- **Source in this repository** (docs, MCP server wrapper, provisioning scripts, examples) — [MIT License](LICENSE).
+- **Trellis CLI binary and Docker images** — proprietary, closed-source. See the [EULA](EULA.md). Trellis is free for everyday rendering; `render-batch` and MCP SVG/HTML/Draw.io output are commercial features that require a license key.
 
-Full details: [docs/licensing.md](docs/licensing.md)
+Bundled open-source dependencies of the binary are attributed in [THIRD-PARTY-LICENSES.md](THIRD-PARTY-LICENSES.md).
+
+👉 **[Subscribe to Trellis](https://trellislab.net/#pricing)**
+
+Commercial terms and key activation: [docs/licensing.md](docs/licensing.md)
 
 ---
 
