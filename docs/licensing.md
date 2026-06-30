@@ -6,6 +6,16 @@ nav_order: 7
 
 # Licensing
 
+This page covers the **commercial product license** for the Trellis CLI binary
+and Docker images — what is free, what needs a paid license key, and how to
+activate it. The binary itself is proprietary; see the [EULA](https://github.com/trellis-lab/trellis/blob/main/EULA.md).
+
+> **Note — two different licenses.** The *source files* in the public Trellis
+> repository (docs, MCP server wrapper, provisioning scripts) are open source
+> under the [MIT License](https://github.com/trellis-lab/trellis/blob/main/LICENSE).
+> That is separate from the commercial product license described below, which
+> governs the binary and its paid features.
+
 Trellis is free to use for everyday rendering. Some advanced capabilities are commercial features that require a license key.
 
 ---
