@@ -272,3 +272,4 @@ Useful in shell pipelines and CI scripts.
 - Class diagram
 - Entity-relationship (ER)
 - C4 architecture diagram
+- Architecture (`architecture-beta`)

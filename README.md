@@ -31,6 +31,7 @@ Trellis replaces that engine. Every edge finds its own clear corridor. Diagrams 
 - Class diagram
 - Entity-relationship (ER)
 - C4 architecture diagram
+- Architecture (`architecture-beta`) — with icon support (AWS and other Iconify sets)
 
 ---
 

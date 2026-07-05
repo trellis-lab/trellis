@@ -42,6 +42,20 @@ Run `trellis validate <input>` first to check for syntax errors. Validation repo
 
 ASCII (`-f ascii`) is in development and disabled by default in pre-built binaries. Use `svg`, `png`, `html`, or `drawio` instead.
 
+### Icons don't appear in the VS Code preview
+
+The VS Code extension ships a **built-in icon set only** — `mdi:*` and `logos:aws-*`. It does not download icons on demand, so `architecture-beta` diagrams that reference other Iconify prefixes (`devicon`, `simple-icons`, `carbon`, etc.) show blank/placeholder icons in the preview.
+
+Render the same diagram with the **CLI or Docker** to get on-demand icon downloads across all [supported prefixes](mermaid-support#icons):
+
+```bash
+trellis render diagram.mmd -o diagram.svg
+```
+
+### Icons still don't download from the CLI
+
+The CLI only fetches from a fixed allow-list of Iconify prefixes (`mdi`, `logos`, `devicon`, `carbon`, `simple-icons`, … — see the [full list](mermaid-support#icons)). An unknown prefix is rejected, and fetched SVGs are size-capped and content-scanned. Check the prefix, and confirm outbound network access to the Iconify CDN.
+
 ### Docker: "permission denied" or empty output
 
 Make sure you mount the working directory and reference files relative to `/data`:
@@ -51,6 +65,27 @@ docker run --rm -v "$(pwd):/data" ghcr.io/trellis-lab/trellis:latest input.mmd -
 ```
 
 Both input and output paths resolve inside `/data`.
+
+---
+
+## MCP server
+
+### Claude Desktop / Web is very slow or times out on HTML output
+
+Rendering HTML through the Trellis MCP server can be very slow in **Claude Desktop and the Claude web UI**. This is a **known, currently unresolved limitation of the Claude client**, not of Trellis: the client can time out when the response sent back over stdio is larger than ~500 characters, and interactive `html` output easily exceeds that.
+
+Workarounds until the client fixes this:
+
+- Prefer **`png`** output in MCP clients — it returns compact image content and avoids the large-text-response path.
+- Use **`svg`**, **`html`**, or **`drawio`** through the **CLI** directly when you need those formats:
+
+  ```bash
+  trellis render diagram.mmd -o diagram.html -f html
+  ```
+
+- Write to a file rather than returning inline content where the client supports it.
+
+There is no Trellis-side fix; the constraint is in the client's stdio handling.
 
 ---
 
