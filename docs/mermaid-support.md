@@ -18,6 +18,7 @@ Trellis is a drop-in renderer for standard Mermaid syntax — existing `.mmd` fi
 | Class diagram | `classDiagram` |
 | Entity-relationship | `erDiagram` |
 | C4 architecture | `C4Context`, `C4Container`, `C4Component`, `C4Dynamic`, `C4Deployment` |
+| Architecture | `architecture-beta` |
 
 Diagram types not in this list (sequence, state, gantt, pie, journey, gitGraph, mindmap, etc.) are not rendered.
 
@@ -118,3 +119,27 @@ C4Container
 ```
 
 These keywords are Trellis extensions — they render in Trellis but are not part of the official Mermaid C4 specification.
+
+---
+
+## Architecture (`architecture-beta`) support
+
+Trellis renders Mermaid `architecture-beta` diagrams with `group`, `service`, and `junction` elements, orthogonal edge routing, and optional icons. Draw.io export writes architecture diagrams as swimlane containers with embedded icons.
+
+```
+architecture-beta
+    group cloud(logos:aws)[Cloud]
+    service db(logos:postgresql)[Database] in cloud
+    service api(logos:aws-lambda)[API] in cloud
+    api:R --> L:db
+```
+
+### Icons
+
+Icons use Iconify `prefix:name` identifiers (e.g. `logos:aws`, `logos:postgresql`). The **CLI and Docker images download icons on demand** from any of the supported Iconify sets and cache them locally:
+
+`mdi`, `logos`, `vscode-icons`, `devicon`, `carbon`, `tabler`, `heroicons`, `lucide`, `ph`, `ri`, `bi`, `fa`, `fa6-solid`, `fa6-brands`, `simple-icons`, `material-symbols`, `fluent`, `ant-design`
+
+Only these prefixes are allowed — downloads from arbitrary hosts/paths are blocked, and fetched SVGs are size-capped and content-scanned before embedding.
+
+> **VS Code extension:** the extension ships a **built-in icon set only** (`mdi:*` and `logos:aws-*`). It does not download icons on demand. Diagrams using other Iconify prefixes render their icons only via the CLI or Docker. See [Troubleshooting → Icons don't appear in the VS Code preview](troubleshooting#icons-dont-appear-in-the-vs-code-preview).

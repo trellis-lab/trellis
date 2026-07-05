@@ -64,6 +64,12 @@ Configure under **Settings → Extensions → Trellis**:
 
 ---
 
+## Icons in architecture diagrams
+
+The extension bundles a **built-in Iconify set only** — `mdi:*` and `logos:aws-*`. Unlike the CLI, it does **not** download icons on demand, so `architecture-beta` diagrams using other prefixes (`devicon`, `simple-icons`, `carbon`, …) show those icons only when rendered with the CLI or Docker. See [Troubleshooting → Icons don't appear in the VS Code preview](troubleshooting#icons-dont-appear-in-the-vs-code-preview) and the full [icon prefix list](mermaid-support#icons).
+
+---
+
 ## Licensing
 
 Live preview and SVG/PNG/Draw.io export work without a license.
