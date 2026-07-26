@@ -1,0 +1,31 @@
+{
+  "name": "trellis-architect",
+  "version": "0.1.0",
+  "description": "Guides a Software Architect from an initial idea to a validated, PDF-ready architecture design document, using the Trellis CLI/VS Code extension/MCP server for diagram rendering and the Trellis Pandoc image for publishing.",
+  "author": {
+    "name": "Trellis Lab"
+  },
+  "homepage": "https://trellislab.net",
+  "repository": "https://github.com/trellis-lab/trellis",
+  "license": "MIT",
+  "keywords": [
+    "architecture",
+    "adr",
+    "c4-model",
+    "mermaid",
+    "risk-analysis",
+    "documentation",
+    "trellis"
+  ],
+  "mcpServers": {
+    "trellis": {
+      "command": "python",
+      "args": ["${CLAUDE_PLUGIN_ROOT}/../../mcp/server.py"],
+      "env": {
+        "TRELLIS_MCP_TRANSPORT": "stdio",
+        "TRELLIS_BIN": "${TRELLIS_BIN}",
+        "TRELLIS_KEY": "${TRELLIS_KEY}"
+      }
+    }
+  }
+}
