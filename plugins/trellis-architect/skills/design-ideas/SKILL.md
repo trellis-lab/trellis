@@ -1,13 +1,13 @@
 ---
 name: design-ideas
-description: This skill should be used when the user asks to "generate design ideas", "ta:design-ideas", "propose architecture candidates", or has an approved 02-requirements.md and is ready to explore architecture options. Produces 2–4 distinct candidate architectures with C4 Container diagrams, gated by user review of all candidates.
+description: This skill should be used when the user asks to "generate design ideas", "ta:design-ideas", "propose architecture candidates", or has an approved 02-requirements/requirements.md and is ready to explore architecture options. Produces 2–4 distinct candidate architectures with C4 Container diagrams, gated by user review of all candidates.
 version: 0.1.0
 ---
 
 # ta:design-ideas
 
 Third workflow phase. Generate 2–4 distinct candidate architectures from
-`02-requirements.md`, produce `03-design-ideas.md`.
+`02-requirements/requirements.md`, produce `03-design-ideas/design-ideas.md`.
 
 Read `../../shared/conventions.md` and `../../shared/c4-cheatsheet.md` first —
 every candidate diagram uses Trellis-specific container shapes where they fit.

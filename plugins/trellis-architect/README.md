@@ -45,11 +45,11 @@ prefix — always use the full `trellis-architect:` form).
 | Skill | Purpose |
 |---|---|
 | `ta:initialize` | Scaffold a new workspace, detect the Trellis environment |
-| `ta:refine-expectations` | Interview → `01-expectations.md` + system context diagram |
-| `ta:define-requirements` | FR/NFR → `02-requirements.md` |
-| `ta:design-ideas` | 2–4 candidate architectures → `03-design-ideas.md` |
-| `ta:select-design` | Weighted comparison / hybrid → `04-selected-design.md` + ADRs |
-| `ta:risk-analysis` | SWIFT review → `05-risk-analysis.md`, feeds mitigations back into the design |
+| `ta:refine-expectations` | Interview → `01-expectations/expectations.md` + system context diagram |
+| `ta:define-requirements` | FR/NFR → `02-requirements/requirements.md` |
+| `ta:design-ideas` | 2–4 candidate architectures → `03-design-ideas/design-ideas.md` |
+| `ta:select-design` | Weighted comparison / hybrid → `04-selected-design/selected-design.md` + ADRs |
+| `ta:risk-analysis` | SWIFT review → `05-risk-analysis/risk-analysis.md`, feeds mitigations back into the design |
 | `ta:documentation` | Assemble `06-final/architecture.md`, render PDF via `trellis-pandoc` |
 | `ta:export` | Render any diagram to png/svg/html/drawio |
 | `ta:adr` | `new` / `supersede` / `list` — Architecture Decision Records |
@@ -61,7 +61,11 @@ prefix — always use the full `trellis-architect:` form).
 <target-dir>/
 ├── .ta/state.yaml          # phase, approvals, environment, decisions, adr_counter
 ├── 00-input/                # user-provided initial materials
-├── 01-expectations.md … 05-risk-analysis.md
+├── 01-expectations/expectations.md
+├── 02-requirements/requirements.md
+├── 03-design-ideas/design-ideas.md
+├── 04-selected-design/selected-design.md
+├── 05-risk-analysis/risk-analysis.md
 ├── adr/ADR-NNNN-*.md
 ├── 06-final/architecture.{md,pdf}, assets/
 └── ta.config.md

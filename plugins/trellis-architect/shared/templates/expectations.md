@@ -39,7 +39,7 @@
 ## Quality expectations
 
 <qualities the user cares about in their own words — precise NFR wording comes
-later in `02-requirements.md`>
+later in `../02-requirements/requirements.md`>
 
 ## Success criteria
 

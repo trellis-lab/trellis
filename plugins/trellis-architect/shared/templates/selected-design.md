@@ -1,7 +1,8 @@
 # Selected Design — <project name>
 
-> Produced by `ta:select-design` from `03-design-ideas.md`. The decision's
-> rationale lives in ADRs, not here — this document links to them.
+> Produced by `ta:select-design` from `../03-design-ideas/design-ideas.md`.
+> The decision's rationale lives in ADRs, not here — this document links to
+> them.
 
 ## Decision summary
 

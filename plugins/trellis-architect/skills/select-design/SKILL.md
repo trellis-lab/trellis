@@ -1,14 +1,15 @@
 ---
 name: select-design
-description: This skill should be used when the user asks to "select a design", "ta:select-design", "compare the candidates", "pick the architecture", or has approved 03-design-ideas.md and needs to choose or combine candidates. Runs a weighted scoring comparison, supports hybrid designs, and records the choice as ADRs.
+description: This skill should be used when the user asks to "select a design", "ta:select-design", "compare the candidates", "pick the architecture", or has approved 03-design-ideas/design-ideas.md and needs to choose or combine candidates. Runs a weighted scoring comparison, supports hybrid designs, and records the choice as ADRs.
 version: 0.1.0
 ---
 
 # ta:select-design
 
-Fourth workflow phase. Compare candidates from `03-design-ideas.md`, select or
-combine, produce `04-selected-design.md`. The decision itself is captured as
-ADRs — this document links them, it doesn't restate their rationale.
+Fourth workflow phase. Compare candidates from `03-design-ideas/design-ideas.md`,
+select or combine, produce `04-selected-design/selected-design.md`. The
+decision itself is captured as ADRs — this document links them, it doesn't
+restate their rationale.
 
 Read `../../shared/conventions.md` and `../../shared/c4-cheatsheet.md` first.
 
@@ -35,15 +36,15 @@ Require `approvals.design-ideas.approved: true`. Otherwise point at
 3. **Record the decision as ADRs** (via `ta:adr new`), not as prose in this
    document:
    - One ADR for the overall architecture choice. "Options considered" =
-     the candidates from `03-design-ideas.md` (rejected ones included, with
-     why they lost). `requirements:` front matter = the highest-weighted
-     rows that drove the outcome.
+     the candidates from `03-design-ideas/design-ideas.md` (rejected ones
+     included, with why they lost). `requirements:` front matter = the
+     highest-weighted rows that drove the outcome.
    - One additional ADR per significant technology/pattern choice *inside*
      the winner (e.g. choice of message broker, choice of auth pattern) —
      only for choices material enough to matter later if revisited, not every
      minor detail.
-   - `04-selected-design.md` links these ADR ids in the Decision Summary
-     section instead of duplicating their rationale.
+   - `04-selected-design/selected-design.md` links these ADR ids in the
+     Decision Summary section instead of duplicating their rationale.
 
 4. **Draft the refined diagrams**: `C4Container` for the selected/merged
    design (own `fig-xx`), plus `C4Component` for any container whose internals

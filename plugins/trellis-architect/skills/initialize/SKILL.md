@@ -29,11 +29,16 @@ id rules referenced below.
    <target-dir>/
    ├── .ta/state.yaml
    ├── 00-input/
-   ├── 01-expectations.md       (copied from templates/expectations.md)
-   ├── 02-requirements.md       (copied from templates/requirements.md)
-   ├── 03-design-ideas.md       (copied from templates/design-ideas.md)
-   ├── 04-selected-design.md    (copied from templates/selected-design.md)
-   ├── 05-risk-analysis.md      (copied from templates/risk-analysis.md)
+   ├── 01-expectations/
+   │   └── expectations.md      (copied from templates/expectations.md)
+   ├── 02-requirements/
+   │   └── requirements.md      (copied from templates/requirements.md)
+   ├── 03-design-ideas/
+   │   └── design-ideas.md      (copied from templates/design-ideas.md)
+   ├── 04-selected-design/
+   │   └── selected-design.md   (copied from templates/selected-design.md)
+   ├── 05-risk-analysis/
+   │   └── risk-analysis.md     (copied from templates/risk-analysis.md)
    ├── adr/
    │   └── ADR-0000-record-architecture-decisions.md
    ├── 06-final/
@@ -42,11 +47,14 @@ id rules referenced below.
    └── ta.config.md
    ```
 
-   Copy each numbered file from `../../shared/templates/`, substituting
-   `<project name>` placeholders. Leave phase content as template placeholders
-   — later skills fill them in during their own interviews. `00-input/` starts
-   empty; tell the user to drop initial requirement docs or notes there before
-   running `ta:refine-expectations`.
+   Every phase gets its own numbered folder, even though it holds a single
+   file today — keeps room for supporting material (input excerpts, working
+   notes) without a later rename. Copy each template from
+   `../../shared/templates/` into its folder, substituting `<project name>`
+   placeholders. Leave phase content as template placeholders — later skills
+   fill them in during their own interviews. `00-input/` starts empty; tell
+   the user to drop initial requirement docs or notes there before running
+   `ta:refine-expectations`.
 
 4. **Seed the meta-ADR.** Instantiate `../../shared/templates/adr.md` as
    `adr/ADR-0000-record-architecture-decisions.md`: status `accepted`, phase

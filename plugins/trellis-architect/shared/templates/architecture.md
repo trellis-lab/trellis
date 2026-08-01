@@ -12,7 +12,7 @@ geometry: margin=2.5cm
 
 # Context
 
-<from 01-expectations.md: business goals, users, scope>
+<from 01-expectations/expectations.md: business goals, users, scope>
 
 ```mermaid
 C4Context
@@ -22,12 +22,12 @@ C4Context
 
 # Requirements
 
-<from 02-requirements.md, summarized — full tables optionally included as an
-appendix if the audience wants them inline>
+<from 02-requirements/requirements.md, summarized — full tables optionally
+included as an appendix if the audience wants them inline>
 
 # Architecture
 
-<from 04-selected-design.md: the selected design, all diagrams, with each
+<from 04-selected-design/selected-design.md: the selected design, all diagrams, with each
 mermaid block replaced by an image reference into assets/ if it was polished
 in draw.io — see skills/documentation/SKILL.md>
 
@@ -49,7 +49,7 @@ C4Container
 
 # Risk Register
 
-<from 05-risk-analysis.md: SWIFT table + residual risk summary>
+<from 05-risk-analysis/risk-analysis.md: SWIFT table + residual risk summary>
 
 # Glossary
 

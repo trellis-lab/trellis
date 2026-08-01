@@ -16,14 +16,15 @@ at any time, in any phase.
    `ta:initialize`.
 2. Read `state.yaml` and report:
    - **Current phase** and which document that maps to (e.g. `design-ideas` →
-     `03-design-ideas.md`).
+     `03-design-ideas/design-ideas.md`).
    - **Approvals**: which phases are approved (with date) vs. pending.
    - **Environment**: `trellis_bin`, `license`, `mcp`, `docker` from the
      `environment` block — flag any that block the current phase's rendering
      needs (e.g. no `trellis_bin` and `mcp: false` means no CLI/MCP render
      path, only the VS Code extension).
-3. Scan the current phase's document (and `01-expectations.md` always, since
-   its "Open questions" section tends to stay live longest) for open items:
+3. Scan the current phase's document (and `01-expectations/expectations.md`
+   always, since its "Open questions" section tends to stay live longest) for
+   open items:
    - Any `## Open questions` section with unresolved bullets.
    - Any `<placeholder>`-style text left unfilled (a template that wasn't
      completed).
@@ -48,7 +49,7 @@ Keep it scannable — a short status block, not prose:
 Phase: design-ideas (not yet approved)
 Approvals: expectations ✅ 2026-07-20 · requirements ✅ 2026-07-22 · design-ideas ⏳
 Environment: trellis_bin=/usr/local/bin/trellis · license=true · mcp=true · docker=true
-Open questions: 2 in 03-design-ideas.md
+Open questions: 2 in 03-design-ideas/design-ideas.md
 Proposed ADRs: none
 Next: finish the design-ideas interview, then review fig-03/fig-04 and approve.
 ```

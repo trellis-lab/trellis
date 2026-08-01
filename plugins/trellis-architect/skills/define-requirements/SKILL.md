@@ -1,13 +1,14 @@
 ---
 name: define-requirements
-description: This skill should be used when the user asks to "define requirements", "ta:define-requirements", "write FRs and NFRs", or has an approved 01-expectations.md and is ready for the requirements phase. Derives functional and non-functional requirements with traceability back to expectations, gated by user approval.
+description: This skill should be used when the user asks to "define requirements", "ta:define-requirements", "write FRs and NFRs", or has an approved 01-expectations/expectations.md and is ready for the requirements phase. Derives functional and non-functional requirements with traceability back to expectations, gated by user approval.
 version: 0.1.0
 ---
 
 # ta:define-requirements
 
-Second workflow phase. Derive `FR-xx` / `NFR-xx` from `01-expectations.md`,
-interview to fill gaps, produce `02-requirements.md`.
+Second workflow phase. Derive `FR-xx` / `NFR-xx` from
+`01-expectations/expectations.md`, interview to fill gaps, produce
+`02-requirements/requirements.md`.
 
 Read `../../shared/conventions.md` first.
 
@@ -20,7 +21,7 @@ expectations`). If `phase` is already past `requirements`, point at
 
 ## Procedure
 
-1. **Derive a first draft** from `01-expectations.md`:
+1. **Derive a first draft** from `01-expectations/expectations.md`:
    - Functional requirements (`FR-xx`) from stated goals, user needs, and
      scope-in items.
    - Non-functional requirements (`NFR-xx`), grouped by quality attribute
@@ -42,12 +43,14 @@ expectations`). If `phase` is already past `requirements`, point at
 4. **Traceability check** before the gate: every FR/NFR has a non-empty
    source-expectation link. Any requirement that emerged only during this
    interview (no prior expectations-doc line) gets a note added to
-   `01-expectations.md` (its "Known facts" or "Open questions" section, as
-   appropriate) so the link target exists — don't leave it dangling.
+   `01-expectations/expectations.md` (its "Known facts" or "Open questions"
+   section, as appropriate) so the link target exists — don't leave it
+   dangling.
 
 5. **Diagram**: a use-case or context diagram only if it clarifies how FRs
-   group (e.g. by actor or subsystem). Skip it if `01-expectations.md`'s
-   context diagram already conveys the same grouping — don't duplicate.
+   group (e.g. by actor or subsystem). Skip it if
+   `01-expectations/expectations.md`'s context diagram already conveys the
+   same grouping — don't duplicate.
 
 6. **Significant decisions** (e.g. "compliance mandates encryption at rest"):
    `ta:adr new`, same as in every other phase.

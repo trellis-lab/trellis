@@ -45,7 +45,7 @@ Read `../../shared/conventions.md` §ADRs before acting.
 4. Append to `state.yaml` `decisions` as in step 4 above, with the summary
    noting what it supersedes.
 5. If the superseded decision is referenced from a phase document (e.g.
-   `04-selected-design.md` links the old ADR id), update that link to point at
+   `04-selected-design/selected-design.md` links the old ADR id), update that link to point at
    the new id and note in-line that it supersedes the old one — don't leave a
    dangling reference to a superseded decision presented as current.
 

@@ -1,7 +1,7 @@
 # Requirements — <project name>
 
-> Produced by `ta:define-requirements` from `01-expectations.md`. Ids are
-> permanent once assigned — see `../conventions.md`.
+> Produced by `ta:define-requirements` from `../01-expectations/expectations.md`.
+> Ids are permanent once assigned — see `../conventions.md`.
 
 ## Functional requirements
 
@@ -45,9 +45,9 @@ C4Context
 ## Traceability
 
 Every FR/NFR row's "Source expectation" column links back to a line or section
-in `01-expectations.md`. Requirements with no source expectation need one
-added there first, or an explicit note that they emerged during this
-interview.
+in `../01-expectations/expectations.md`. Requirements with no source
+expectation need one added there first, or an explicit note that they emerged
+during this interview.
 
 ## Raw notes
 

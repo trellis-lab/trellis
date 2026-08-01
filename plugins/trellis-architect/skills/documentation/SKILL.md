@@ -1,6 +1,6 @@
 ---
 name: documentation
-description: This skill should be used when the user asks to "assemble the final documentation", "ta:documentation", "generate the architecture PDF", "produce the final design doc", or has an approved 05-risk-analysis.md and is ready to publish. Assembles 06-final/architecture.md from all phases, offers draw.io polish for diagrams, and renders the PDF via the trellis-pandoc Docker image.
+description: This skill should be used when the user asks to "assemble the final documentation", "ta:documentation", "generate the architecture PDF", "produce the final design doc", or has an approved 05-risk-analysis/risk-analysis.md and is ready to publish. Assembles 06-final/architecture.md from all phases, offers draw.io polish for diagrams, and renders the PDF via the trellis-pandoc Docker image.
 version: 0.1.0
 ---
 
@@ -26,17 +26,18 @@ Require `approvals.risk-analysis.approved: true`. Otherwise point at
    - Executive Summary — write fresh (one page max): problem, chosen approach,
      key risks, current status. Nothing else in this document is written
      fresh; this section is.
-   - Context — from `01-expectations.md`.
-   - Requirements — summarized from `02-requirements.md` (link to the full
-     tables rather than duplicating every row, unless the user wants them
-     inline).
-   - Architecture — from `04-selected-design.md`, all diagrams.
+   - Context — from `01-expectations/expectations.md`.
+   - Requirements — summarized from `02-requirements/requirements.md` (link to
+     the full tables rather than duplicating every row, unless the user wants
+     them inline).
+   - Architecture — from `04-selected-design/selected-design.md`, all
+     diagrams.
    - Decision Register — run `ta:adr list`'s table generation and embed it
      directly; include full text of every `accepted` ADR as an appendix, in
      id order. Proposed or superseded ADRs are listed in the register (with
      their status) but only accepted ones get full appendix text.
-   - Risk Register — from `05-risk-analysis.md`: SWIFT table + residual-risk
-     summary.
+   - Risk Register — from `05-risk-analysis/risk-analysis.md`: SWIFT table +
+     residual-risk summary.
    - Glossary — build from terms used across phase docs that a reader outside
      the project wouldn't know; ask the user to review it rather than
      guessing what needs defining.

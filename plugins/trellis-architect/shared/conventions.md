@@ -24,10 +24,38 @@ After writing or updating a diagram:
 2. Ask them to open the file in VS Code and preview with the Trellis extension
    (`Ctrl+Shift+V` on a `.mmd` file, or the CodeLens "Trellis: Preview Mermaid
    Block" above a ` ```mermaid ` block in Markdown).
-3. Wait for explicit approval before writing it to `state.yaml` and advancing.
-   Approval language ("looks good", "approved", "go ahead") is what unlocks the
-   phase gate — silence or a request for changes does not.
+3. Ask for the gate decision via `AskUserQuestion` (see §Interviews & user
+   input) — options like "Approved" / "Request changes". Wait for explicit
+   approval before writing it to `state.yaml` and advancing. Approval language
+   ("looks good", "approved", "go ahead", or the "Approved" option itself) is
+   what unlocks the phase gate — silence or a request for changes does not.
 - Never advance a phase without a recorded approval in `.ta/state.yaml`.
+
+## Interviews & user input
+
+- Every question put to the user — interview questions, gate approvals,
+  confirmations, disambiguation, priority/weighting choices — goes through the
+  `AskUserQuestion` tool. Don't ask in plain prose and wait for a free-text
+  reply; this applies in every skill, not only the ones with "interview" in
+  their procedure.
+- One focused question at a time. Group only tightly related sub-questions
+  into one `AskUserQuestion` call (e.g. "who are the primary user roles, and
+  how do they differ?").
+- Shape `options` around what the choice actually is: 2-4 concrete options,
+  `multiSelect: true` when more than one can apply (e.g. "which quality
+  attributes matter here?"). The tool always offers an "Other" choice for
+  free text, so open-ended questions still work — give the 2-3 most likely
+  answers as options and let "Other" cover the rest; don't force a narrative
+  answer into a false multiple-choice.
+- Gate approvals ask with options such as "Approved" / "Request changes" (plus
+  "Other" for a qualified answer). Only "Approved" (or equivalent free-text
+  approval language typed via "Other") unlocks the gate, per the Review loop
+  rule above.
+- Record the user's selection or free-text answer verbatim in the document's
+  "Raw notes" appendix, same as any other interview answer — asking through
+  the tool doesn't replace the written record.
+- If `AskUserQuestion` isn't available in the current environment, fall back
+  to a plain-text question — treat that as the exception, not the default.
 
 ## Rendering (for `ta:export`, and any skill previewing outside the extension)
 
@@ -50,16 +78,8 @@ After writing or updating a diagram:
   dropped (mark it superseded/withdrawn in place instead).
 - Keep traceability links live in both directions: expectation → requirement →
   design element → risk. When a phase document references an id from an earlier
-  phase, link it (`[FR-03](02-requirements.md#fr-03)`), don't restate its text.
-
-## Interviews
-
-- One focused question at a time. Group only tightly related sub-questions
-  (e.g. "who are the primary user roles, and how do they differ?").
-- Record answers verbatim in the document's "Raw notes" appendix before
-  synthesizing them into the structured sections above it. Synthesis is allowed
-  to reorganize and summarize; the raw notes are the audit trail back to what
-  the user actually said.
+  phase, link it with a path relative to the linking document's own folder
+  (`[FR-03](../02-requirements/requirements.md#fr-03)`), don't restate its text.
 
 ## ADRs
 

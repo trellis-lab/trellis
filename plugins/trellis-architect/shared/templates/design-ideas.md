@@ -1,8 +1,8 @@
 # Design Ideas — <project name>
 
-> Produced by `ta:design-ideas` from `02-requirements.md`. 2–4 distinct
-> candidates; each gets its own section below. See `../c4-cheatsheet.md` for
-> shape choice.
+> Produced by `ta:design-ideas` from `../02-requirements/requirements.md`. 2–4
+> distinct candidates; each gets its own section below. See
+> `../c4-cheatsheet.md` for shape choice.
 
 ## Candidate A — <name>
 
@@ -44,7 +44,8 @@ C4Container
 ## Comparison summary
 
 <one short paragraph pointing at the tradeoffs `ta:select-design` will need to
-weigh — not a scored comparison, that lives in `04-selected-design.md`>
+weigh — not a scored comparison, that lives in
+`../04-selected-design/selected-design.md`>
 
 ## Raw notes
 
