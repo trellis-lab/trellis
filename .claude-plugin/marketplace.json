@@ -1,0 +1,20 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "trellis",
+  "description": "Claude Code plugins for the Trellis diagram-rendering portfolio.",
+  "owner": {
+    "name": "Trellis Lab"
+  },
+  "plugins": [
+    {
+      "name": "trellis-architect",
+      "description": "Guides a Software Architect from an initial idea to a validated, PDF-ready architecture design document, using the Trellis CLI/VS Code extension/MCP server for diagram rendering and the Trellis Pandoc image for publishing.",
+      "author": {
+        "name": "Trellis Lab"
+      },
+      "category": "documentation",
+      "source": "./plugins/trellis-architect",
+      "homepage": "https://github.com/trellis-lab/trellis/tree/main/plugins/trellis-architect"
+    }
+  ]
+}
