@@ -20,7 +20,7 @@ Trellis is a drop-in renderer for standard Mermaid syntax — existing `.mmd` fi
 | C4 architecture | `C4Context`, `C4Container`, `C4Component`, `C4Dynamic`, `C4Deployment` |
 | Architecture | `architecture-beta` |
 
-Diagram types not in this list (sequence, state, gantt, pie, journey, gitGraph, mindmap, etc.) are not rendered.
+Diagram types not in this list (sequence, state, gantt, pie, journey, gitGraph, mindmap, etc.) are not natively supported by Trellis. However, the **VS Code extension falls back to Mermaid.js** rendering for these types, so you can still preview them with Mermaid's default layout. The CLI and other tools will show an error for unsupported types.
 
 ---
 
@@ -70,7 +70,19 @@ a & b & c --> d
 
 ### Subgraphs
 
-`subgraph ID [label] … end` blocks are supported.
+`subgraph ID [label] … end` blocks are supported, including a bare quoted title with no separate id (`subgraph "Title"`).
+
+### Markdown labels
+
+Node and edge labels support inline markdown when delimited by `` "` ``…`` `" `` — Mermaid's markdown-string syntax:
+
+```
+A("`The **cat** in the hat`") -- "`Bold **edge label**`" --> B
+```
+
+Supported subset: **bold** (`**text**`), *italic* (`*text*`), and line breaks — matching Mermaid's `htmlLabels: false` rendering. Links, code spans, lists, headings, and strikethrough are out of scope (Mermaid itself rejects them in markdown strings), and a leading list/heading marker (`5. Deploy`, `# Stage 1`, `- item`) is preserved as literal text rather than reinterpreted. A literal line break inside the backticks becomes a line break in the rendered label. Long markdown labels wrap at word boundaries, configurable via `markdown_wrap_width` (default `200.0` px; `0.0` disables wrapping). Plain (non-markdown, non-quoted-string) labels are unaffected — this only applies to the `` "` … `" `` form.
+
+Supported across every output format: SVG and PNG render true bold/italic; `drawio` export sets `html=1` with `<b>`/`<i>` markup; `ascii` output and the `html` inspector's node/edge data show the plain text with styling stripped.
 
 ### Limitations
 
@@ -84,7 +96,7 @@ These are parsed but **ignored** — they don't error, but they have no visual e
 Also not yet supported (on the roadmap):
 
 - **Custom shape strings** (the newer `id@{ shape: … }` syntax).
-- **Markdown-formatted labels** (e.g. `` id["`**bold** _italic_`"] ``) — rendered as plain text for now.
+- **Mindmap diagrams** — markdown labels are supported in the underlying model and expected to extend here without rework.
 
 > Trellis controls colour and appearance through [themes](cli#themes) and config, not inline Mermaid `style`/`classDef` directives.
 

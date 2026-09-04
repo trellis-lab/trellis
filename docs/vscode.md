@@ -36,6 +36,22 @@ Or search **"Trellis"** in the Extensions panel (`Ctrl+Shift+X`) and click **Ins
 
 Open any Markdown file containing a ` ```mermaid ` block. A CodeLens appears above each block — click it (**Trellis: Preview Mermaid Block**) to render that diagram.
 
+### Inspect Diagram
+
+Click the **Inspect Diagram** button in the preview toolbar to open an interactive inspector that lets you explore the diagram structure — inspect nodes, edges, and boundaries directly from the rendered view.
+
+### Pan and zoom
+
+The preview supports interactive pan and zoom:
+- **Zoom:** Scroll with your cursor centered on the diagram (cursor-anchored zoom). Your zoom level and pan position are saved per document.
+- **Pan:** Click and drag to pan around the diagram.
+
+The preview re-renders sharply as you zoom in for fine details.
+
+### Unsupported diagram types
+
+The preview falls back to Mermaid.js for diagram types Trellis doesn't yet support (e.g. sequence, state, gantt, pie, journey, gitGraph, mindmap). This means you can still preview and work with these diagrams — they just use Mermaid's default layout instead of Trellis's overlap-free routing.
+
 ### Export
 
 Export from the Command Palette (`Ctrl+Shift+P`) or the export button in the preview toolbar:
