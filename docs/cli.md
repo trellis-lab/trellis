@@ -12,6 +12,22 @@ The `trellis` binary renders Mermaid diagrams to SVG, PNG, HTML, ASCII, and Draw
 
 ## Installation
 
+### Homebrew (macOS and Linux)
+
+```bash
+brew tap trellis-lab/trellis
+brew trust trellis-lab/trellis
+brew install trellis
+```
+
+> Homebrew 6.0+ requires trusting third-party taps before their formulae can load. If you skip `brew trust` and see `Error: Refusing to load formula ... from untrusted tap`, run `brew trust trellis-lab/trellis` and retry the install.
+
+### winget (Windows)
+
+```powershell
+winget install TrellisLab.Trellis
+```
+
 ### Binary download
 
 | Platform | File |

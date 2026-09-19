@@ -51,6 +51,26 @@ Or search **"Trellis"** in the VS Code Extensions panel. Live preview updates as
 
 ---
 
+### Homebrew (macOS and Linux)
+
+```bash
+brew tap trellis-lab/trellis
+brew trust trellis-lab/trellis
+brew install trellis
+```
+
+> Homebrew 6.0+ requires trusting third-party taps before their formulae can load. If you skip `brew trust` and see `Error: Refusing to load formula ... from untrusted tap`, run `brew trust trellis-lab/trellis` and retry the install.
+
+---
+
+### winget (Windows)
+
+```powershell
+winget install TrellisLab.Trellis
+```
+
+---
+
 ### CLI binary
 
 Download the pre-built binary for your platform from the [releases page](https://github.com/trellis-lab/trellis/releases):
