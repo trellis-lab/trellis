@@ -26,20 +26,20 @@ Trellis' own crates, internal test crates, development and build dependencies ar
 | Apache-2.0 OR ISC OR MIT | 3 |
 | BSD-3-Clause | 3 |
 | CDLA-Permissive-2.0 | 3 |
-| (Apache-2.0 OR MIT) AND Unicode-3.0 | 2 |
-| Apache-2.0 OR BSD-2-Clause OR MIT | 2 |
 | Apache-2.0 OR CC0-1.0 OR MIT-0 | 2 |
 | Apache-2.0 OR LGPL-2.1-or-later OR MIT | 2 |
 | ISC | 2 |
-| (Apache-2.0 OR ISC OR MIT) AND (Apache-2.0 OR ISC OR MIT-0) AND (Apache-2.0 OR ISC) AND Apache-2.0 AND BSD-3-Clause AND ISC AND MIT | 1 |
-| (Apache-2.0 OR ISC) AND ISC | 1 |
+| (Apache-2.0 OR MIT) AND Unicode-3.0 | 2 |
+| Apache-2.0 OR BSD-2-Clause OR MIT | 2 |
 | 0BSD OR Apache-2.0 OR MIT | 1 |
-| Apache-2.0 AND ISC | 1 |
+| BSD-2-Clause | 1 |
+| (Apache-2.0 OR ISC) AND ISC | 1 |
+| (Apache-2.0 OR ISC OR MIT) AND (Apache-2.0 OR ISC OR MIT-0) AND (Apache-2.0 OR ISC) AND Apache-2.0 AND BSD-3-Clause AND ISC AND MIT | 1 |
 | Apache-2.0 OR Apache-2.0 WITH LLVM-exception OR CC0-1.0 | 1 |
+| Apache-2.0 WITH LLVM-exception OR BSL-1.0 | 1 |
+| Apache-2.0 AND ISC | 1 |
 | Apache-2.0 OR BSL-1.0 | 1 |
 | Apache-2.0 OR GPL-2.0 | 1 |
-| Apache-2.0 WITH LLVM-exception OR BSL-1.0 | 1 |
-| BSD-2-Clause | 1 |
 | Zlib | 1 |
 
 **Total: 480 dependencies**

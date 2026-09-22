@@ -68,6 +68,18 @@ Multiple sources/targets with `&` are supported:
 a & b & c --> d
 ```
 
+### Self-loops
+
+Nodes can connect to themselves via self-loops (e.g., `A --> A`). Trellis renders these as visible staple-shaped loops around the node. Multiple self-loops on the same node fan out to avoid overlap:
+
+```
+A --> A
+B --> B
+B --> B    (this second self-loop appears on the opposite side)
+```
+
+Self-loops work across all diagram types (flowchart, class, ER, C4).
+
 ### Subgraphs
 
 `subgraph ID [label] … end` blocks are supported, including a bare quoted title with no separate id (`subgraph "Title"`).
@@ -104,7 +116,7 @@ Also not yet supported (on the roadmap):
 
 ## C4 support
 
-Trellis supports the standard Mermaid C4 vocabulary — `Person`, `System`, `Container`, `Component` (with their `Db`, `Queue`, and `_Ext` variants), boundaries (`Enterprise_Boundary`, `System_Boundary`, `Container_Boundary`), deployment nodes (`Deployment_Node`, `Node`, `Node_L`, `Node_R`), and relationships (`Rel`, `BiRel`, directional `Rel_U/D/L/R`, `Rel_Back`, `UpdateLayoutConfig`).
+Trellis supports the standard Mermaid C4 vocabulary — `Person`, `System`, `Container`, `Component` (with their `Db`, `Queue`, and `_Ext` variants), boundaries (`Enterprise_Boundary`, `System_Boundary`, `Container_Boundary`, and generic `Boundary`), deployment nodes (`Deployment_Node`, `Node`, `Node_L`, `Node_R`), and relationships (`Rel`, `BiRel`, directional `Rel_U/D/L/R`, `Rel_Back`, `UpdateLayoutConfig`).
 
 ### Supplementary node types
 
@@ -132,6 +144,20 @@ C4Container
 
 These keywords are Trellis extensions — they render in Trellis but are not part of the official Mermaid C4 specification.
 
+### Generic boundaries
+
+Use `Boundary(alias, label, type)` to create a custom-typed boundary. The type text appears below the boundary label, and Trellis renders the boundary with a dashed stroke (configurable via `c4_boundary_dashed` in the [configuration](cli#configuration)):
+
+```
+C4Container
+    Boundary(custom, "Custom Scope", "Authorization Layer")
+    Person(user, "User")
+    Container(app, "Application")
+    Rel(user, app, "Uses")
+```
+
+The `Boundary()` syntax is a Mermaid-standard generic element that Trellis now renders with full C4 styling. Omit the type or pass an empty string to use a default "[Boundary]" label instead.
+
 ---
 
 ## Architecture (`architecture-beta`) support
@@ -155,3 +181,9 @@ Icons use Iconify `prefix:name` identifiers (e.g. `logos:aws`, `logos:postgresql
 Only these prefixes are allowed — downloads from arbitrary hosts/paths are blocked, and fetched SVGs are size-capped and content-scanned before embedding.
 
 > **VS Code extension:** the extension ships a **built-in icon set only** (`mdi:*` and `logos:aws-*`). It does not download icons on demand. Diagrams using other Iconify prefixes render their icons only via the CLI or Docker. See [Troubleshooting → Icons don't appear in the VS Code preview](troubleshooting#icons-dont-appear-in-the-vs-code-preview).
+
+---
+
+## Trellis commands
+
+On top of standard Mermaid syntax, Trellis also reads `%% trellis <command> <argument>` comments — plain comments to every other renderer, so output stays 100% Mermaid-compatible. Full command reference (currently: `tag`) and how to get an AI agent to use them: [Prompting Your AI Agent](ai-agents).
