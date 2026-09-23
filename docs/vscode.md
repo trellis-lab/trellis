@@ -36,6 +36,28 @@ Or search **"Trellis"** in the Extensions panel (`Ctrl+Shift+X`) and click **Ins
 
 Open any Markdown file containing a ` ```mermaid ` block. A CodeLens appears above each block — click it (**Trellis: Preview Mermaid Block**) to render that diagram.
 
+### Inspect diagram
+
+Click the **Inspect Diagram** button in the preview toolbar to open an interactive inspector that lets you explore the diagram structure. Select nodes to view:
+- Node labels and descriptions (for C4 diagrams)
+- Connected edges with their labels
+- Neighboring nodes
+
+Click the background or close button to deselect.
+
+### Pan and zoom
+
+The preview supports interactive pan and zoom:
+- **Zoom:** Scroll with your cursor centered on the diagram (cursor-anchored zoom). Your zoom level and pan position are saved per document.
+- **Pan:** Click and drag to pan around the diagram.
+- **Fit to view:** When you open the preview, the diagram automatically scales to fit the entire viewport. Double-click to cycle through zoom modes: fit-page → fit-width → actual size.
+
+The preview re-renders sharply as you zoom in for fine details. When you select a node, the preview smoothly pans to keep it centered in view.
+
+### Unsupported diagram types
+
+The preview falls back to Mermaid.js for diagram types Trellis doesn't yet support (e.g. sequence, state, gantt, pie, journey, gitGraph, mindmap). This means you can still preview and work with these diagrams — they just use Mermaid's default layout instead of Trellis's overlap-free routing.
+
 ### Export
 
 Export from the Command Palette (`Ctrl+Shift+P`) or the export button in the preview toolbar:
@@ -58,9 +80,15 @@ Configure under **Settings → Extensions → Trellis**:
 | Auto Preview | `true` | Re-render on every keystroke / file save |
 | Show Edge Labels | `true` | Display labels on diagram edges |
 | Show Title | `true` | Display the diagram title above the diagram |
+| Theme | `default` | Color theme: `default`, `paper`, `blueprint`, `dark`, `midnight`, `forest` |
 | Crossing Style | `Skip` | How crossing edges are drawn (`None`, `Arc`, `Rectangular`, `Skip`) |
 | Corner Radius | `8` | Node corner roundness in pixels (`0` = sharp) |
 | Label Font Size | `10` | Font size in pixels for edge labels |
+| Cell Size | `40` | Grid cell size in pixels (internal grid resolution) |
+| C4 Gap X | `120` | Horizontal spacing between C4 element nodes in the same row, in pixels |
+| C4 Gap Y | `80` | Vertical spacing between C4 rows and sections, in pixels |
+| Show Grid | `false` | Display the background grid |
+| HTML Orientation | `Landscape` | Inspector panel layout in HTML export: `Landscape` or `Portrait` |
 
 ---
 

@@ -1,7 +1,7 @@
 ---
 layout: default
 title: Troubleshooting
-nav_order: 8
+nav_order: 9
 ---
 
 # Troubleshooting
@@ -29,6 +29,17 @@ xattr -d com.apple.quarantine /path/to/trellis
 ```
 
 Then run it again.
+
+---
+
+## VS Code extension
+
+### New settings don't appear after updating the extension
+
+VS Code caches an extension's contributed settings schema for the running window. After updating to a newer Trellis extension version, reload the window to pick up new/changed `trellis.*` settings:
+
+- Run **Developer: Reload Window** from the Command Palette (`Cmd/Ctrl+Shift+P`), or
+- Restart VS Code entirely.
 
 ---
 

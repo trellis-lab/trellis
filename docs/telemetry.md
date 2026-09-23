@@ -1,7 +1,7 @@
 ---
 layout: default
 title: Telemetry
-nav_order: 9
+nav_order: 10
 ---
 
 # Telemetry

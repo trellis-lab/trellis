@@ -279,3 +279,7 @@ C4Container
   Rel(api, db, "Reads/writes")
   Rel(api, assets, "Stores objects")
 ```
+
+### Tagging nodes while designing
+
+Ask Claude to annotate a diagram with [Trellis commands](ai-agents) (e.g. `%% trellis tag`) as it designs it, then render as `html` to review by tag instead of re-reading the source. Clients that honor the server's connection `instructions` get this guidance automatically, without you having to prompt for it — see [Prompting Your AI Agent](ai-agents) for the instruction text and a worked example.
