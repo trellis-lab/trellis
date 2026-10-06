@@ -12,6 +12,22 @@ The `trellis` binary renders Mermaid diagrams to SVG, PNG, HTML, ASCII, and Draw
 
 ## Installation
 
+### Homebrew (macOS and Linux)
+
+```bash
+brew tap trellis-lab/trellis
+brew trust trellis-lab/trellis
+brew install trellis
+```
+
+> Homebrew 6.0+ requires trusting third-party taps before their formulae can load. If you skip `brew trust` and see `Error: Refusing to load formula ... from untrusted tap`, run `brew trust trellis-lab/trellis` and retry the install.
+
+### winget (Windows)
+
+```powershell
+winget install TrellisLab.Trellis
+```
+
 ### Binary download
 
 | Platform | File |
@@ -168,7 +184,8 @@ Self-contained interactive file. No server or internet connection required. Open
 
 - Click a node to highlight it, all connected edges, and its neighbours.
 - Click an edge to highlight it and its two endpoint nodes.
-- View an inspector panel with incoming/outgoing edge labels and neighbour names.
+- View an inspector panel with incoming/outgoing edge labels, neighbour names, and (for C4 diagrams) node descriptions.
+- Click a tag in the legend to highlight all tagged nodes and their edges; the legend shows tag counts.
 - Search nodes by name.
 - Pan and zoom with mouse drag and scroll wheel; use the minimap to navigate large diagrams.
 - Toggle between light and dark themes.
@@ -227,6 +244,16 @@ theme = "paper"
 
 # Inspector panel layout for HTML output: Landscape (default) or Portrait
 html_orientation = "Landscape"
+
+# C4 diagram node spacing in pixels: horizontal and vertical gap (default: 120, 80)
+c4_gap_x = 120.0
+c4_gap_y = 80.0
+
+# C4 boundary stroke style: dashed (true, default) or solid (false)
+c4_boundary_dashed = true
+
+# Markdown label wrapping width in pixels (default: 200.0; 0.0 disables)
+markdown_wrap_width = 200.0
 
 # Anonymous usage ping — set to false to opt out (default: true)
 telemetry = true
