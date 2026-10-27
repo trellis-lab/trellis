@@ -49,6 +49,12 @@ Or search **"Trellis"** in the VS Code Extensions panel. Live preview updates as
 
 → [Marketplace page](https://marketplace.visualstudio.com/items?itemName=trellislab.trellis-mermaid)
 
+#### Trellis Flow
+
+Trellis Flow, part of the VS Code extension, plays a Mermaid `sequenceDiagram` on top of your C4 model, one message at a time. Each step lights up the C4 nodes and relations it uses and fades out the rest, so you can walk through how a request moves through the system. Open the **Trellis** view in the activity bar, pick a source folder, and choose a sequence to step through or play.
+
+Trellis Flow is a commercial feature that requires a license key. Guide: [docs/vscode.md](docs/vscode.md#trellis-flow)
+
 ---
 
 ### Homebrew (macOS and Linux)
@@ -124,7 +130,12 @@ trellis validate diagram.mmd
 
 # Render with custom config
 trellis render diagram.mmd -o diagram.svg --config trellis.toml
+
+# Anonymize a diagram for a bug report (commercial feature — requires a license)
+trellis anonymize diagram.mmd -o anonymized.mmd
 ```
+
+`anonymize` replaces ids, labels, comments and other text with random characters of the same length, keeping syntax, structure and styling, so you can share a diagram that reproduces a layout problem without exposing confidential names. Review the output before sharing it. Details: [docs/cli.md](docs/cli.md#anonymize)
 
 Full CLI reference: [docs/cli.md](docs/cli.md)
 
@@ -182,7 +193,7 @@ Setup guide: [docs/mcp.md](docs/mcp.md)
 Two separate licenses apply, covering different things:
 
 - **Source in this repository** (docs, MCP server wrapper, provisioning scripts, examples) — [MIT License](LICENSE).
-- **Trellis CLI binary and Docker images** — proprietary, closed-source. See the [EULA](EULA.md). Trellis is free for everyday rendering; `render-batch` and MCP SVG/HTML/Draw.io output are commercial features that require a license key.
+- **Trellis CLI binary and Docker images** — proprietary, closed-source. See the [EULA](EULA.md). Trellis is free for everyday rendering; `render-batch`, `anonymize`, Trellis Flow and MCP SVG/HTML/Draw.io output are commercial features that require a license key.
 
 Bundled open-source dependencies of the binary are attributed in [THIRD-PARTY-LICENSES.md](THIRD-PARTY-LICENSES.md).
 
