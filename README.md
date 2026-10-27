@@ -89,9 +89,11 @@ Extract and add the binary to your `PATH`.
 ### Docker
 
 ```bash
-docker pull ghcr.io/trellis-lab/trellis:latest
-docker run --rm -v "$(pwd):/data" ghcr.io/trellis-lab/trellis:latest input.mmd -o output.svg
+docker pull trellislab/trellis-cli:latest
+docker run --rm -v "$(pwd):/data" trellislab/trellis-cli:latest render input.mmd -o output.png
 ```
+
+Formats other than PNG need a license key — see [Docker usage](docs/cli.md#docker-usage).
 
 ---
 
@@ -159,8 +161,8 @@ theme = "paper"
 Trellis includes a Pandoc Docker image for rendering Markdown documents with embedded Mermaid diagrams directly to PDF or HTML — no pre-processing step, no local Trellis install required.
 
 ```bash
-docker pull ghcr.io/trellis-lab/trellis-pandoc:latest
-docker run --rm -v "$(pwd):/data" ghcr.io/trellis-lab/trellis-pandoc:latest document.md -o document.pdf
+docker pull trellislab/trellis-pandoc:latest
+docker run --rm -v "$(pwd):/data" trellislab/trellis-pandoc:latest document.md -o document.pdf
 ```
 
 Full Pandoc guide: [docs/pandoc.md](docs/pandoc.md)

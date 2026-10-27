@@ -50,7 +50,7 @@ Require `approvals.risk-analysis.approved: true`. Otherwise point at
      `architecture.md` with an image reference to that asset — this is the
      one place a diagram is allowed to stop being a live `mermaid` block.
    - Diagrams the user doesn't polish stay as `mermaid` blocks — the pandoc
-     Lua filter renders them to inline SVG automatically at PDF time; no
+     Lua filter renders them to PNG automatically at PDF time; no
      manual export needed for those.
    - Track which figures were replaced with images vs. left as `mermaid` so
      the report in step 4 can list both.
@@ -58,8 +58,8 @@ Require `approvals.risk-analysis.approved: true`. Otherwise point at
 3. **Render the PDF:**
 
    ```bash
-   docker pull ghcr.io/trellis-lab/trellis-pandoc:latest   # first run / update
-   docker run --rm -v "$(pwd):/data" ghcr.io/trellis-lab/trellis-pandoc:latest \
+   docker pull trellislab/trellis-pandoc:latest   # first run / update
+   docker run --rm -v "$(pwd):/data" trellislab/trellis-pandoc:latest \
      06-final/architecture.md -o 06-final/architecture.pdf
    ```
 

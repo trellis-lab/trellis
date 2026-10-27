@@ -18,7 +18,7 @@ A Trellis command is a comment placed directly above the statement it applies to
 %% trellis <command> <argument>
 ```
 
-Every other Mermaid renderer sees a plain comment and ignores it — a diagram using Trellis commands still renders correctly (minus the extra behavior) anywhere else. This section grows as new commands ship; today there's one.
+Every other Mermaid renderer sees a plain comment and ignores it — a diagram using Trellis commands still renders correctly (minus the extra behavior) anywhere else. This section grows as new commands ship; today there are two.
 
 ### `tag`
 
@@ -38,6 +38,15 @@ Auth[Auth Service]
 `Auth` ends up tagged `backend, api, security`.
 
 Tags surface in the **interactive HTML output** (`-f html`): a legend lists every tag with a count, and clicking one highlights matching nodes plus their edges and dims the rest. SVG, PNG, and Draw.io output are unaffected. An unknown command name or malformed argument is silently ignored — same Mermaid-compatible behavior as unsupported syntax elsewhere.
+
+### `c4role`
+
+```
+%% trellis c4role frontend
+Container(web, "Web App", "React", "Customer UI")
+```
+
+Draws the plain C4 `Container` or `Container_Ext` below it with a Trellis custom shape. Roles: `app`, `frontend`, `gateway`, `folder`, `bucket`. Other renderers still show a standard container, so prefer this over the Trellis-only `ContainerFrontend`-style keywords when the diagram must stay portable. See [Custom container shapes](mermaid-support#custom-container-shapes-with-c4role).
 
 ---
 

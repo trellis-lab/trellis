@@ -42,8 +42,10 @@ Download from the [releases page](https://github.com/trellis-lab/trellis/release
 ### Docker
 
 ```bash
-docker pull ghcr.io/trellis-lab/trellis:latest
+docker pull trellislab/trellis-cli:latest
 ```
+
+See [Docker usage](#docker-usage).
 
 ---
 
@@ -129,9 +131,34 @@ trellis validate input.mmd
 
 Exits with code `0` on success, non-zero on error.
 
+### `anonymize`
+
+Replace the text of a diagram with random characters so you can attach it to a bug report without exposing confidential names. Ids, labels, descriptions, class members, ER attributes, comments and the frontmatter title become random characters of the same length and character class. The same word always maps to the same replacement, so connections stay intact. Syntax, structure and styling are kept, so the result still reproduces layout and routing problems.
+
+> **Commercial feature.** `anonymize` requires a valid Trellis license. See [Licensing](licensing).
+
+```bash
+trellis anonymize [input] [-o <output>] [--seed <n>]
+```
+
+**Examples:**
+
+```bash
+trellis anonymize input.mmd -o anonymized.mmd
+trellis anonymize input.mmd -o anonymized.mmd --seed 42   # reproducible output
+cat input.mmd | trellis anonymize - > anonymized.mmd
+```
+
+- Reads stdin and writes stdout when no input or output is given.
+- Supports flowchart, class, ER, C4 and architecture diagrams; other types are rejected.
+- The result is re-parsed and compared with the input; if the structure differs, nothing is written.
+- Errors report line and column only, never diagram text.
+- `%% trellis` commands and `%%{init}%%` directives are copied unchanged, and text width is only approximated. Review the output before sharing it.
+- Exits with code `1` for invalid or unsupported diagrams, `2` for other failures (including a missing license).
+
 ### `license`
 
-Manage your Trellis license on this device. Required for commercial features such as `render-batch`.
+Manage your Trellis license on this device. Required for commercial features such as `render-batch` and `anonymize`.
 
 ```bash
 # Activate this device (consumes one seat)
@@ -265,18 +292,24 @@ See [Telemetry](telemetry) for what is collected and how to opt out.
 
 ## Docker usage
 
-The Docker image wraps the CLI binary. Mount the current directory to `/data`:
+The `trellislab/trellis-cli` image (Docker Hub, `linux/amd64` and `linux/arm64`) wraps the CLI
+binary: arguments after the image name are passed to `trellis`. Mount the current directory to `/data`:
 
 ```bash
 # Pull the image
-docker pull ghcr.io/trellis-lab/trellis:latest
+docker pull trellislab/trellis-cli:latest
 
-# Render a file
-docker run --rm -v "$(pwd):/data" ghcr.io/trellis-lab/trellis:latest input.mmd -o output.svg
+# Render to PNG (free)
+docker run --rm -v "$(pwd):/data" trellislab/trellis-cli:latest render input.mmd -o output.png
 
-# Render to PNG
-docker run --rm -v "$(pwd):/data" ghcr.io/trellis-lab/trellis:latest input.mmd -o output.png
+# Render to SVG (requires a license key)
+docker run --rm -v "$(pwd):/data" -v trellis-license:/root/.config/trellis -e TRELLIS_KEY \
+  trellislab/trellis-cli:latest render input.mmd -o output.svg
 ```
+
+`-e TRELLIS_KEY` passes the key from your shell environment. A key is activated on first use, which
+uses one seat; the `trellis-license` volume keeps that activation, so later runs don't activate (and
+use a seat) again.
 
 ---
 

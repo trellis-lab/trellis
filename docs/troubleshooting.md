@@ -63,6 +63,18 @@ Render the same diagram with the **CLI or Docker** to get on-demand icon downloa
 trellis render diagram.mmd -o diagram.svg
 ```
 
+### VS Code preview shows `unreachable` instead of the diagram
+
+Every Trellis-supported diagram fails with `RuntimeError: unreachable` (or a similar runtime error), while diagram types handled by the Mermaid.js fallback still render. This usually appears right after a VS Code update: the preview panel's WebAssembly renderer is left in a stale state, and *Developer: Reload Window* doesn't always clear it.
+
+Try these in order:
+
+1. Close the Trellis Preview panel, reopen it, and make a small edit to force a fresh render.
+2. Run **Developer: Open Webview Developer Tools**, clear the console, and re-render the diagram. This alone often clears it.
+3. Quit VS Code completely (not just reload the window) and start it again.
+
+If the error keeps coming back, open an [issue](https://github.com/trellis-lab/trellis/issues) with your VS Code version (**Help → About**), the extension version, and the full error text from the Webview Developer Tools console.
+
 ### Icons still don't download from the CLI
 
 The CLI only fetches from a fixed allow-list of Iconify prefixes (`mdi`, `logos`, `devicon`, `carbon`, `simple-icons`, … — see the [full list](mermaid-support#icons)). An unknown prefix is rejected, and fetched SVGs are size-capped and content-scanned. Check the prefix, and confirm outbound network access to the Iconify CDN.
@@ -72,7 +84,7 @@ The CLI only fetches from a fixed allow-list of Iconify prefixes (`mdi`, `logos`
 Make sure you mount the working directory and reference files relative to `/data`:
 
 ```bash
-docker run --rm -v "$(pwd):/data" ghcr.io/trellis-lab/trellis:latest input.mmd -o output.svg
+docker run --rm -v "$(pwd):/data" trellislab/trellis-cli:latest render input.mmd -o output.png
 ```
 
 Both input and output paths resolve inside `/data`.
