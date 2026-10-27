@@ -37,6 +37,8 @@ Trellis is free to use for everyday rendering. Some advanced capabilities are co
 | `render-batch` — render a whole directory at once | CLI |
 | SVG / HTML / Draw.io output | --license-key `KEY` command line argument or `TRELLIS_KEY` env variable required |
 | SVG / HTML / Draw.io output via the MCP server | MCP server (`TRELLIS_KEY` required) |
+| `anonymize` — strip confidential text from a diagram for bug reports | CLI and VS Code extension |
+| Trellis Flow — step through sequence diagrams on a C4 model | VS Code extension |
 
 Each activated device consumes one seat from your license.
 

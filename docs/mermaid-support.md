@@ -144,6 +144,33 @@ C4Container
 
 These keywords are Trellis extensions — they render in Trellis but are not part of the official Mermaid C4 specification.
 
+### Custom container shapes with `c4role`
+
+To keep a diagram fully compatible with other Mermaid renderers, write a plain `Container` (or `Container_Ext`) and put a `%% trellis c4role <role>` comment directly above it. Trellis draws the custom shape; every other renderer sees a standard container.
+
+| Role | Renders as |
+|---|---|
+| `app` | `ContainerApp` |
+| `frontend` | `ContainerFrontend` |
+| `gateway` | `ContainerGateway` |
+| `folder` | `ContainerFolder` |
+| `bucket` | `ContainerBucket` |
+
+Roles are case-insensitive. A `Container_Ext` keeps its external styling (for example `ContainerBucket_Ext`).
+
+```
+C4Container
+    %% trellis c4role gateway
+    Container(gw, "API Gateway", "Kong", "Routes all traffic")
+    %% trellis c4role bucket
+    Container(s3, "Assets", "S3", "Static assets")
+    Rel(gw, s3, "Serves assets from")
+```
+
+`c4role` on any other element (a `Person`, a `ContainerDb`, a non-C4 diagram) has no effect and produces a warning in `trellis validate`.
+
+> **Argument order:** `ContainerApp` and `ContainerFrontend` take their arguments in the same order as every other container — `(alias, label, technology, description)`. Earlier versions read description before technology, so diagrams with three or more arguments may now show these values swapped back into the right place.
+
 ### Generic boundaries
 
 Use `Boundary(alias, label, type)` to create a custom-typed boundary. The type text appears below the boundary label, and Trellis renders the boundary with a dashed stroke (configurable via `c4_boundary_dashed` in the [configuration](cli#configuration)):
@@ -186,4 +213,4 @@ Only these prefixes are allowed — downloads from arbitrary hosts/paths are blo
 
 ## Trellis commands
 
-On top of standard Mermaid syntax, Trellis also reads `%% trellis <command> <argument>` comments — plain comments to every other renderer, so output stays 100% Mermaid-compatible. Full command reference (currently: `tag`) and how to get an AI agent to use them: [Prompting Your AI Agent](ai-agents).
+On top of standard Mermaid syntax, Trellis also reads `%% trellis <command> <argument>` comments — plain comments to every other renderer, so output stays 100% Mermaid-compatible. Full command reference (currently: `tag`, `c4role`) and how to get an AI agent to use them: [Prompting Your AI Agent](ai-agents).

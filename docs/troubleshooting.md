@@ -84,7 +84,7 @@ The CLI only fetches from a fixed allow-list of Iconify prefixes (`mdi`, `logos`
 Make sure you mount the working directory and reference files relative to `/data`:
 
 ```bash
-docker run --rm -v "$(pwd):/data" ghcr.io/trellis-lab/trellis:latest input.mmd -o output.svg
+docker run --rm -v "$(pwd):/data" trellislab/trellis-cli:latest render input.mmd -o output.png
 ```
 
 Both input and output paths resolve inside `/data`.
